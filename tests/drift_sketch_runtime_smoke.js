@@ -20,7 +20,8 @@ assert(definition, 'DriftSketch directive must register');
 const factory = definition[definition.length - 1];
 const directive = factory(windowObject);
 directive.link(scope, [{style:{}}]);
-assert.strictEqual(scope.modVersion, '0.1.0');
+assert.strictEqual(scope.modVersion, '0.2.0');
+assert(!Object.prototype.hasOwnProperty.call(scope.settings, 'sides'));
 assert(commands.includes('extensions.driftSketch.uiState()'));
 scope.start(); scope.stop(); scope.rebuild(); scope.clear();
 assert(commands.includes('extensions.driftSketch.start()'));
@@ -56,6 +57,8 @@ for (const expression of expressions) {
 }
 assert.deepStrictEqual([...missing], []);
 assert(fs.existsSync(path.join(ROOT, 'DriftSketch/ui/modules/apps/DriftSketch/app.png')));
+assert(!html.includes('Left only') && !html.includes('Right only') && !html.includes("pushSetting('sides')"));
+assert(html.includes('Both sides') && !html.includes('AUTO CAR CLEARANCE') && !html.includes('Min. track width'));
 const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'DriftSketch/ui/modules/apps/DriftSketch/app.json'), 'utf8'));
 assert.strictEqual(manifest.directive, 'driftSketchPanel');
 console.log(`✓ DriftSketch ${expressions.length} Angular expressions resolve; app manifest/icon exist`);

@@ -30,7 +30,8 @@
     .ds-form{padding:12px;border:1px solid rgba(255,255,255,.055);border-radius:12px;background:rgba(255,255,255,.018)}
     .ds-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px}.ds-field{display:block;min-width:0;color:rgba(190,211,216,.48);font-size:9px}
     .ds-field.full{grid-column:1/3}.ds-field>b{float:right;color:rgba(255,185,143,.68);font-weight:600}
-    .ds-field select{width:100%;margin-top:7px;padding:8px;border:1px solid rgba(255,255,255,.07);border-radius:8px;outline:none;background:#141d22;color:#dce9eb;font-family:inherit;font-size:10px}
+    .ds-field select,.ds-static{width:100%;margin-top:7px;padding:8px;border:1px solid rgba(255,255,255,.07);border-radius:8px;outline:none;background:#141d22;color:#dce9eb;font-family:inherit;font-size:10px;box-sizing:border-box}
+    .ds-static{border-color:rgba(105,214,221,.14);background:rgba(105,214,221,.045);color:#a5e4e8;letter-spacing:.01em}
     .ds-field input[type=range]{width:100%;height:3px;margin-top:11px;accent-color:#ff7a38}
     .ds-checks{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:12px}.ds-check{display:flex;align-items:center;gap:7px;min-height:31px;padding:7px 8px;border:1px solid rgba(255,255,255,.05);border-radius:8px;color:rgba(197,215,219,.55);font-size:8px;cursor:pointer}
     .ds-check input{accent-color:#ff7a38}.ds-foot{display:flex;justify-content:space-between;gap:10px;margin-top:12px;color:rgba(174,195,201,.30);font-size:8px}.ds-foot b{color:rgba(255,150,98,.42);font-weight:600}
@@ -66,9 +67,9 @@
           <label class="ds-field">Mesh
             <select ng-model="settings.mesh" ng-change="pushSetting('mesh')"><option value="cone">Traffic Cone</option><option value="pylon">Tall Pylon</option></select>
           </label>
-          <label class="ds-field">Sides
-            <select ng-model="settings.sides" ng-change="pushSetting('sides')"><option value="both">Both sides</option><option value="left">Left only</option><option value="right">Right only</option></select>
-          </label>
+          <div class="ds-field">Layout
+            <div class="ds-static">↔ Both sides</div>
+          </div>
           <label class="ds-field">Spacing <b>{{settings.spacing}} m</b><input type="range" min="1" max="10" step="0.1" ng-model="settings.spacing" ng-change="pushSetting('spacing')"></label>
           <label class="ds-field">Track width <b>{{settings.width}} m</b><input type="range" min="1.5" max="12" step="0.1" ng-model="settings.width" ng-change="pushSetting('width')"></label>
           <label class="ds-field">Mesh scale <b>{{settings.scale}}×</b><input type="range" min="0.5" max="2" step="0.05" ng-model="settings.scale" ng-change="pushSetting('scale')"></label>

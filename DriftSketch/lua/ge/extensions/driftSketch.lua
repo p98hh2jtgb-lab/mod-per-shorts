@@ -1,11 +1,10 @@
--- DriftSketch 0.1.0 — record a drive, build real low-poly mesh cones, keep them for replay.
+-- DriftSketch 0.2.0 — record a drive, build real low-poly mesh cones, keep them for replay.
 local M = {}
 
 local SETTINGS = {
   mesh = 'cone',
   spacing = 2.4,
-  width = 5.0,
-  sides = 'both',
+  width = 6.0,
   scale = 1.0,
   groundOffset = -0.55,
   maxCones = 1200,
@@ -127,11 +126,10 @@ local function samplePath(source, spacing)
   local total = pathLength(path)
   if total < 0.05 then return {} end
   spacing = math.max(0.5, tonumber(spacing) or SETTINGS.spacing)
-  local sideCount = SETTINGS.sides == 'both' and 2 or 1
-  local estimated = (math.floor(total / spacing) + 1) * sideCount
+  local maxSamples = math.max(2, math.floor(SETTINGS.maxCones / 2))
+  local estimated = (math.floor(total / spacing) + 1) * 2
   if estimated > SETTINGS.maxCones then
-    local sampleCount = math.max(2, math.floor(SETTINGS.maxCones / sideCount))
-    spacing = total / math.max(1, sampleCount - 1)
+    spacing = total / math.max(1, maxSamples - 1)
   end
 
   local samples = {}
@@ -147,7 +145,7 @@ local function samplePath(source, spacing)
 
   local distance = 0
   local guard = 0
-  while distance <= total + 0.0001 and guard < SETTINGS.maxCones do
+  while distance <= total + 0.0001 and guard < maxSamples do
     while segment < #path - 1 and distance > segmentStart + segmentLength do
       segmentStart = segmentStart + segmentLength
       segment = segment + 1
@@ -213,12 +211,10 @@ local function buildPath(path)
   local before = #spawned
   for _, p in ipairs(samples) do
     local nx, ny = -p.ty, p.tx
-    local function place(sign)
+    for _, sign in ipairs({-1, 1}) do
       local x, y = p.x + nx * halfWidth * sign, p.y + ny * halfWidth * sign
       spawnMesh(x, y, groundZ(x, y, p.z))
     end
-    if SETTINGS.sides == 'both' or SETTINGS.sides == 'left' then place(1) end
-    if SETTINGS.sides == 'both' or SETTINGS.sides == 'right' then place(-1) end
   end
   return #spawned - before
 end
@@ -277,8 +273,6 @@ end
 function M.setSetting(key, value)
   if key == 'mesh' then
     SETTINGS.mesh = value == 'pylon' and 'pylon' or 'cone'
-  elseif key == 'sides' then
-    SETTINGS.sides = (value == 'left' or value == 'right') and value or 'both'
   elseif key == 'spacing' then
     SETTINGS.spacing = math.max(1.0, math.min(10.0, tonumber(value) or SETTINGS.spacing))
   elseif key == 'width' then

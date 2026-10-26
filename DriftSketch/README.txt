@@ -1,21 +1,32 @@
-DRIFTSKETCH 0.1.0 — PROTOTYPE
+DRIFTSKETCH 0.2.0 — PROTOTYPE
 =============================
 Start → drive → Stop & Build → open BeamNG replay.
 
-INSTALL
--------
-1. Copy DriftSketch_v0.1.0.zip without extracting to Documents\BeamNG.drive\mods\.
-2. Start the game and add Esc → UI Apps → Add App → DriftSketch.
-3. Press Start, drive a line with any vehicle, then press Stop & Build.
-4. Real low-poly TSStatic cone meshes appear on both sides of the recorded path.
-5. Open BeamNG's normal replay. The generated meshes remain in the scene.
+INSTALL / UPDATE
+----------------
+1. Remove or replace DriftSketch_v0.1.0.zip in Documents\BeamNG.drive\mods\.
+2. Copy DriftSketch_v0.2.0.zip there without extracting it.
+3. Restart the game and add Esc → UI Apps → Add App → DriftSketch.
+4. Press Start, drive a line with any vehicle, then press Stop & Build.
+5. Real mesh cones appear on BOTH sides of the recorded path.
+6. Open BeamNG's normal replay. The generated meshes remain in the scene.
+
+WHAT CHANGED IN 0.2.0
+---------------------
+• Both sides is now fixed; Left only / Right only have been removed.
+• Track Width remains fully manual and exact. No automatic clearance or hidden
+  widening is applied. Increase it yourself when you want more room to drift.
+• The default Track Width is 6.0 m so a new build starts with useful space.
+• New original 16-sided, smooth-normal Cone and Pylon meshes: 256 triangles
+  each, with beveled rubber bases and improved reflective band materials.
 
 PANEL
 -----
 • Mesh: original Cone or tall Pylon.
-• Sides: Both / Left / Right.
+• Layout: always Both sides.
 • Spacing: distance between samples along the path.
-• Width: total distance between the two cone lines.
+• Track Width: total distance between the two cone lines; the recorded car path
+  is centered between them. Example: 6.0 m places each line 3.0 m from the path.
 • Scale and fallback Ground Offset.
 • Max Cones: safety/performance cap, 100–3000.
 • Smooth Path: reduces small steering/position jitter.
@@ -33,7 +44,8 @@ LIMITS OF THIS PROTOTYPE
 ------------------------
 • Replay is controlled with BeamNG's existing replay UI; DriftSketch does not rewind.
 • Cones are visual/static; live knock-over physics is not enabled yet.
-• Very tight self-intersections may need a wider setting or manual cleanup/rebuild.
+• A very narrow manual width or a tight self-intersection can still overlap the
+  car or another part of the course. Clear/Rebuild with a wider manual setting.
 • Test in your BeamNG version and map before using it in a production recording.
 
 DriftSketch is independent from CreatorPack and does not change vehicle physics.

@@ -40,7 +40,7 @@ const {chromium: playwright} = require(path.join(MODULES, 'playwright-core'));
       const scope = angular.element(document.querySelector('.ds-panel')).scope();
       scope.$root.$broadcast('driftSketch.state', {recording:false,pointCount:96,pathLength:182.4,buildCount:1,coneCount:248,
         vehicleName:'Any Vehicle · Live Path',status:'Built 248 cones. Open BeamNG replay — they stay in the scene.',statusError:false,
-        settings:{mesh:'cone',spacing:2.4,width:5,sides:'both',scale:1,groundOffset:-0.55,maxCones:1200,smooth:true,keepBuilds:true}});
+        settings:{mesh:'cone',spacing:2.4,width:6,scale:1,groundOffset:-0.55,maxCones:1200,smooth:true,keepBuilds:true}});
     });
     await page.waitForTimeout(300);
     const state = await page.evaluate(() => {
