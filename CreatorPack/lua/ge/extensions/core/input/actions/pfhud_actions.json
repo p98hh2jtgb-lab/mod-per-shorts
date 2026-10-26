@@ -1,0 +1,102 @@
+{
+  "pfhud_pass": {
+    "cat": "gameplay",
+    "order": 9101,
+    "ctx": "tlua",
+    "actionMap": "Global",
+    "onDown": "extensions.load('creatorpack'); if extensions and extensions.creatorpack then extensions.creatorpack.pfhudPass() end",
+    "title": "CreatorPack: PASS current",
+    "desc": "Mark selected HUD item as PASS.",
+    "isBasic": true
+  },
+  "pfhud_fail": {
+    "cat": "gameplay",
+    "order": 9102,
+    "ctx": "tlua",
+    "actionMap": "Global",
+    "onDown": "extensions.load('creatorpack'); if extensions and extensions.creatorpack then extensions.creatorpack.pfhudFail() end",
+    "title": "CreatorPack: FAIL current",
+    "desc": "Mark selected HUD item as FAIL.",
+    "isBasic": true
+  },
+  "pfhud_next": {
+    "cat": "gameplay",
+    "order": 9103,
+    "ctx": "tlua",
+    "actionMap": "Global",
+    "onDown": "extensions.load('creatorpack'); if extensions and extensions.creatorpack then extensions.creatorpack.pfhudNext() end",
+    "title": "CreatorPack: Next item",
+    "desc": "Move selection to next HUD item.",
+    "isBasic": true
+  },
+  "pfhud_prev": {
+    "cat": "gameplay",
+    "order": 9104,
+    "ctx": "tlua",
+    "actionMap": "Global",
+    "onDown": "extensions.load('creatorpack'); if extensions and extensions.creatorpack then extensions.creatorpack.pfhudPrev() end",
+    "title": "CreatorPack: Previous item",
+    "desc": "Move selection to previous HUD item.",
+    "isBasic": true
+  },
+  "pfhud_reset": {
+    "cat": "gameplay",
+    "order": 9105,
+    "ctx": "tlua",
+    "actionMap": "Global",
+    "onDown": "extensions.load('creatorpack'); if extensions and extensions.creatorpack then extensions.creatorpack.pfhudReset() end",
+    "title": "CreatorPack: Reset marks",
+    "desc": "Clear all PASS/FAIL marks.",
+    "isBasic": true
+  },
+  "pfhud_toggle_panel": {
+    "cat": "gameplay",
+    "order": 9106,
+    "ctx": "tlua",
+    "actionMap": "Global",
+    "onDown": "extensions.load('creatorpack'); if extensions and extensions.creatorpack then extensions.creatorpack.pfhudTogglePanel() end",
+    "title": "CreatorPack: Toggle config panel",
+    "desc": "Hide or show HUD PRO config panel.",
+    "isBasic": true
+  },
+  "pfhud_undo": {
+    "cat": "gameplay",
+    "order": 9107,
+    "ctx": "tlua",
+    "actionMap": "Global",
+    "onDown": "extensions.load('creatorpack'); if extensions and extensions.creatorpack then extensions.creatorpack.pfhudUndo() end",
+    "title": "CreatorPack: Undo last mark",
+    "desc": "Undo the last PASS/FAIL mark or reset.",
+    "isBasic": true
+  },
+  "pfhud_toggle_guides": {
+    "cat": "gameplay",
+    "order": 9108,
+    "ctx": "tlua",
+    "actionMap": "Global",
+    "onDown": "extensions.load('creatorpack'); if extensions and extensions.creatorpack then extensions.creatorpack.pfhudToggleGuides() end",
+    "title": "CreatorPack: Toggle 9:16 guides",
+    "desc": "Show or hide the Shorts/Reels framing guides.",
+    "isBasic": true
+  },
+  "pfhud_toggle_vehicles": {
+    "cat": "gameplay",
+    "order": 9109,
+    "ctx": "tlua",
+    "actionMap": "Global",
+    "onDown": "extensions.load('creatorpack'); if extensions and extensions.creatorpack then extensions.creatorpack.pfhudToggleVehicles() end",
+    "title": "CreatorPack: Toggle vehicle circles",
+    "desc": "Show or hide the vehicle circles.",
+    "isBasic": true
+  },
+  "pfhud_toggle_shorts": {
+    "cat": "gameplay",
+    "order": 9110,
+    "ctx": "tlua",
+    "actionMap": "Global",
+    "onDown": "extensions.load('creatorpack'); if extensions and extensions.creatorpack then extensions.creatorpack.pfhudToggleShorts() end",
+    "title": "CreatorPack: Toggle Shorts 2x2",
+    "desc": "Toggle the four-circle 9:16 Shorts composition.",
+    "isBasic": true
+  }
+}

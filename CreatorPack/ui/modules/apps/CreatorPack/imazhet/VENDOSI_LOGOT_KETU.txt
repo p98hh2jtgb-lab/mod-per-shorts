@@ -1,0 +1,3 @@
+Vendosi file-at PNG (logot e markave / fotot) në këtë folder.
+Detajet i ki te README.txt (në këtë folder).
+Me i heq këto dy file-a teksti nuk prishet asgja.

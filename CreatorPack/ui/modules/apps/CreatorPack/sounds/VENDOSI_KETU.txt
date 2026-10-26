@@ -1,0 +1,10 @@
+ZËRAT PASS / FAIL — CREATORPACK STUDIO 6.0
+==========================================
+
+File-t vijmë të paketuar dhe nuk duhet të shtosh asgjë:
+
+  pass.mp3  → ka-ching për ✓ / PASS
+  fail.mp3  → wrong-answer buzzer për ✕ / FAIL
+
+Nëse do zëra të tjerë, zëvendëso vetëm këto dy file duke ruajtur emrat.
+Volumi rregullohet në H → Stili. Nuk ka zëra damage-i ose kontrolle të kota.
