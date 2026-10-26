@@ -1,16 +1,17 @@
--- DriftSketch 0.3.0 — record a drive, build real low-poly mesh cones, keep them for replay.
+-- DriftSketch 0.4.0 — record a drive, build real low-poly mesh cones, keep them for replay.
 local M = {}
 
 local SETTINGS = {
   mesh = 'cone',
   spacing = 2.4,
-  width = 6.0,
+  width = 4.2,
   scale = 1.0,
   groundOffset = -0.55,
   maxCones = 1200,
   smooth = true,
   keepBuilds = true,
-  collision = false
+  collision = false,
+  driftWidth = true
 }
 
 local recording = false
@@ -28,7 +29,12 @@ local collisionWasSolid = false
 
 local function copyPoints(source)
   local out = {}
-  for i, p in ipairs(source) do out[i] = {x=p.x, y=p.y, z=p.z} end
+  for i, p in ipairs(source) do
+    out[i] = {
+      x=p.x, y=p.y, z=p.z, fx=p.fx, fy=p.fy,
+      carHalfLength=p.carHalfLength, carHalfWidth=p.carHalfWidth
+    }
+  end
   return out
 end
 
@@ -71,6 +77,45 @@ local function vehicleName(veh, id)
     if ok and model then name = tostring(model) end
   end
   return (name and name ~= '') and name or ('Vehicle ' .. tostring(id or '?'))
+end
+
+local function vehicleNumber(veh, method, fallback, minimum, maximum)
+  if not veh or not veh[method] then return fallback end
+  local ok, value = pcall(veh[method], veh)
+  if not ok or type(value) ~= 'number' or value <= 0 then return fallback end
+  return math.max(minimum, math.min(maximum, value))
+end
+
+-- Prefer the real OOBB center over the JBeam reference node. This keeps long
+-- front/rear overhangs centered inside the generated corridor.
+local function vehiclePosition(veh, id)
+  if be and be.getObjectOOBBCenterXYZ and id then
+    local ok, x, y, z = pcall(be.getObjectOOBBCenterXYZ, be, id)
+    if ok and type(x) == 'number' and type(y) == 'number' and type(z) == 'number' then
+      return vec3(x, y, z)
+    end
+  end
+  if veh and veh.getPosition then
+    local ok, pos = pcall(veh.getPosition, veh)
+    if ok then return pos end
+  end
+  return nil
+end
+
+local function vehiclePathPoint(veh, pos)
+  local p = {
+    x=pos.x, y=pos.y, z=pos.z,
+    carHalfLength=vehicleNumber(veh, 'getInitialLength', 4.8, 1.0, 20.0) * 0.5,
+    carHalfWidth=vehicleNumber(veh, 'getInitialWidth', 2.0, 0.6, 6.0) * 0.5
+  }
+  if veh and veh.getDirectionVector then
+    local ok, forward = pcall(veh.getDirectionVector, veh)
+    if ok and forward then
+      local length = math.sqrt(forward.x * forward.x + forward.y * forward.y)
+      if length > 0.001 then p.fx, p.fy = forward.x / length, forward.y / length end
+    end
+  end
+  return p
 end
 
 local function publicState()
@@ -122,11 +167,15 @@ local function smoothPath(source)
   local out = copyPoints(source)
   for i = 2, #source - 1 do
     local a, b, c = source[i - 1], source[i], source[i + 1]
-    out[i] = {
-      x = a.x * 0.25 + b.x * 0.50 + c.x * 0.25,
-      y = a.y * 0.25 + b.y * 0.50 + c.y * 0.25,
-      z = a.z * 0.25 + b.z * 0.50 + c.z * 0.25
-    }
+    out[i].x = a.x * 0.25 + b.x * 0.50 + c.x * 0.25
+    out[i].y = a.y * 0.25 + b.y * 0.50 + c.y * 0.25
+    out[i].z = a.z * 0.25 + b.z * 0.50 + c.z * 0.25
+    if a.fx and a.fy and b.fx and b.fy and c.fx and c.fy then
+      local fx = a.fx * 0.25 + b.fx * 0.50 + c.fx * 0.25
+      local fy = a.fy * 0.25 + b.fy * 0.50 + c.fy * 0.25
+      local length = math.sqrt(fx * fx + fy * fy)
+      if length > 0.001 then out[i].fx, out[i].fy = fx / length, fy / length end
+    end
   end
   return out
 end
@@ -175,6 +224,22 @@ local function resampleLine(path, spacing, maxSamples)
   return samples
 end
 
+-- Base Width is the manual minimum. Drift Widen expands only when the actual
+-- oriented car rectangle needs more lateral room, including its rear overhang.
+local function driftOffset(p, nx, ny, baseOffset)
+  if not SETTINGS.driftWidth then return baseOffset end
+  local halfLength, halfWidth = p.carHalfLength or 2.4, p.carHalfWidth or 1.0
+  local footprint
+  if p.fx and p.fy then
+    local rightX, rightY = -p.fy, p.fx
+    footprint = halfWidth * math.abs(nx * rightX + ny * rightY)
+              + halfLength * math.abs(nx * p.fx + ny * p.fy)
+  else
+    footprint = math.sqrt(halfLength * halfLength + halfWidth * halfWidth)
+  end
+  return math.max(baseOffset, footprint + 0.35 + 0.24 * SETTINGS.scale)
+end
+
 -- Build two smooth offset polylines using a centered, two-point lookahead.
 -- This avoids the abrupt one-segment normals that made tight turns jagged.
 local function buildOffsetLines(source, halfWidth, spacing)
@@ -193,10 +258,11 @@ local function buildOffsetLines(source, halfWidth, spacing)
     end
     if length > 0.0001 then
       local nx, ny = -dy / length, dx / length
+      local offset = driftOffset(p, nx, ny, halfWidth)
       for lineIndex, sign in ipairs(signs) do
         raw[lineIndex][#raw[lineIndex] + 1] = {
-          x = p.x + nx * halfWidth * sign,
-          y = p.y + ny * halfWidth * sign,
+          x = p.x + nx * offset * sign,
+          y = p.y + ny * offset * sign,
           z = p.z
         }
       end
@@ -327,8 +393,8 @@ function M.setSetting(key, value)
     SETTINGS.groundOffset = math.max(-2.0, math.min(1.0, tonumber(value) or SETTINGS.groundOffset))
   elseif key == 'maxCones' then
     SETTINGS.maxCones = math.max(100, math.min(3000, math.floor(tonumber(value) or SETTINGS.maxCones)))
-  elseif key == 'collision' then
-    SETTINGS.collision = not (value == false or value == 'false' or value == 0)
+  elseif key == 'collision' or key == 'driftWidth' then
+    SETTINGS[key] = not (value == false or value == 'false' or value == 0)
     if not recording and #savedPaths > 0 then return M.rebuild() end
   elseif key == 'smooth' or key == 'keepBuilds' then
     SETTINGS[key] = not (value == false or value == 'false' or value == 0)
@@ -349,9 +415,9 @@ function M.onUpdate(dtReal)
         points = {}
         status = 'Vehicle changed. Recording restarted for ' .. activeVehicleName .. '.'
       end
-      local ok, pos = pcall(veh.getPosition, veh)
-      if ok and pos then
-        local p = {x=pos.x, y=pos.y, z=pos.z}
+      local pos = vehiclePosition(veh, id)
+      if pos then
+        local p = vehiclePathPoint(veh, pos)
         local last = points[#points]
         if not last then
           points[1] = p

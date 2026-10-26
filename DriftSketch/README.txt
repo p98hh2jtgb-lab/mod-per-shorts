@@ -1,60 +1,86 @@
-DRIFTSKETCH 0.3.0 — PROTOTYPE
-=============================
-Start → drive → Stop & Build → open BeamNG replay.
+DRIFTSKETCH 0.4.0 — PROTOTYPE
+================================
 
-INSTALL / UPDATE
+Record a real drive, then build a cone-marked path from your actual trajectory.
+DriftSketch is a standalone mod. It does not require CreatorPack.
+
+INSTALL
+-------
+1. Open BeamNG.drive > Mods > Open Mod Folder (or your user mods folder).
+2. Copy DriftSketch_v0.4.0.zip there without extracting it.
+3. Enable DriftSketch in the Mod Manager if needed.
+4. In a map, open the top app menu > Add App > DriftSketch.
+
+WORKFLOW
+--------
+1. Choose Mesh, Spacing, Base width and the other settings.
+2. Press Start and drive the line you want.
+3. Press Stop & Build. Both sides are always generated.
+4. Drive the generated path or open BeamNG's replay; the generated TSStatic
+   objects are designed to remain in the scene for replay.
+5. Change settings and use Rebuild to regenerate saved drives without recording
+   again. Keep builds controls whether a new run preserves older runs.
+6. Clear generated cones & saved drives deletes only this mod's generated
+   objects and saved paths. It does not clear map objects or other mods.
+
+NEW IN 0.4.0
+------------
+- Drift widen is ON by default. Base width is now the manual minimum: a car
+  driving straight keeps that base width, while a sideways car gets extra room.
+- Clearance uses the vehicle's actual initial length and width plus its forward
+  direction relative to the path normal. The full oriented footprint is used,
+  including the rear overhang, rather than only protecting the front.
+- Recording prefers the real vehicle OOBB center instead of assuming the JBeam
+  reference node is the center of the car.
+- Drift widen OFF restores an exact fixed manual width on both sides.
+- The collapsible "SI PUNON PANELI" section explains every option in Albanian.
+- Default base width is 4.2 m. For example, a typical 4.8 m car needs about
+  6 m total width when fully sideways, including cone and safety clearance.
+
+PANEL SETTINGS
+--------------
+Mesh: original low-poly Traffic Cone or Tall Pylon, 256 triangles each.
+Layout: Both sides, always.
+Spacing: approximate distance between cones on the same line; lower means more
+cones. Inner and outer curves are sampled independently.
+Base width: manual distance between the two lines; the minimum with Drift
+widen ON, or the exact fixed distance with it OFF.
+Drift widen: automatic extra lateral clearance for sideways driving and the
+rear of the car. Both sides remain equal.
+Mesh scale: visual cone size. Clearance includes the scaled base radius.
+Ground fallback: height relative to the recorded point only when no ground
+raycast hits. -0.55 m is the normal starting value.
+Performance cap: maximum total generated meshes. Excess points are sampled
+more sparsely instead of creating unlimited objects.
+Smooth path: light path and heading smoothing to reduce small kinks.
+Keep builds: preserve previous runs when starting a new recording.
+Solid / car damage: OFF uses collisionType=None for visual-only cones. ON uses
+Visible Mesh Final static collision, so impacts can stop or damage the car.
+Changing this or Drift widen automatically rebuilds saved drives when stopped.
+Rebuild: regenerate saved paths with current settings.
+Clear: remove generated cones and saved drives only.
+
+BEHAVIOR AND SAFETY
+-------------------
+- Uses real TSStatic meshes, not hundreds of JBeam cone vehicles.
+- Pure rotation in place does not create a fake path.
+- Smooth path keeps tight bends and independent inner/outer cone spacing.
+- Collision reloads happen only when switching between visual and solid modes.
+- Generated objects are tagged DriftSketch_Cones and tracked individually.
+- Vehicle-specific settings are not required; dimensions and direction are
+  read from the active vehicle while recording.
+
+VALIDATION
+----------
+Automated Lua smoke tests cover straight versus sideways clearance, full rear
+footprint allowance, exact fixed width with Drift widen OFF, curved spacing,
+stationary spins, collision switching and replay-object retention.
+Angular runtime and Chromium interaction tests cover the panel and commands.
+A real BeamNG pass is still recommended for each vehicle/map to tune width,
+ground fallback, collision behavior and performance for your driving style.
+
+PROTOTYPE ASSETS
 ----------------
-1. Remove older DriftSketch ZIPs from Documents\BeamNG.drive\mods\.
-2. Copy DriftSketch_v0.3.0.zip there without extracting it.
-3. Restart BeamNG and add Esc → UI Apps → Add App → DriftSketch.
-4. Press Start, drive a line with any vehicle, then press Stop & Build.
-5. Real mesh cones appear on BOTH sides of the recorded path.
-6. Open BeamNG's normal replay. The generated meshes remain in the scene.
-
-WHAT CHANGED IN 0.3.0
----------------------
-• Improved tight-turn construction with centered, two-point lookahead tangents.
-• Inner and outer cone lines are resampled independently by their actual arc
-  length. The longer outer curve gets more cones; the shorter inner curve no
-  longer receives a dense cluster matching the outer line's sample count.
-• Rotating a vehicle in place without translating does not create path points.
-• New optional Solid / Car Damage mode. ON creates real static collision using
-  Visible Mesh Final and reloads BeamNG collision after building. Impacts can
-  stop or damage the car through the game's normal collision physics.
-• Changing Solid / Car Damage automatically rebuilds existing saved paths.
-• Track Width remains fully manual and exact; there is no automatic widening.
-• Both sides remains fixed; Left only / Right only are not available.
-
-PANEL
------
-• Mesh: original 16-sided smooth Cone or tall Pylon, 256 triangles each.
-• Layout: always Both sides.
-• Spacing: target physical distance between cones on EACH offset line.
-• Track Width: total distance between the two cone lines. Example: 6.0 m
-  places each line 3.0 m from the recorded center path.
-• Scale and fallback Ground Offset.
-• Max Cones: safety/performance cap, 100–3000.
-• Smooth Path: reduces small steering/position jitter.
-• Keep Builds: retain earlier paths when recording another vehicle/run.
-• Solid / Car Damage: OFF by default. ON makes cones solid/static and rebuilds
-  existing paths automatically. These are not JBeam vehicles and do not fall over.
-• Rebuild: recreates all saved paths with current settings without driving again.
-• Clear: deletes only objects and paths generated by DriftSketch.
-
-FPS / COLLISION
----------------
-Visual mode uses TSStatic meshes with collisionType=None. Solid mode uses static
-Visible Mesh Final collision, not hundreds of full JBeam cone vehicles. For long
-courses and maximum FPS, leave Solid OFF or reduce Max Cones before enabling it.
-Ground height uses a static raycast with a manual fallback for unusual maps.
-
-LIMITS OF THIS PROTOTYPE
-------------------------
-• Replay is controlled with BeamNG's existing replay UI; DriftSketch does not rewind.
-• Solid cones are static: they collide and can contribute to impact damage, but
-  they do not knock over. Vehicle damage depends on the impact and BeamNG physics.
-• Very tight self-intersections can still place separate parts of a course near
-  each other. Clear/Rebuild with different width, spacing or a cleaner driven line.
-• Test in your BeamNG version and map before using it in a production recording.
-
-DriftSketch is independent from CreatorPack and does not change vehicle physics.
+The cone and pylon meshes were created specifically for DriftSketch. They are
+original low-poly placeholder assets, not extracted BeamNG content. Replace or
+license assets appropriately before using them in a commercial redistribution.

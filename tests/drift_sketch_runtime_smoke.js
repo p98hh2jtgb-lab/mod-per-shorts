@@ -20,9 +20,10 @@ assert(definition, 'DriftSketch directive must register');
 const factory = definition[definition.length - 1];
 const directive = factory(windowObject);
 directive.link(scope, [{style:{}}]);
-assert.strictEqual(scope.modVersion, '0.3.0');
+assert.strictEqual(scope.modVersion, '0.4.0');
 assert(!Object.prototype.hasOwnProperty.call(scope.settings, 'sides'));
 assert.strictEqual(scope.settings.collision, false);
+assert.strictEqual(scope.settings.driftWidth, true);
 assert(commands.includes('extensions.driftSketch.uiState()'));
 scope.start(); scope.stop(); scope.rebuild(); scope.clear();
 assert(commands.includes('extensions.driftSketch.start()'));
@@ -36,6 +37,8 @@ scope.pushSetting('mesh');
 assert(commands.at(-1).includes('"mesh","cone"'));
 scope.pushSetting('collision');
 assert(commands.at(-1).includes('"collision",false'));
+scope.pushSetting('driftWidth');
+assert(commands.at(-1).includes('"driftWidth",true'));
 scope.handlers['driftSketch.state']({}, {recording:true, pointCount:12, pathLength:18.25,
   buildCount:0, coneCount:0, vehicleName:'Test Vehicle', status:'Recording', settings:{mesh:'pylon',spacing:3.2}});
 assert.strictEqual(scope.state.recording, true);
@@ -63,6 +66,7 @@ assert(fs.existsSync(path.join(ROOT, 'DriftSketch/ui/modules/apps/DriftSketch/ap
 assert(!html.includes('Left only') && !html.includes('Right only') && !html.includes("pushSetting('sides')"));
 assert(html.includes('Both sides') && !html.includes('AUTO CAR CLEARANCE') && !html.includes('Min. track width'));
 assert(html.includes('Solid / car damage') && html.includes("pushSetting('collision')"));
+assert(html.includes('Drift widen') && html.includes('SI PUNON PANELI') && html.includes("pushSetting('driftWidth')"));
 const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'DriftSketch/ui/modules/apps/DriftSketch/app.json'), 'utf8'));
 assert.strictEqual(manifest.directive, 'driftSketchPanel');
 console.log(`✓ DriftSketch ${expressions.length} Angular expressions resolve; app manifest/icon exist`);
