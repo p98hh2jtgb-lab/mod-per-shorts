@@ -1,4 +1,4 @@
-CREATORPACK STUDIO 6.0.2
+CREATORPACK STUDIO 6.0.3
 ========================
 Panel i ri me H · PASS/FAIL circles · Shorts Studio 9:16
 
@@ -6,7 +6,7 @@ Panel i ri me H · PASS/FAIL circles · Shorts Studio 9:16
 INSTALIMI
 ---------
 1. Çaktivizo ose hiq versionin e vjetër CreatorPack/HUD PRO që të mos ketë dy kopje aktive.
-2. Kopjo CreatorPack_v6.0.2.zip pa e hapur te:
+2. Kopjo CreatorPack_v6.0.3.zip pa e hapur te:
    Documents\BeamNG.drive\mods\
 3. Nis lojën. Nëse overlay-i nuk shfaqet vetë:
    Esc → UI Apps → Add App → CreatorPack Studio.
@@ -55,23 +55,24 @@ Reset, Panel, Undo, Guides, Circles dhe Shorts 2×2. Nuk ka default binding të 
 që të përplaset me tastet e tua; mund ta caktoje Shorts vetë.
 
 
-FOTOT DHE LOGOT — VETËM MANUALE
--------------------------------
-• Choose File: zgjidh foto nga PC-ja në tab-in Fotot ose Rrethet.
-• Galeria e mod-it: lexon ui/modules/apps/CreatorPack/imazhet/ brenda modit.
-• Mund të shtosh PNG, JPG, JPEG ose WEBP në atë folder dhe të klikosh “Rifresko galerinë”.
+FOTOT DHE LOGOT — GALERI ME 1 KLIK
+----------------------------------
+• Të 87 imazhet e paketës shfaqen automatikisht në Fotot → Galeria e mod-it.
+• Zgjidh rrethin, kliko imazhin dhe fotoja vendoset menjëherë në atë rreth.
+• Nuk ka Choose File dhe nuk duhet të shkruash emrin e file-it.
+• “Rifresko galerinë” lexon edhe PNG/JPG/JPEG/WEBP të rinj në imazhet/ përmes Lua-s.
 • Për folder-in brenda ZIP-it: hap ZIP-in, shto file-t dhe ripaketo, ose përdor instalim unpacked.
-• Logot e markave dhe fotot manuale ruhen në storage-in e UI-së; nuk merren screenshots vetë.
-• Lua bridge ngarkohet explicitly që galeria, logot dhe info e markës të punojnë edhe pa
-  prekur ndonjë binding PASS/FAIL.
+• Fotot/logot e përdorura ruhen në storage-in e UI-së; nuk merren screenshots vetë.
+• gallery.json garanton që imazhet e paketës të dalin edhe kur FS/Lua nga BeamNG vonohet.
+• Lua bridge ka lifecycle të plotë dhe fotot kanë URL + base64 fallback.
 
 
-HOTFIX 6.0.2
+HOTFIX 6.0.3
 ------------
-• Rikthen onExtensionLoaded/onExtensionUnloaded që BeamNG të ngarkojë Lua bridge-in.
-• Korrigjon emrin manual të fotos në child scope-in e panelit; “Vendose” lexon emrin real.
-• Galeria del nga loading pas 8 sekondash nëse Lua nuk përgjigjet dhe shfaq gabimin.
-• Gabimet e leximit base64 shfaqen; fotot vazhdojnë të kenë URL + base64 fallback.
+• Galeria e integruar shfaq të 87 imazhet menjëherë dhe i bashkon me skedarët e rinj nga Lua.
+• U hoqën Choose File, input-i manual i emrit dhe kodi i tyre i papërdorur.
+• Rrethet → “Zgjidh foto nga galeria” zgjedh rrethin dhe hap bibliotekën.
+• Mbeten lifecycle-n e BeamNG, timeout-i i galerisë dhe gabimet e dukshme nga 6.0.2.
 
 
 PASTRIMI I KONFIGURIMIT
@@ -84,11 +85,11 @@ Nuk ka kontroll të errësimit jashtë kornizës: Shorts nuk zbeh lojën apo scr
 VERIFIKIMI
 ----------
 • JavaScript syntax dhe Lua 5.1 runtime me BeamNG API të simuluar.
-• Runtime smoke me Angular/CEF të simuluar për boot, Shorts/restore, PASS/FAIL,
-  undo/reset, glow/outline, audio, galeri, timeout, foto manuale dhe persistence.
+• 11 runtime smoke checks me Angular/CEF të simuluar për boot, Shorts/restore, PASS/FAIL,
+  undo/reset, glow/outline, audio, 87 imazhe, timeout, galeri me 1 klik dhe persistence.
 • Lua lifecycle + FS/base64/path security me BeamNG API të simuluar.
-• Render real në Chromium për çdo tab, H/K/L/Ctrl+Z, galeri, volvo.png me input + klik,
-  Lua/base64 event, clean capture dhe 4 rrethe 2×2.
+• Render real në Chromium: 87/87 imazhe pa përgjigje nga Lua, zero file/name inputs,
+  volvo.png me një klik në galeri, Lua/base64 event, H/K/L/Ctrl+Z, clean capture dhe 4 rrethe 2×2.
 • Pa JavaScript errors në render-in final.
 
-Ky dokument përshkruan CreatorPack Studio 6.0.2.
+Ky dokument përshkruan CreatorPack Studio 6.0.3.

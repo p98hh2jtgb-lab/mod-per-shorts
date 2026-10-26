@@ -187,18 +187,6 @@
     
 
 
-    .pf-real-file {
-      display:block;
-      width:100%;
-      box-sizing:border-box;
-      margin-top:8px;
-      padding:9px 10px;
-      border-radius:12px;
-      background:rgba(255,255,255,0.07);
-      color:#fff;
-      border:1px solid rgba(255,255,255,0.12);
-      font-size:12px;
-    }
     .pf-note {
       font-size:11px;
       color:rgba(255,255,255,0.50);
@@ -718,9 +706,8 @@
     .cp-empty-media > b { color:rgba(125,211,236,.28); font-size:25px; font-weight:400; }
     .cp-empty-media > span { margin-top:6px; color:rgba(188,207,219,.48); font-size:10px; }
     .cp-empty-media > small { margin-top:4px; color:rgba(172,194,207,.30); font-size:8px; }
-    .cp-manual-file { display:flex; gap:7px; margin-top:10px; }
-    .cp-manual-file input, .cp-backup textarea { flex:1; min-width:0; padding:9px 10px; border:1px solid rgba(255,255,255,.07); border-radius:9px; outline:none; background:rgba(0,0,0,.19); color:#dcebf3; font-size:10px; }
-    .cp-manual-file input:focus, .cp-backup textarea:focus { border-color:rgba(125,231,255,.24); }
+    .cp-backup textarea { flex:1; min-width:0; padding:9px 10px; border:1px solid rgba(255,255,255,.07); border-radius:9px; outline:none; background:rgba(0,0,0,.19); color:#dcebf3; font-size:10px; }
+    .cp-backup textarea:focus { border-color:rgba(125,231,255,.24); }
     .cp-storage-line { display:flex; gap:6px; flex-wrap:wrap; }
     .cp-storage-line span { padding:5px 7px; border-radius:6px; background:rgba(255,255,255,.03); color:rgba(181,202,215,.43); font-size:8px; }
     .cp-backup { display:flex; flex-direction:column; gap:7px; margin-top:8px; padding-top:10px; border-top:1px solid rgba(255,255,255,.05); }
@@ -759,7 +746,6 @@
     .cp-panel .pf-editor { grid-template-columns:110px 1fr; padding:11px; }
     .cp-panel .pf-thumb-live { width:100px!important; height:100px!important; }
     .cp-panel .pf-editor-title { color:rgba(226,238,246,.75); font-size:12px; }
-    .cp-panel .pf-real-file { padding:7px; border:1px solid rgba(255,255,255,.07); border-radius:8px; background:rgba(0,0,0,.16); font-size:9px; }
     .cp-panel .pf-preset { background:rgba(255,255,255,.025); }
     .cp-panel .pf-pop { background:#101923; border-color:rgba(125,231,255,.15); }
     .cp-reset-help { color:rgba(174,196,210,.40); font-size:9px; }
@@ -1189,19 +1175,18 @@
     </div>
 
     <div class="pf-section cp-photos" ng-show="tab==='fotot'">
-      <div class="cp-section-title"><div><div class="cp-kicker">MEDIA LIBRARY</div><h2>Fotot & logot</h2><p>Ngarko me dore, zgjidh nga galeria dhe ruaj me siguri.</p></div><span class="cp-count-badge">{{photoCount()}} FOTO</span></div>
+      <div class="cp-section-title"><div><div class="cp-kicker">MEDIA LIBRARY</div><h2>Fotot & logot</h2><p>Të gjitha imazhet gati — zgjidh rrethin dhe kliko foton.</p></div><span class="cp-count-badge">{{gallery.length}} NE GALERI</span></div>
       <div class="cp-control-card">
         <div class="cp-control-title"><span>▧</span><div><b>Galeria e mod-it</b><small>Folderi: ui/modules/apps/CreatorPack/imazhet/</small></div></div>
         <div class="cp-inline-actions">
           <button class="cp-primary" ng-click="scanImages(false)">↻ Rifresko galerinë</button>
           <button class="cp-secondary" ng-click="refreshLogos(false)">Rifresko logot</button>
         </div>
-        <div class="cp-path-note">PNG transparente ose JPG/WebP. Klikimi i një imazhi e vendos në rrethin #{{selected + 1}}.</div>
+        <div class="cp-path-note">{{gallery.length}} imazhe · Një klik e vendos foton në rrethin #{{selected + 1}}.</div>
         <div class="cp-gallery" ng-if="gallery.length">
-          <button ng-repeat="g in gallery track by g.url" ng-click="useGalleryImage(g)" title="{{g.name}}"><img ng-src="{{g.url}}" alt=""><span>{{g.name}}</span></button>
+          <button ng-repeat="g in gallery track by g.url" ng-click="useGalleryImage(g)" title="{{g.name}}"><img ng-src="{{g.url}}" alt="{{g.name}}" loading="lazy" decoding="async"><span>{{g.name}}</span></button>
         </div>
         <div class="cp-empty-media" ng-if="!gallery.length"><b>▧</b><span>{{galleryInfo || 'S’ka imazhe të ngarkuara ende.'}}</span><small>Shto PNG në folderin imazhet dhe shtyp “Rifresko galerinë”.</small></div>
-        <div class="cp-manual-file"><input type="text" ng-model="media.manualImageName" placeholder="Ose shkruaj emrin: foto_1.png"><button class="cp-secondary" ng-click="addImageByName()">Vendose</button></div>
       </div>
       <div class="cp-control-card">
         <div class="cp-control-title"><span>◆</span><div><b>Logot e markave</b><small>logo_bmw.png ose bmw.png njihet automatikisht.</small></div></div>
@@ -1272,9 +1257,9 @@
             </div>
 
             <div class="pf-card">
-              <div class="mini">Foto / PNG</div>
-              <input class="pf-real-file" type="file" accept="image/png,image/webp,image/jpeg" pf-file-read="item.image" pf-on-read="onManualImage(item)" />
-              <div class="pf-note">Kliko direkt “Choose File”. PNG/JPG/WebP ruhet në HUD.</div>
+              <div class="mini">Foto e rrethit</div>
+              <div class="pf-note">Zgjidhe direkt nga galeria e mod-it me një klik.</div>
+              <div class="pf-row"><button class="pf-btn slim" ng-click="select($index); tab='fotot'">▧ Zgjidh foto nga galeria</button></div>
               <div class="pf-row">
                 <label class="pf-toggle"><input type="checkbox" ng-model="item.enabled" ng-change="persist()" ng-disabled="cfg.shortsMode"> Aktive <span ng-if="cfg.shortsMode">(fiks në Shorts)</span></label>
                 <button class="pf-btn slim red" ng-click="removeItemPhoto($index)">🗑️ Fshi foton + logon</button>

@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const assert = require('assert');
 const ROOT = path.resolve(__dirname, '..');
+const bundledManifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'CreatorPack/ui/modules/apps/CreatorPack/gallery.json'), 'utf8'));
 const directives = Object.create(null);
 const listeners = Object.create(null);
 const documentHandlers = Object.create(null);
@@ -51,7 +52,12 @@ class FakeXHR {
   open(method, url) { this.url = url; }
   send() {
     this.status = 200;
-    this.response = new ArrayBuffer(256);
+    if (this.url === '/ui/modules/apps/CreatorPack/gallery.json') {
+      this.responseText = fs.readFileSync(path.join(ROOT, 'CreatorPack/ui/modules/apps/CreatorPack/gallery.json'), 'utf8');
+      this.response = this.responseText;
+    } else {
+      this.response = new ArrayBuffer(256);
+    }
     if (this.onload) this.onload();
   }
 }
@@ -171,10 +177,19 @@ const mainBindingCount = checkHtmlBindings(
 ok('CreatorPack Angular bindings resolved (' + mainBindingCount + ' expressions)');
 // CreatorPack runtime logic.
 const main = instantiate('CreatorPack/ui/modules/apps/CreatorPack/app.js', 'creatorpackPanel');
-assert.strictEqual(main.modVersion, '6.0.2');
+assert.strictEqual(main.modVersion, '6.0.3');
 assert.strictEqual(main.cfg.items.length, 8);
 assert.strictEqual(main.toggleCost, undefined);
 ok('CreatorPack boots with clean vehicle-only configuration');
+
+assert.strictEqual(main.gallery.length, bundledManifest.files.length);
+assert.strictEqual(main.addImageByName, undefined);
+assert.strictEqual(main.onManualImage, undefined);
+assert.strictEqual(directives.pfFileRead, undefined);
+for (const name of bundledManifest.files) {
+  assert(fs.existsSync(path.join(ROOT, 'CreatorPack/ui/modules/apps/CreatorPack/imazhet', name)), 'Missing gallery image: ' + name);
+}
+ok('All ' + bundledManifest.files.length + ' bundled images load without Lua, Choose File or manual filenames');
 
 const originalLayout = main.cfg.layout;
 const originalX = main.cfg.positionX;
@@ -272,24 +287,26 @@ assert(watchdogEntry, 'Gallery must have an 8 second watchdog');
 watchdogEntry[1].fn();
 assert.strictEqual(main.galleryState, 'err');
 assert(main.galleryInfo.includes('nuk u përgjigj'));
-emit('creatorpack.images', {ok:true, dir:'/ui/modules/apps/CreatorPack/imazhet/', files:['volvo.png']});
+emit('creatorpack.images', {ok:true, dir:'/ui/modules/apps/CreatorPack/imazhet/', files:['dynamic-new-car.png']});
 assert.strictEqual(main.galleryState, 'ok');
-assert.strictEqual(main.gallery.length, 1);
-assert.strictEqual(main.gallery[0].name, 'volvo.png');
-ok('Gallery timeout exits endless loading and a later Lua response recovers');
+assert.strictEqual(main.gallery.length, bundledManifest.files.length + 1);
+assert(main.gallery.some(image => image.name === 'dynamic-new-car.png'));
+assert(main.gallery.some(image => image.name === 'volvo.png'));
+ok('Gallery timeout recovers and Lua adds new files without hiding bundled images');
 
 main.selected = 0;
-main.media.manualImageName = 'volvo.png';
-main.addImageByName();
+const volvo = main.gallery.find(image => image.name === 'volvo.png');
+assert(volvo, 'Bundled Volvo image must be clickable');
+main.useGalleryImage(volvo);
 const manualPath = '/ui/modules/apps/CreatorPack/imazhet/volvo.png';
 assert.strictEqual(main.cfg.items[0].imageFile, manualPath);
-assert.strictEqual(main.cfg.items[0].image, manualPath, 'Manual URL must appear immediately');
+assert.strictEqual(main.cfg.items[0].image, manualPath, 'Gallery URL must appear immediately');
 assert(main.imageBgStyle(main.cfg.items[0]).backgroundImage.includes('volvo.png'));
 assert(luaCommands.some(command => command.includes('pfhudImageData')));
 emit('creatorpack.imagedata', {path:manualPath, data:'data:image/png;base64,YWJj'});
 assert.strictEqual(main.cfg.items[0].image, 'data:image/png;base64,YWJj');
 assert.strictEqual(main.photoCount(), 1);
-ok('Manual filename places an image immediately and Lua base64 refreshes the same circle');
+ok('One gallery click places Volvo and Lua base64 refreshes the same circle');
 
 // Ensure every static asset referenced by the HTML exists.
 for (const app of ['CreatorPack']) {

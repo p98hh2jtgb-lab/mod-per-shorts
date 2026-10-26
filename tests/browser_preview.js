@@ -7,6 +7,7 @@ const path = require('path');
 const http = require('http');
 const assert = require('assert');
 const ROOT = path.resolve(__dirname, '..');
+const bundledManifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'CreatorPack/ui/modules/apps/CreatorPack/gallery.json'), 'utf8'));
 const MODULES = process.env.BROWSER_TEST_MODULES || path.join(__dirname, 'node_modules');
 const { pathToFileURL } = require('url');
 const { chromium: playwright } = require(path.join(MODULES, 'playwright-core'));
@@ -80,10 +81,12 @@ async function makeServer(modName) {
     await page.screenshot({path:'/tmp/creatorpack-workspace.png'});
     let geometry = await page.evaluate(() => {
       const p = document.querySelector('.cp-panel').getBoundingClientRect();
+      const scope = angular.element(document.querySelector('.cp-panel')).scope();
       return {left:p.left,top:p.top,right:p.right,bottom:p.bottom,width:innerWidth,height:innerHeight,
-        tab:angular.element(document.querySelector('.cp-panel')).scope().tab};
+        tab:scope.tab, galleryCount:scope.gallery.length};
     });
     assert.strictEqual(geometry.tab, 'kryesore');
+    assert.strictEqual(geometry.galleryCount, bundledManifest.files.length, 'Bundled gallery must render before Lua responds');
     assert(geometry.left >= 0 && geometry.top >= 0 && geometry.right <= geometry.width && geometry.bottom <= geometry.height);
     console.log('✓ CreatorPack Workspace renders inside 1920×1080 viewport');
 
@@ -158,18 +161,24 @@ async function makeServer(modName) {
       };
       scope.tab = 'fotot'; scope.scanImages(false);
     });
-    await page.waitForFunction(() => {
+    await page.waitForFunction(expected => {
       const scope = angular.element(document.querySelector('.cp-panel')).scope();
-      const image = document.querySelector('.cp-gallery img');
-      return scope.galleryState === 'ok' && scope.gallery.length === 1 && image && image.complete && image.naturalWidth > 0;
+      return scope.galleryState === 'ok' && scope.gallery.length === expected &&
+        document.querySelectorAll('.cp-gallery button').length === expected;
+    }, bundledManifest.files.length, {timeout:10000});
+    assert.strictEqual(await page.locator('.cp-manual-file').count(), 0);
+    assert.strictEqual(await page.locator('input[type="file"]').count(), 0);
+    const volvoButton = page.locator('.cp-gallery button[title="volvo.png"]');
+    await volvoButton.scrollIntoViewIfNeeded();
+    await page.waitForFunction(() => {
+      const image = document.querySelector('.cp-gallery button[title="volvo.png"] img');
+      return image && image.complete && image.naturalWidth > 0;
     }, null, {timeout:10000});
     await page.evaluate(() => {
       const scope = angular.element(document.querySelector('.cp-panel')).scope();
       scope.select(0);
     });
-    await page.locator('.cp-manual-file input').fill('volvo.png');
-    await page.locator('.cp-manual-file button').click();
-    assert.strictEqual(await page.locator('.cp-manual-file input').inputValue(), '');
+    await volvoButton.click();
     await page.waitForTimeout(500);
     const immediateImage = await page.evaluate(() => {
       const scope = angular.element(document.querySelector('.cp-panel')).scope();
@@ -185,7 +194,7 @@ async function makeServer(modName) {
     assert(immediateImage.circleBackground.startsWith('url('));
     await page.evaluate(() => {
       const scope = angular.element(document.querySelector('.cp-panel')).scope();
-      const image = document.querySelector('.cp-gallery img');
+      const image = document.querySelector('.cp-gallery button[title="volvo.png"] img');
       const canvas = document.createElement('canvas');
       canvas.width = image.naturalWidth; canvas.height = image.naturalHeight;
       canvas.getContext('2d').drawImage(image, 0, 0);
@@ -197,23 +206,22 @@ async function makeServer(modName) {
       const scope = angular.element(document.querySelector('.cp-panel')).scope();
       return String(scope.cfg.items[0].image || '').startsWith('data:image');
     }, null, {timeout:10000});
-    const manualImage = await page.evaluate(() => {
+    const galleryImage = await page.evaluate(() => {
       const scope = angular.element(document.querySelector('.cp-panel')).scope();
       const circleImage = document.querySelector('.pf-hud .pf-item-image');
       return {
         galleryState:scope.galleryState,
         galleryCount:scope.gallery.length,
         photoCount:scope.photoCount(),
-        imagePrefix:String(scope.cfg.items[0].image).slice(0, 20),
         circleBackground:circleImage ? getComputedStyle(circleImage).backgroundImage.slice(0, 40) : 'missing'
       };
     });
-    assert.strictEqual(manualImage.galleryState, 'ok');
-    assert.strictEqual(manualImage.galleryCount, 1);
-    assert(manualImage.photoCount >= 1);
-    assert(manualImage.circleBackground.startsWith('url('));
-    await page.screenshot({path:'/tmp/creatorpack-manual-volvo.png'});
-    console.log('✓ Gallery lists volvo.png and manual filename renders a real decoded image in its circle');
+    assert.strictEqual(galleryImage.galleryState, 'ok');
+    assert.strictEqual(galleryImage.galleryCount, bundledManifest.files.length);
+    assert(galleryImage.photoCount >= 1);
+    assert(galleryImage.circleBackground.startsWith('url('));
+    await page.screenshot({path:'/tmp/creatorpack-gallery-volvo.png'});
+    console.log(`✓ All ${bundledManifest.files.length} images render; one Volvo gallery click fills the circle without file/name inputs`);
 
     await page.evaluate(() => {
       const scope = angular.element(document.querySelector('.cp-panel')).scope();

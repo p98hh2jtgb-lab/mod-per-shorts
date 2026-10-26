@@ -1,8 +1,8 @@
 {
   "name": "CreatorPack Studio",
   "author": "daimy",
-  "version": "6.0.2",
-  "description": "Redesigned H panel, Pass/Fail vehicle circles, adjustable mark glow and thin outlines, plus a four-circle 9:16 Shorts Studio. Manual photos only, with a clean full-screen overlay.",
+  "version": "6.0.3",
+  "description": "Redesigned H panel, Pass/Fail vehicle circles, adjustable mark glow and thin outlines, plus an 87-image one-click gallery and a four-circle 9:16 Shorts Studio.",
   "directive": "creatorpackPanel",
   "domElement": "<creatorpack-panel></creatorpack-panel>",
   "css": {

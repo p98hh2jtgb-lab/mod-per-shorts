@@ -1,5 +1,5 @@
 -- CreatorPack Studio 6.0 — BeamNG GE extension
--- Manual photos/logos, vehicle information and input bindings only.
+-- One-click gallery photos/logos, vehicle information and input bindings only.
 local M = {}
 
 local function trigger(action)
@@ -331,7 +331,7 @@ end
 
 -- Shenim ne log-un e lojes (per diagnoze)
 local function pfhudNote(txt)
-  local msg = '[CreatorPack Studio v6.0.2] ' .. tostring(txt or '')
+  local msg = '[CreatorPack Studio v6.0.3] ' .. tostring(txt or '')
   pcall(print, msg)
   return msg
 end

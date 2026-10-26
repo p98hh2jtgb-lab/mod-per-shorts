@@ -1,31 +1,6 @@
 
 angular.module('beamng.apps')
 
-.directive('pfFileRead', function() {
-  return {
-    restrict: 'A',
-    scope: {
-      pfFileRead: '=',
-      pfOnRead: '&?'
-    },
-    link: function(scope, element) {
-      element.on('change', function(evt) {
-        var file = evt.target.files && evt.target.files[0];
-        if (!file) return;
-
-        var reader = new FileReader();
-        reader.onload = function(e) {
-          scope.$apply(function() {
-            scope.pfFileRead = e.target.result;
-            if (scope.pfOnRead) scope.pfOnRead();
-          });
-        };
-        reader.readAsDataURL(file);
-      });
-    }
-  };
-})
-
 .directive('creatorpackPanel', ['$document', '$window', '$timeout', '$rootScope', function($document, $window, $timeout, $rootScope) {
   return {
     replace: true,
@@ -68,7 +43,7 @@ angular.module('beamng.apps')
       // v5.3.0 — Versioni shfaqet brenda HUD-it, që të shihet
       // menjëherë nëse BeamNG ka ngarkuar versionin e re.
       // =====================================================
-      var MOD_VERSION = '6.0.2';
+      var MOD_VERSION = '6.0.3';
       scope.modVersion = MOD_VERSION;
       scope.storageKey = STORAGE_KEY;
 
@@ -333,15 +308,6 @@ angular.module('beamng.apps')
       scope.fx = { show: false, type: null };
       var fxTimer = null;
 
-
-      // Fotot vendosen vetëm me dore: Choose File ose galeria e folderit.
-      scope.onManualImage = function(item) {
-        try {
-          if (item) { item.imageManual = true; }
-        } catch (e) {}
-        scope.persist();
-        notify('✓ Fotoja u ruajt në rrethin e zgjedhur');
-      };
 
       scope.setShape = function(shape) {
         scope.cfg.circleShape = shape;
@@ -1255,7 +1221,7 @@ angular.module('beamng.apps')
         scope.cfg.photoArchive = {};                 // v5.10.1: fshij edhe arkiven
         scope.persist();
         notify(n ? ('🗑️ U fshinë ' + n + ' foto' + (inTrash ? ' (u ruajtën në KOSH — "♻️ Ktheji fotot e fshira" i kthen)' : '') +
-                    ' — zgjidh fotot me Choose File ose nga galeria')
+                    ' — zgjidh fotot nga galeria')
                  : '🗑️ S\'kishte foto për me fshi');
       };
 
@@ -1876,6 +1842,7 @@ angular.module('beamng.apps')
       // Kshtu dalin GJITH HERË: pas ESC, pas rihapjes, edhe kur nderron zip-in e modit.
       angular.forEach(loadLogoArchive(), function (v, k) { logoResolved[k] = v; });
       scope.gallery = [];
+      var bundledGallery = [];
       scope.galleryInfo = '';
       scope.galleryState = 'idle'; // idle | loading | ok | err
       scope.brandInfo = null;
@@ -2180,8 +2147,22 @@ angular.module('beamng.apps')
         notify('🏷️ Logo ' + t.brandLabel + ' → rrumullaku ' + (scope.selected + 1));
       };
 
-      // ---- Galeria e folderit (Lua lexon, UI shfaq) ----
-      function applyImageList(res) {
+      // ---- Galeria: manifesti i paketës + skedaret e rinj nga Lua ----
+      function mergeGalleryEntries() {
+        var out = [], seen = {};
+        angular.forEach(arguments, function(list) {
+          angular.forEach(list || [], function(g) {
+            if (!g || !g.url) return;
+            var key = String(g.url).toLowerCase();
+            if (seen[key]) return;
+            seen[key] = true;
+            out.push(g);
+          });
+        });
+        return out;
+      }
+
+      function applyImageList(res, fromManifest) {
         cancelImageScanWatchdog();
         try { if (imgScanTimer) $timeout.cancel(imgScanTimer); } catch (e) {}
         imgScanTimer = null;
@@ -2209,8 +2190,15 @@ angular.module('beamng.apps')
             var str = String(f);
             var url = (str.charAt(0) === '/') ? str : (dir + str);
             var name = str.split('/').pop();
+            if (!/\.(png|jpe?g|webp)$/i.test(name)) return;
             out.push({ name: name, url: url });
           });
+          if (fromManifest) {
+            bundledGallery = out;
+            out = mergeGalleryEntries(bundledGallery, scope.gallery);
+          } else {
+            out = mergeGalleryEntries(bundledGallery, out);
+          }
           scope.gallery = out;
           scope.galleryState = out.length ? 'ok' : 'err';
           scope.galleryInfo = out.length ? (out.length + ' imazhe në folder · ' + dir)
@@ -2272,30 +2260,22 @@ angular.module('beamng.apps')
         } catch (e) {}
         if (!sent) { engineLua("extensions.creatorpack.pfhudListImages()"); }
       };
-      // v5.11.2: nese lista e folderit s'lexohet (ndonjehere FS s'e jep listen),
-      // shkruaje emrin e file-it me dore — gjithashtu pa "Choose File".
-      // Object-backed model: ng-if creates a child scope for the panel.
-      // A primitive ng-model would otherwise stay in that child and this
-      // function would always read an empty value from the parent scope.
-      scope.media = { manualImageName: '' };
-      scope.addImageByName = function () {
-        var name = String(scope.media.manualImageName || '').trim().replace(/^.*[\\/]/, '');
-        if (!name) { notify('ℹ️ Shkruaj emrin e file-it, p.sh. logo_bmw.png ose foto_1.png'); return; }
-        if (!/\.(png|jpe?g|webp)$/i.test(name)) name += '.png';
-        var url = IMG_DIR + name;
-        var idx = Number(scope.selected) || 0;
-        imageTargetIndex = idx;
-        placeCircleImage(url, name.replace(/\.[a-z0-9]+$/i, ''));
-        var it = scope.cfg.items[idx];
-        if (it) {
-          it.imageFile = url;
-          if (fileDataCache[url]) it.image = fileDataCache[url];
-          else ensurePhotoData(url, idx);                   // v5.11.3: base64 i ruajtur
-          scope.persist();
-        }
-        scope.media.manualImageName = '';
-        notify('📷 U vendos "' + name + '" në rrathullakun ' + (idx + 1));
-      };
+      // Every image shipped in imazhet/ appears immediately, even if the
+      // BeamNG FS bridge is late or unavailable. Lua scans can still add new files.
+      function loadBundledGallery() {
+        try {
+          var xhr = new XMLHttpRequest();
+          xhr.open('GET', '/ui/modules/apps/CreatorPack/gallery.json', true);
+          xhr.onload = function() {
+            if (xhr.status !== 200 && xhr.status !== 0) return;
+            var res = null;
+            try { res = JSON.parse(xhr.responseText); } catch (e) {}
+            if (!res) return;
+            scope.$applyAsync(function() { applyImageList(res, true); });
+          };
+          xhr.send();
+        } catch (e) {}
+      }
 
       scope.useGalleryImage = function (g) {
         if (!g || !g.url) return;
@@ -2527,9 +2507,11 @@ angular.module('beamng.apps')
         try { writeStateStore(); } catch (e) {}
         try { writeBackup(); } catch (e) {}
       }, 1200);
+      // Show the complete bundled gallery immediately; Lua adds newly copied files.
+      try { loadBundledGallery(); } catch (e) {}
       // v5.11.0: lexo folderin imazhet/ + markën e makinës aktuale
       $timeout(function() { try { scope.scanImages(); } catch (e) {} }, 1800);
-      // Load Lua immediately so vehicle switches and manual images work even
+      // Load Lua immediately so vehicle switches and gallery images work even
       // when the user never touches a Pass/Fail keybinding.
       try { engineLua("if extensions.creatorpack and extensions.creatorpack.pfhudVehicle then extensions.creatorpack.pfhudVehicle() end"); } catch (e) {}
       // rua edhe kur mbyllet faqja / loja (para se me u shkyç CEF-i)

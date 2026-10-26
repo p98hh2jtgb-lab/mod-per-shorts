@@ -17,10 +17,10 @@ Kur ndryshon makina, CreatorPack kërkon automatikisht logon përkatëse.
 Nëse nuk gjen file, mund të shfaqë badge me shkronjat e markës.
 Nga Fotot mund të çaktivizosh logot automatike ose badge-t.
 
-FOTOT MANUALE
--------------
+FOTOT NGA GALERIA
+-----------------
 Zgjidh rrethin në Rrethet, pastaj kliko një foto në galeri për ta vendosur.
-Mund të përdorësh edhe Choose File për një foto nga PC-ja.
+Të 87 imazhet e paketës shfaqen automatikisht; s’duhet të shkruash emra file-ash.
 Fotot/logot e përdorura ruhen lokalisht që të jenë përsëri aty pas rihapjes.
 Asgjë nuk merret automatikisht nga loja dhe nuk ka AutoFoto.
 
