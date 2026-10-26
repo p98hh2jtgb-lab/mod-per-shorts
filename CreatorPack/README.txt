@@ -1,12 +1,12 @@
-CREATORPACK STUDIO 6.1.3
+CREATORPACK STUDIO 6.2.0
 ========================
-Panel me H · PASS/FAIL circles · Shorts 2×2 · Series 6 BMW test
+Panel me H · PASS/FAIL circles · Shorts 2×2 · Series Studio me 10 preset-e
 
 
 INSTALIMI
 ---------
 1. Çaktivizo ose hiq versionin e vjetër CreatorPack/HUD PRO që të mos ketë dy kopje aktive.
-2. Kopjo CreatorPack_v6.1.3.zip pa e hapur te:
+2. Kopjo CreatorPack_v6.2.0.zip pa e hapur te:
    Documents\BeamNG.drive\mods\
 3. Nis lojën. Nëse overlay-i nuk shfaqet vetë:
    Esc → UI Apps → Add App → CreatorPack Studio.
@@ -15,13 +15,16 @@ INSTALIMI
 
 ÇKA KA KËTU
 -----------
-• Ridizajnim i panelit H: Kryesore, Shorts, Series 6, Rrethet, Stili, Fotot dhe Më shumë.
-• Rrethet standard të makinave ruajnë pamjen dhe mënyrën ekzistuese të punës.
-• ✓/✕ kanë glow të rregullueshëm nga 0 deri në 30. Me 0 glow-i hiqet plotësisht.
-• Outline i zi i hollë për ✓/✕, i rregullueshëm nga 0 deri në 4 px.
+• Panel i ridizajnuar: Kryesore, Shorts, Series, Rrethet, Stili, Fotot dhe Më shumë.
+• Series Studio me 10 preset-e dhe 60 PNG transparente: 6 variante për secilin model.
+• Shorts 9:16 dhe Full Size për Series, pozicion Lart/Mes/Poshtë dhe X/Y manual.
+• Shenja ✓/✕ si SVG: shfaqen pa u varur nga glifet e fontit të sistemit.
+• Auto-fit jo-linear i shenjave, manual scale 50–200% dhe fixed-size me Auto fikur.
+• Rrethet standard ruajnë pamjen dhe mënyrën ekzistuese të punës.
+• Glow i shenjave 0–30 dhe outline i zi 0–4 px. Me 0, glow-i/outline-i hiqet.
 • Nuk ka damage ring, përqindje damage-i apo tekst damage-i nën/mes rretheve.
 • Nuk ka AutoFoto, foto LIVE, Ctrl+1/Ctrl+2 ose kapje automatike të makinës.
-• Overlay full-screen; pa drop-shadow të zi rreth rretheve dhe pa zbehje të zeza anësore.
+• Overlay full-screen; pa drop-shadow të zi rreth rretheve dhe pa zbehje anësore.
 
 
 SHORTS STUDIO — SAKTËSISHT 4 RRETHE
@@ -29,47 +32,71 @@ SHORTS STUDIO — SAKTËSISHT 4 RRETHE
 1. H → Shorts → “Aktivizo Shorts · 4 rrethe”.
 2. Modi aktivizon katër rrethet e para në layout 2×2 dhe kornizën 9:16.
 3. Zgjidh pozicionin Lart / Mes / Poshtë. “Poshtë” e mban HUD-in mbi zonën e titullit.
-4. Safe areas shënojnë zonën e butonave të YouTube në të djathtë dhe zonën e caption/title poshtë.
+4. Safe areas shënojnë zonën e butonave të YouTube në të djathtë dhe caption/title poshtë.
 5. “Regjistrim i pastër” fshin panelin, guidat dhe safe-area markers; rrethet mbeten.
 6. H rihap panelin dhe rikthen guidat. Mund të përdorësh edhe “Rikthe guidat 9:16”.
 
 Katër rrethet mbeten fiks edhe nëse konfigurimi i vjetër kishte slot-e të çaktivizuara.
-Rrethet shtesë nuk fshihen nga konfigurimi: vetëm nuk shfaqen gjatë Shorts dhe rikthehen më pas.
+Rrethet shtesë vetëm nuk shfaqen gjatë Shorts dhe rikthehen më pas.
 Layout-i, madhësia, pozicioni dhe gjendja e mëparshme rikthehen kur e fik Shorts.
-Shorts standard mbetet plotësisht veçmas nga Series 6 dhe nuk zëvendësohet prej tij.
+Shorts standard mbetet plotësisht veçmas nga Series dhe nuk zëvendësohet prej tij.
 
 
-SERIES 6 — PRESET 1 BMW (TEST)
-------------------------------
-1. H → Series 6 → “Aktivizo BMW Series 6”.
-2. Një HUD i veçantë transparent shfaq të njëjtën makinë BMW të inspiruar nga referenca,
-   pa logo, në një rresht dhe me madhësi që rritet nga e majta në të djathtë.
-3. Renditja fikse është:
+SERIES STUDIO — 10 PRESET-E / 60 VARIANTE
+-----------------------------------------
+Preset-et në galeri:
+  01 BMW
+  02 Toyota LC300
+  03 Lightning McQueen
+  04 Mercedes G-Class
+  05 Lamborghini Huracán
+  06 Nissan GT-R R34
+  07 Toyota Supra MK4
+  08 Ford Mustang GT
+  09 Jeep Wrangler
+  10 Semi Truck
+
+1. H → Series → zgjidh preset-in në galeri → “Aktivizo [modeli] Series”.
+2. Secili preset ka të njëjtin model në gjashtë variante transparente, pa logo.
+3. Renditja dhe paleta është e njëjtë për të 10 preset-et:
    TINY CAR / e verdhë · SMALL CAR / blu · MEDIUM CAR / portokalli ·
    NORMAL CAR / e kuqe · BIG CAR / e gjelbër · GIANT CAR / rozë.
-4. Titulli i variantit aktiv shfaqet poshtë makinave dhe ndryshon me zgjedhjen/auto-advance.
-5. K jep PASS, L jep FAIL; shenja ✓/✕ del mbi variantin përkatës me glow/outline-in e zgjedhur.
-6. PageUp/PageDown ose slotet në panel zgjedhin variantin. Auto-advance, Ctrl+Z,
-   Reset dhe “Regjistrim i pastër” përdorin të njëjtat kontrolle të testuara të CreatorPack.
-7. Pozicioni Lart / Mes / Poshtë e vendos serinë brenda kornizës 9:16.
-8. “Makinat në ekran” përdor gjerësinë reale të çdo veture dhe hapësirë default
-   14 px të barabartë mes tyre, edhe BIG ↔ GIANT. Hapësira rregullohet -24 deri
-   +36 px dhe madhësia e të gjitha makinave 70–130%.
-9. Zgjidh slot-in dhe përdor “Rregullim manual”: zhvendosje X -60 deri +60 px dhe
-   madhësi 70–130% vetëm për atë makinë. “Rikthe vetëm këtë makinë” e reseton atë.
-10. “Titulli aktiv” rregullon madhësinë 70–140% dhe outline-in e zi 0–5 px.
-11. “Shenjat ✓/✕” ka Auto-fit të aktivizuar: madhësia llogaritet nga gjerësia reale
-    e secilës veturë, pra TINY merr shenjë më të vogël dhe GIANT më të madhe.
-    “Madhësia manuale e shenjave” 50–200% e shkallëzon edhe Auto-fit-in. Me Auto
-    fikur përdoret një bazë fikse për të gjitha; “Shfaq shenjat” i shfaq/fshin.
-12. “Rikthe të gjithë pamjen” kthen makinat, hapësirën, shenjat dhe titullin në default.
-    “Kthehu te Shorts standard” rikthen saktësisht 4 rrethet në 2×2.
+4. Scales e variantëve janë: 0.46 / 0.58 / 0.70 / 0.82 / 0.94 / 1.06.
+5. Titulli sportiv i variantit aktiv shfaqet poshtë makinave dhe ndryshon me
+   zgjedhjen/auto-advance. Madhësia 70–140% dhe outline-i i zi 0–5 px rregullohen.
+6. K jep PASS dhe L jep FAIL. PageUp/PageDown ose slotet në panel zgjedhin variantin.
+   Auto-advance, Ctrl+Z, Reset dhe clean capture përdorin kontrollet e CreatorPack.
 
-Me kalimin në layout-in e ri, hapësira e versionit të vjetër rikthehet një herë në
-14 px për të hequr ngushtimin BIG/GIANT; rregullimet e reja ruhen normalisht.
 
-Ky release përmban vetëm preset-in e parë BMW për testim. Series 6 është overlay/panel;
-nuk bën spawn dhe nuk ndryshon fizikën e makinave reale në lojë.
+PAMJA SHORTS 9:16 / FULL SIZE
+-----------------------------
+• “Shorts 9:16” e mban serinë brenda safe-box-it vertical ekzistues.
+• “Full Size” përdor gjithë viewport-in. Me global scale 100%, slot scale 100%,
+  X=0 dhe hapësirë default, gjerësia reale e 6 veturave + 5 hapësirat mbushin
+  ekranin nga skaji i majtë në të djathtë; nuk ngushtohet brenda kornizës 9:16.
+• Lart / Mes / Poshtë e vendosin serinë në canvas-in e zgjedhur.
+• Zhvendosja X -600…+600 px dhe Y -500…+500 px rregullohet me sliders.
+  “Qendro X / Y” i kthen të dyja në zero pa ndryshuar pamjen Shorts/Full Size.
+• Korniza 9:16 dhe safe-area guides mbeten opsionale; clean capture i fsheh.
+
+
+MADHËSITË, HAPËSIRA DHE SHENJAT
+-------------------------------
+• Hapësira default është 14 px dhe rregullohet -24…+36 px.
+• Global scale 70–130% ndryshon të gjashtë veturat njëherësh.
+• Për secilin slot: X -60…+60 px dhe scale 70–130%, me reset veçmas.
+• Slotet përdorin gjerësinë dhe raportin real të çdo modeli; fundi i veturave
+  rrihet në të njëjtin vijë edhe për SUV, Jeep ose Semi Truck.
+• Auto-fit i ri është jo-linear: TINY nis nga 40% e gjerësisë së veturës
+  (më e vogël se fit-i linear 62%), ndërsa BIG/GIANT rriten gradualisht deri
+  GIANT te 82%. Shenja ndjek klasën e veturës, jo vetëm një bazë të përbashkët.
+• “Madhësia manuale e shenjave” 50–200% shkallëzon edhe Auto-fit-in.
+  Me Auto fikur, të gjitha shenjat përdorin të njëjtën madhësi fikse.
+• ✓/✕ janë SVG me outline të zi dhe glow opsional, në Series dhe rrethet standard.
+• “Rikthe të gjithë pamjen” kthen hapësirën, scales, X/Y, shenjat dhe titullin
+  në default. “Kthehu te Shorts standard” rikthen saktësisht 4 rrethet në 2×2.
+
+Series është overlay/panel: nuk bën spawn dhe nuk ndryshon fizikën e makinave reale.
 
 
 HOTKEYS
@@ -80,12 +107,12 @@ L                 FAIL për rrethin/slotin e zgjedhur
 PageUp/Numpad4    Rrethi/sloti i mëparshëm
 PageDown/Numpad6  Rrethi/sloti tjetër
 G                 Reset PASS/FAIL marks
-V                 Shfaq/fshih rrethet (jashtë Shorts/Series 6)
+V                 Shfaq/fshih rrethet (jashtë Shorts/Series)
 Ctrl+Z            Undo markimin/reset-in e fundit
 
-Options → Controls përmban gjithashtu bindings për PASS, FAIL, Next, Previous,
-Reset, Panel, Undo, Guides, Circles dhe Shorts 2×2. Nuk ka default binding të ri
-që të përplaset me tastet e tua; mund ta caktoje Shorts vetë.
+Options → Controls përmban bindings për PASS, FAIL, Next, Previous, Reset, Panel,
+Undo, Guides, Circles dhe Shorts 2×2. Nuk ka default binding të ri që të përplaset
+me tastet e tua; mund ta caktosh Shorts vetë.
 
 
 FOTOT DHE LOGOT — GALERI ME 1 KLIK
@@ -94,11 +121,11 @@ FOTOT DHE LOGOT — GALERI ME 1 KLIK
 • Zgjidh rrethin standard, kliko imazhin dhe fotoja vendoset menjëherë në atë rreth.
 • Nuk ka Choose File dhe nuk duhet të shkruash emrin e file-it.
 • “Rifresko galerinë” lexon edhe PNG/JPG/JPEG/WEBP të rinj në imazhet/ përmes Lua-s.
-• Për folder-in brenda ZIP-it: hap ZIP-in, shto file-t dhe ripaketo, ose përdor instalim unpacked.
+• Për folder-in brenda ZIP-it: hap ZIP-in, shto file-t dhe ripaketo, ose përdor unpacked.
 • Fotot/logot e përdorura ruhen në storage-in e UI-së; nuk merren screenshots vetë.
-• gallery.json garanton që imazhet e paketës të dalin edhe kur FS/Lua nga BeamNG vonohet.
+• gallery.json garanton që imazhet e paketës të dalin edhe kur FS/Lua vonohet.
 • Lua bridge ka lifecycle të plotë dhe fotot kanë URL + base64 fallback.
-• Gjashtë render-et e Series 6 janë asset-e veçmas dhe nuk përzien galerinë 87-imazhëshe.
+• 60 render-et e Series janë asset-e veçmas dhe nuk përzien galerinë 87-imazhëshe.
 
 
 PASTRIMI I KONFIGURIMIT
@@ -111,15 +138,14 @@ Nuk ka kontroll të errësimit jashtë kornizës: Shorts/Series nuk zbeh lojën 
 VERIFIKIMI
 ----------
 • JavaScript syntax dhe Lua 5.1 runtime me BeamNG API të simuluar.
-• 12 runtime smoke checks me Angular/CEF të simuluar; 482 Angular expressions.
-• Shorts/restore, BMW Series 6, PASS/FAIL, auto-advance, undo/reset, glow/outline,
-  audio, 87 imazhe galerie, timeout dhe one-click placement kaluan.
-• Lua lifecycle + FS/base64/path security me BeamNG API të simuluar kaloi.
-• Render real në Chromium: 87/87 imazhe galerie dhe 6/6 variante BMW të ngarkuara,
-  madhësi në rritje, pesë hapësira reale 14 px, rregullim live -18 px, X/scale
-  manual për GIANT, Auto-fit i shenjave sipas veturës, manual 150%, fixed-size,
-  outline/madhësi titulli, H/K/L/Ctrl+Z, clean capture dhe kthim në 4 rrethe 2×2.
+• 13 runtime smoke checks me Angular/CEF të simuluar; 507 Angular expressions.
+• Shorts/restore, 10 preset-e/60 asset-e, Full Size, X/Y, non-linear marks,
+  PASS/FAIL, auto-advance, undo/reset, glow/outline, audio dhe 87 imazhe galerie.
+• Render real në Chromium: 87/87 imazhe galerie dhe 60/60 variante Series,
+  përfshirë McQueen; Full Size edge-to-edge; SVG marks; manual/fixed-size;
+  H/K/L/Ctrl+Z; clean capture dhe kthim në 4 rrethe 2×2.
+• Lua lifecycle + FS/base64/path security me BeamNG API të simuluar.
 • Pa JavaScript errors në render-in final.
 
 Testimi është bërë me Lua mocks dhe Chromium/Angular. Verifikimi final në instalimin
-real të BeamNG bëhet nga përdoruesi. Ky dokument përshkruan CreatorPack Studio 6.1.3.
+real të BeamNG bëhet nga përdoruesi. Ky dokument përshkruan CreatorPack Studio 6.2.0.

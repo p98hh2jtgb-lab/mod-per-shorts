@@ -74,6 +74,10 @@
     }
     .pf-mark.pass { color:rgba(104,255,164,0.98); }
     .pf-mark.fail { color:rgba(255,88,88,0.98); }
+    .pf-mark-svg, .pf-series-mark-svg { display:block; width:1em; height:1em; overflow:visible; }
+    .pf-mark-svg path, .pf-series-mark-svg path { fill:none; stroke-linecap:round; stroke-linejoin:round; }
+    .pf-mark-svg .pf-svg-mark-outline, .pf-series-mark-svg .pf-svg-mark-outline { stroke:rgba(0,0,0,.88); }
+    .pf-mark-svg .pf-svg-mark-line, .pf-series-mark-svg .pf-svg-mark-line { stroke:currentColor; stroke-width:15; }
 
     /* Series 6: transparent, one-line size comparison; no circles or backdrop. */
     .pf-series-hud { position:absolute; z-index:3; display:flex; flex-direction:column; align-items:center; pointer-events:auto; background:none; filter:none; }
@@ -688,6 +692,8 @@
     .cp-segmented { display:grid; grid-template-columns:repeat(3,1fr); gap:5px; padding:4px; border-radius:10px; background:rgba(255,255,255,.025); }
     .cp-segmented button { height:31px; border:1px solid transparent; border-radius:7px; background:transparent; color:rgba(191,211,223,.53); font-size:9px; cursor:pointer; }
     .cp-segmented button:hover { border-color:rgba(125,231,255,.13); background:rgba(125,231,255,.06); color:#c8f4ff; }
+    .cp-segmented button.active { border-color:rgba(125,231,255,.22); background:rgba(125,231,255,.10); color:#dff8ff; }
+    .cp-segmented.cp-two { grid-template-columns:repeat(2,1fr); margin-bottom:8px; }
     .cp-two-controls { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:12px; }
     .cp-two-controls label, .cp-range-label { color:rgba(174,197,211,.48); font-size:9px; }
     .cp-two-controls label b, .cp-range-label b { float:right; color:rgba(191,226,237,.64); font-weight:600; }
@@ -770,7 +776,14 @@
     .cp-series-hero-copy h3 { margin:4px 0 5px; color:#edf8ff; font-size:18px; letter-spacing:-.025em; }
     .cp-series-hero-copy p { margin:0; color:rgba(185,208,222,.52); font-size:10px; line-height:1.5; }
     .cp-series-hero > .cp-primary { width:100%; }
-    .cp-series-preset-card { margin-top:10px; padding:12px 13px; border:1px solid rgba(255,255,255,.06); border-radius:12px; background:rgba(255,255,255,.022); }
+    .cp-series-preset-gallery { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px; }
+    .cp-series-preset-card { min-width:0; margin:0; padding:11px 12px; text-align:left; border:1px solid rgba(255,255,255,.06); border-radius:12px; background:rgba(255,255,255,.022); color:#fff; cursor:pointer; transition:.17s ease; }
+    .cp-series-preset-card:hover { transform:translateY(-1px); border-color:rgba(125,231,255,.20); background:rgba(125,231,255,.045); }
+    .cp-series-preset-card.selected { border-color:rgba(125,231,255,.38); background:linear-gradient(145deg,rgba(125,231,255,.10),rgba(115,157,235,.055)); box-shadow:inset 0 0 0 1px rgba(125,231,255,.045); }
+    .cp-series-preset-thumb { display:block; width:100%; height:55px; margin:7px 0 3px; object-fit:contain; pointer-events:none; }
+    .cp-series-preset-gallery .cp-series-colors { margin:5px 0 7px; }
+    .cp-series-preset-gallery .cp-series-preset-meta { justify-content:space-between; gap:5px; }
+    .cp-series-preset-gallery .cp-series-preset-meta span:before { display:none; }
     .cp-series-preset-top, .cp-series-preset-top > div, .cp-series-preset-meta { display:flex; align-items:center; }
     .cp-series-preset-top { justify-content:space-between; gap:10px; }
     .cp-series-preset-top > div { gap:9px; color:#e6f3fb; font-size:12px; }
@@ -845,8 +858,12 @@
            ng-class="{'is-selected':selected === $index, 'state-pass':cfg.items[$index].state === 'pass', 'state-fail':cfg.items[$index].state === 'fail'}"
            ng-style="seriesSlotStyle($index)" ng-click="select($index)" title="{{slot.label}}">
         <img class="pf-series-car" ng-src="{{slot.image}}" ng-style="seriesImageStyle(slot, $index)" alt="{{slot.label}}" draggable="false">
-        <div ng-if="cfg.showMarks && cfg.items[$index].state === 'pass'" class="pf-series-mark pass" ng-style="seriesMarkStyle($index)">✓</div>
-        <div ng-if="cfg.showMarks && cfg.items[$index].state === 'fail'" class="pf-series-mark fail" ng-style="seriesMarkStyle($index)">✕</div>
+        <div ng-if="cfg.showMarks && cfg.items[$index].state === 'pass'" class="pf-series-mark pass" ng-style="seriesMarkStyle($index)" aria-label="PASS">
+          <svg class="pf-series-mark-svg" viewBox="0 0 100 100" aria-hidden="true"><path class="pf-svg-mark-outline" ng-style="seriesMarkSvgOutline($index)" d="M18 52 L40 74 L83 27"></path><path class="pf-svg-mark-line" d="M18 52 L40 74 L83 27"></path></svg>
+        </div>
+        <div ng-if="cfg.showMarks && cfg.items[$index].state === 'fail'" class="pf-series-mark fail" ng-style="seriesMarkStyle($index)" aria-label="FAIL">
+          <svg class="pf-series-mark-svg" viewBox="0 0 100 100" aria-hidden="true"><path class="pf-svg-mark-outline" ng-style="seriesMarkSvgOutline($index)" d="M25 25 L75 75 M75 25 L25 75"></path><path class="pf-svg-mark-line" d="M25 25 L75 75 M75 25 L25 75"></path></svg>
+        </div>
       </div>
     </div>
     <div class="pf-series-active" ng-style="seriesTitleStyle()">{{seriesActiveTitle()}}</div>
@@ -864,8 +881,12 @@
           <div ng-if="!item.image && !circleBadge(item) && !cfg.circlesClean" class="placeholder">{{item.label || ('Makina ' + ($index+1))}}</div>
           <div ng-if="cfg.showLabels && !cfg.circlesClean" class="pf-item-label" ng-style="labelStyle()">{{item.label}}</div>
         </div>
-          <div ng-if="cfg.showMarks && item.state === 'pass'" class="pf-mark pass" ng-class="markPosClass()" ng-style="markStyle()">✓</div>
-          <div ng-if="cfg.showMarks && item.state === 'fail'" class="pf-mark fail" ng-class="markPosClass()" ng-style="markStyle()">✕</div>
+          <div ng-if="cfg.showMarks && item.state === 'pass'" class="pf-mark pass" ng-class="markPosClass()" ng-style="markStyle()" aria-label="PASS">
+            <svg class="pf-mark-svg" viewBox="0 0 100 100" aria-hidden="true"><path class="pf-svg-mark-outline" ng-style="markSvgOutline()" d="M18 52 L40 74 L83 27"></path><path class="pf-svg-mark-line" d="M18 52 L40 74 L83 27"></path></svg>
+          </div>
+          <div ng-if="cfg.showMarks && item.state === 'fail'" class="pf-mark fail" ng-class="markPosClass()" ng-style="markStyle()" aria-label="FAIL">
+            <svg class="pf-mark-svg" viewBox="0 0 100 100" aria-hidden="true"><path class="pf-svg-mark-outline" ng-style="markSvgOutline()" d="M25 25 L75 75 M75 25 L25 75"></path><path class="pf-svg-mark-line" d="M25 25 L75 75 M75 25 L25 75"></path></svg>
+          </div>
         </div>
         
       </div>
@@ -888,7 +909,7 @@
     <div class="cp-nav" role="tablist">
       <button ng-class="{active:tab==='kryesore'}" ng-click="tab='kryesore'"><span>⌂</span>Kryesore</button>
       <button ng-class="{active:tab==='shorts'}" ng-click="tab='shorts'"><span>▯</span>Shorts</button>
-      <button ng-class="{active:tab==='series'}" ng-click="tab='series'"><span>↗</span>Series 6</button>
+      <button ng-class="{active:tab==='series'}" ng-click="tab='series'"><span>↗</span>Series</button>
       <button ng-class="{active:tab==='makinat'}" ng-click="tab='makinat'"><span>◉</span>Rrethet</button>
       <button ng-class="{active:tab==='pamja'}" ng-click="tab='pamja'"><span>✦</span>Stili</button>
       <button ng-class="{active:tab==='fotot'}" ng-click="tab='fotot'"><span>▧</span>Fotot</button>
@@ -923,7 +944,7 @@
         <button ng-click="tab='makinat'"><span class="cp-action-icon">◉</span><b>Menaxho rrethet</b><small>Foto, emra dhe rezultate</small></button>
         <button ng-click="tab='fotot'; scanImages(false)"><span class="cp-action-icon">▧</span><b>Biblioteka e fotove</b><small>{{photoCount()}} foto të ngarkuara</small></button>
         <button ng-if="!cfg.shortsMode" ng-click="addItem()"><span class="cp-action-icon">＋</span><b>Shto një rreth</b><small>Zgjero serinë aktuale</small></button>
-        <button ng-click="tab='series'"><span class="cp-action-icon">↗</span><b>Series 6 · BMW</b><small>Tiny → Giant, 6 ngjyra</small></button>
+        <button ng-click="tab='series'"><span class="cp-action-icon">↗</span><b>Series Studio · 10 preset-e</b><small>Tiny → Giant, 60 variante</small></button>
         <button ng-click="cleanCapture()"><span class="cp-action-icon">⌁</span><b>Regjistrim i pastër</b><small>Fsheh panelin dhe guidat</small></button>
       </div>
       <div class="cp-selected-card" ng-if="cfg.items[selected]">
@@ -998,8 +1019,8 @@
     </div>
     <div class="pf-section cp-series" ng-show="tab==='series'">
       <div class="cp-section-title">
-        <div><div class="cp-kicker">SIZE COMPARISON</div><h2>Series 6</h2><p>E njëjta makinë. Gjashtë ngjyra. Madhësi në rritje.</p></div>
-        <span class="cp-status-pill" ng-class="{on:cfg.series6Mode}"><i></i>{{cfg.series6Mode ? 'AKTIV' : 'TEST'}}</span>
+        <div><div class="cp-kicker">SIZE COMPARISON</div><h2>Series Studio</h2><p>10 preset-e. E njëjta makinë në gjashtë madhësi dhe ngjyra fikse.</p></div>
+        <span class="cp-status-pill" ng-class="{on:cfg.series6Mode}"><i></i>{{cfg.series6Mode ? 'AKTIV' : '10 PRESET-E'}}</span>
       </div>
 
       <div class="cp-series-hero" ng-class="{active:cfg.series6Mode}">
@@ -1007,22 +1028,27 @@
           <img ng-repeat="slot in seriesSlots track by $index" ng-src="{{slot.image}}" ng-style="{width:(20 + ($index * 6)) + 'px'}" alt="">
         </div>
         <div class="cp-series-hero-copy">
-          <div class="cp-kicker">PRESET 1 · BMW</div>
+          <div class="cp-kicker">{{seriesPresetName()}} · 6 VARIANTE</div>
           <h3>Tiny → Giant</h3>
-          <p>Një rresht transparent me titullin e variantit aktiv dhe shenjat ✓/✕ nga K/L.</p>
+          <p>Rresht transparent, titull sportiv dhe shenja ✓/✕ që përshtaten me çdo veturë.</p>
         </div>
-        <button class="cp-primary" ng-click="setSeries6Mode(!cfg.series6Mode)">{{cfg.series6Mode ? '✓ Series 6 është aktiv' : 'Aktivizo BMW Series 6'}}</button>
+        <button class="cp-primary" ng-click="setSeries6Mode(!cfg.series6Mode)">{{cfg.series6Mode ? '✓ Series Studio është aktiv' : 'Aktivizo ' + seriesPresetName() + ' Series'}}</button>
       </div>
 
-      <div class="cp-series-preset-card">
-        <div class="cp-series-preset-top"><div><span class="cp-preset-number">01</span><b>BMW</b></div><span class="cp-test-badge">PRESET TESTIMI</span></div>
-        <div class="cp-series-colors"><i ng-repeat="slot in seriesSlots track by $index" ng-style="{background:slot.color}" title="{{slot.label}}"></i></div>
-        <div class="cp-series-preset-meta"><span>1 model</span><span>6 variante</span><span>Pa logo</span></div>
+      <div class="cp-section-heading"><span>ZGJIDH PRESET-IN</span><i></i></div>
+      <div class="cp-series-preset-gallery">
+        <button class="cp-series-preset-card" ng-repeat="preset in seriesPresets track by preset.id"
+                ng-class="{selected:cfg.seriesPreset === preset.id}" ng-click="setSeriesPreset(preset.id)">
+          <div class="cp-series-preset-top"><div><span class="cp-preset-number">{{$index + 1}}</span><b>{{preset.name}}</b></div></div>
+          <img class="cp-series-preset-thumb" ng-src="{{preset.slots[3].image}}" alt="{{preset.name}}" draggable="false">
+          <div class="cp-series-colors"><i ng-repeat="slot in preset.slots track by $index" ng-style="{background:slot.color}" title="{{slot.label}}"></i></div>
+          <div class="cp-series-preset-meta"><span>1 model</span><span>6 variante</span></div>
+        </button>
       </div>
 
       <div ng-if="cfg.series6Mode" class="cp-series-settings">
         <div class="cp-series-active-card">
-          <div><div class="cp-kicker">VARIANTI AKTIV · {{selected + 1}}/6</div><h3>{{seriesActiveTitle()}}</h3></div>
+          <div><div class="cp-kicker">{{seriesPresetName()}} · {{selected + 1}}/6</div><h3>{{seriesActiveTitle()}}</h3></div>
           <div class="cp-inline-actions">
             <button class="cp-pass" ng-click="markState('pass')">✓ PASS <kbd>K</kbd></button>
             <button class="cp-fail" ng-click="markState('fail')">✕ FAIL <kbd>L</kbd></button>
@@ -1038,12 +1064,22 @@
         </div>
 
         <div class="cp-control-card">
-          <div class="cp-control-title"><span>01</span><div><b>Pozicioni i serisë</b><small>Brenda kornizës vertikale 9:16.</small></div></div>
+          <div class="cp-control-title"><span>01</span><div><b>Pamja & pozicioni</b><small>Shorts brenda 9:16 ose Full Size përgjatë gjithë ekranit.</small></div></div>
+          <div class="cp-segmented cp-two">
+            <button ng-class="{active:cfg.seriesView !== 'full'}" ng-click="setSeriesView('shorts')">▯ Shorts 9:16</button>
+            <button ng-class="{active:cfg.seriesView === 'full'}" ng-click="setSeriesView('full')">↔ Full Size</button>
+          </div>
           <div class="cp-segmented">
             <button ng-click="seriesPlace('top')">↑ Lart</button>
             <button ng-click="seriesPlace('center')">◆ Mes</button>
             <button ng-click="seriesPlace('bottom')">↓ Poshtë</button>
           </div>
+          <div class="cp-two-controls">
+            <label>Zhvendosja X <b>{{cfg.seriesOffsetX}} px</b><input type="range" min="-600" max="600" step="1" ng-model="cfg.seriesOffsetX" ng-change="persist()"></label>
+            <label>Zhvendosja Y <b>{{cfg.seriesOffsetY}} px</b><input type="range" min="-500" max="500" step="1" ng-model="cfg.seriesOffsetY" ng-change="persist()"></label>
+          </div>
+          <button class="cp-text-button" ng-click="resetSeriesPosition()">↺ Qendro X / Y</button>
+          <div class="cp-series-appearance-note">Full Size me scale 100% mbush rreshtin nga ana e majtë në të djathtë të ekranit. X/Y e lëvizin pa e kthyer në safe-box.</div>
         </div>
 
         <div class="cp-control-card">
@@ -1073,13 +1109,13 @@
         </div>
 
         <div class="cp-control-card">
-          <div class="cp-control-title"><span>04</span><div><b>Shenjat ✓/✕</b><small>Auto-fit sipas gjerësisë së çdo veture, plus madhësi manuale.</small></div></div>
+          <div class="cp-control-title"><span>04</span><div><b>Shenjat ✓/✕</b><small>Auto-fit jo-linear sipas klasës së veturës, plus kontroll manual.</small></div></div>
           <div class="cp-check-grid">
             <label><input type="checkbox" ng-model="cfg.seriesMarkAuto" ng-change="persist()"><span></span>Përshtat automatikisht</label>
             <label><input type="checkbox" ng-model="cfg.showMarks" ng-change="persist()"><span></span>Shfaq shenjat</label>
           </div>
           <label class="cp-range-label">Madhësia manuale e shenjave <b>{{cfg.seriesMarkScale}}%</b><input type="range" min="50" max="200" step="1" ng-model="cfg.seriesMarkScale" ng-change="persist()"></label>
-          <div class="cp-series-appearance-note">Auto: TINY merr shenjë më të vogël, GIANT më të madhe. Slider-i e zmadhon ose e zvogëlon edhe auto-fit-in. Me Auto fikur, të gjitha shenjat kanë të njëjtën bazë.</div>
+          <div class="cp-series-appearance-note">Kurva e re e zvogëlon shenjën te TINY dhe e zmadhon gradualisht te BIG/GIANT. Slider-i 50–200% funksionon edhe me Auto; me Auto fikur, të gjitha përdorin të njëjtën madhësi fikse.</div>
         </div>
 
         <div class="cp-control-card">
@@ -1099,7 +1135,7 @@
       </div>
 
       <div class="cp-empty-guide" ng-if="!cfg.series6Mode">
-        <div><b>1</b><span>Aktivizo BMW</span></div><i></i><div><b>2</b><span>Shëno me K / L</span></div><i></i><div><b>3</b><span>Regjistro pa panel</span></div>
+        <div><b>1</b><span>Zgjidh preset-in</span></div><i></i><div><b>2</b><span>Shëno me K / L</span></div><i></i><div><b>3</b><span>Regjistro pa panel</span></div>
       </div>
       <div class="cp-series-note">Shorts standard mbetet veçmas me saktësisht 4 rrethe në 2×2.</div>
     </div>
@@ -1296,7 +1332,7 @@
         </div>
       </div>
       <div class="pf-note" ng-if="cfg.shortsMode && !cfg.series6Mode">Shorts është fiks në 2×2 me 4 rrethe. Fike Shorts për të ndryshuar renditjen.</div>
-      <div class="pf-note" ng-if="cfg.series6Mode">Series 6 përdor një rresht fiks me 6 variante; madhësia dhe ngjyra vijnë nga preset-i BMW.</div>
+      <div class="pf-note" ng-if="cfg.series6Mode">Series përdor një rresht fiks me 6 variante; modeli zgjidhet nga galeria me 10 preset-e.</div>
     </div>
 
     
@@ -1402,10 +1438,10 @@
       </div>
     </div>
     <div class="pf-section" ng-show="tab==='makinat'">
-      <div class="pf-label">{{cfg.series6Mode ? 'Series 6 · BMW' : 'Makinat'}}</div>
+      <div class="pf-label">{{cfg.series6Mode ? 'Series · ' + seriesPresetName() : 'Makinat'}}</div>
       <div class="cp-series-active-card" ng-if="cfg.series6Mode">
         <div><div class="cp-kicker">PRESET ME 6 SLOT-E FIKS</div><h3>{{seriesActiveTitle()}}</h3></div>
-        <button class="cp-primary" ng-click="tab='series'">Hap Series 6 →</button>
+        <button class="cp-primary" ng-click="tab='series'">Hap Series Studio →</button>
       </div>
     </div>
 

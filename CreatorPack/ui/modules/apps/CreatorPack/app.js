@@ -43,7 +43,7 @@ angular.module('beamng.apps')
       // v5.3.0 — Versioni shfaqet brenda HUD-it, që të shihet
       // menjëherë nëse BeamNG ka ngarkuar versionin e re.
       // =====================================================
-      var MOD_VERSION = '6.1.3';
+      var MOD_VERSION = '6.2.0';
       scope.modVersion = MOD_VERSION;
       scope.storageKey = STORAGE_KEY;
 
@@ -100,6 +100,9 @@ angular.module('beamng.apps')
           shortsSafeAreas: true,
           series6Mode: false,
           seriesPreset: 'bmw',
+          seriesView: 'shorts',       // shorts = safe-box 9:16 | full = gjithë ekrani
+          seriesOffsetX: 0,
+          seriesOffsetY: 0,
           seriesLayoutVersion: 2,
           seriesGap: 14,
           seriesCarScale: 100,
@@ -209,6 +212,9 @@ angular.module('beamng.apps')
         if (cfg.shortsSafeAreas == null) cfg.shortsSafeAreas = true;
         if (cfg.series6Mode == null) cfg.series6Mode = false;
         if (!cfg.seriesPreset) cfg.seriesPreset = 'bmw';
+        if (cfg.seriesView !== 'full') cfg.seriesView = 'shorts';
+        if (cfg.seriesOffsetX == null) cfg.seriesOffsetX = 0;
+        if (cfg.seriesOffsetY == null) cfg.seriesOffsetY = 0;
         if (saved && Number(saved.seriesLayoutVersion) !== 2) cfg.seriesGap = 14;
         cfg.seriesLayoutVersion = 2;
         if (cfg.seriesGap == null) cfg.seriesGap = 14;
@@ -226,6 +232,8 @@ angular.module('beamng.apps')
           cfg.seriesSlotX[seriesIdx] = Math.max(-60, Math.min(60, Number(cfg.seriesSlotX[seriesIdx]) || 0));
           cfg.seriesSlotScale[seriesIdx] = Math.max(70, Math.min(130, Number(cfg.seriesSlotScale[seriesIdx]) || 100));
         }
+        cfg.seriesOffsetX = Math.max(-600, Math.min(600, Number(cfg.seriesOffsetX) || 0));
+        cfg.seriesOffsetY = Math.max(-500, Math.min(500, Number(cfg.seriesOffsetY) || 0));
         cfg.seriesMarkAuto = !(cfg.seriesMarkAuto === false || cfg.seriesMarkAuto === 'false');
         cfg.seriesMarkScale = Math.max(50, Math.min(200, Number(cfg.seriesMarkScale) || 100));
         cfg.seriesTitleSize = Math.max(70, Math.min(140, Number(cfg.seriesTitleSize) || 100));
@@ -757,18 +765,37 @@ angular.module('beamng.apps')
         return { left:b.left+'px', top:Math.max(0,b.top-26)+'px', color: scope.cfg.guideColor };
       };
 
+      var SERIES6_VARIANTS = [
+        { key:'tiny',   label:'TINY CAR',   short:'TINY',   color:'#f4df28', scale:0.46 },
+        { key:'small',  label:'SMALL CAR',  short:'SMALL',  color:'#3978f6', scale:0.58 },
+        { key:'medium', label:'MEDIUM CAR', short:'MEDIUM', color:'#ff8a32', scale:0.70 },
+        { key:'normal', label:'NORMAL CAR', short:'NORMAL', color:'#f04444', scale:0.82 },
+        { key:'big',    label:'BIG CAR',    short:'BIG',    color:'#58d83e', scale:0.94 },
+        { key:'giant',  label:'GIANT CAR',  short:'GIANT',  color:'#f45bd5', scale:1.06 }
+      ];
+      function makeSeriesPreset(id, name, ratio) {
+        return {
+          id:id, name:name, ratio:ratio,
+          slots:SERIES6_VARIANTS.map(function(variant) {
+            return {
+              label:variant.label, short:variant.short, color:variant.color,
+              scale:variant.scale, ratio:ratio,
+              image:'/ui/modules/apps/CreatorPack/series/' + id + '_' + variant.key + '.png'
+            };
+          })
+        };
+      }
       var SERIES6_PRESETS = [
-        {
-          id: 'bmw', name: 'BMW', subtitle: 'Preset 1 · Size Series test',
-          slots: [
-            { label:'TINY CAR', short:'TINY', color:'#f4df28', scale:0.46, image:'/ui/modules/apps/CreatorPack/series/bmw_tiny.png' },
-            { label:'SMALL CAR', short:'SMALL', color:'#3978f6', scale:0.58, image:'/ui/modules/apps/CreatorPack/series/bmw_small.png' },
-            { label:'MEDIUM CAR', short:'MEDIUM', color:'#ff8a32', scale:0.70, image:'/ui/modules/apps/CreatorPack/series/bmw_medium.png' },
-            { label:'NORMAL CAR', short:'NORMAL', color:'#f04444', scale:0.82, image:'/ui/modules/apps/CreatorPack/series/bmw_normal.png' },
-            { label:'BIG CAR', short:'BIG', color:'#58d83e', scale:0.94, image:'/ui/modules/apps/CreatorPack/series/bmw_big.png' },
-            { label:'GIANT CAR', short:'GIANT', color:'#f45bd5', scale:1.06, image:'/ui/modules/apps/CreatorPack/series/bmw_giant.png' }
-          ]
-        }
+        makeSeriesPreset('bmw', 'BMW', 0.6891),
+        makeSeriesPreset('toyota_lc300', 'Toyota LC300', 0.8609),
+        makeSeriesPreset('mcqueen', 'Lightning McQueen', 0.6188),
+        makeSeriesPreset('gclass', 'Mercedes G-Class', 0.8797),
+        makeSeriesPreset('lamborghini', 'Lamborghini Huracán', 0.5531),
+        makeSeriesPreset('gtr_r34', 'Nissan GT-R R34', 0.7594),
+        makeSeriesPreset('supra', 'Toyota Supra MK4', 0.6234),
+        makeSeriesPreset('mustang', 'Ford Mustang GT', 0.6969),
+        makeSeriesPreset('jeep', 'Jeep Wrangler', 0.9391),
+        makeSeriesPreset('semi_truck', 'Semi Truck', 0.9703)
       ];
       scope.seriesPresets = SERIES6_PRESETS;
       function seriesPresetById(id) {
@@ -777,17 +804,39 @@ angular.module('beamng.apps')
         }
         return SERIES6_PRESETS[0];
       }
+      scope.cfg.seriesPreset = seriesPresetById(scope.cfg.seriesPreset).id;
       scope.seriesSlots = seriesPresetById(scope.cfg.seriesPreset).slots;
+      scope.seriesPresetName = function() { return seriesPresetById(scope.cfg.seriesPreset).name; };
       scope.seriesActiveTitle = function() {
         var idx = Math.max(0, Math.min(5, Number(scope.selected) || 0));
         return scope.seriesSlots[idx] ? scope.seriesSlots[idx].label : '';
       };
-      function seriesUnit() { return scope.safeBox().w / 6; }
+
+      // Shorts përdor safe-box-in 9:16; Full Size përdor realisht gjithë viewport-in.
+      scope.seriesCanvas = function() {
+        if (scope.cfg.seriesView === 'full') {
+          return { w:scope.viewport.w, h:scope.viewport.h, left:0, top:0,
+                   cx:scope.viewport.w / 2, cy:scope.viewport.h / 2 };
+        }
+        return scope.safeBox();
+      };
+      function seriesGapValue() {
+        return Math.max(-24, Math.min(36, Number(scope.cfg.seriesGap) || 0));
+      }
+      function seriesUnit() {
+        var canvas = scope.seriesCanvas();
+        if (scope.cfg.seriesView === 'full') {
+          // Shuma 0.46+0.58+0.70+0.82+0.94+1.06 = 4.56.
+          // Me scale 100%, gjerësia e veturave + 5 hapësirat mbushin saktë ekranin.
+          return Math.max(60, canvas.w - 5 * seriesGapValue()) / 4.56;
+        }
+        return canvas.w / 6;
+      }
       scope.seriesHudStyle = function() {
         return {
-          left:Number(scope.cfg.positionX || 0) + 'px',
-          top:Number(scope.cfg.positionY || 0) + 'px',
-          width:scope.safeBox().w + 'px'
+          left:(Number(scope.cfg.positionX || 0) + Number(scope.cfg.seriesOffsetX || 0)) + 'px',
+          top:(Number(scope.cfg.positionY || 0) + Number(scope.cfg.seriesOffsetY || 0)) + 'px',
+          width:scope.seriesCanvas().w + 'px'
         };
       };
       function seriesCarWidth(index) {
@@ -796,13 +845,16 @@ angular.module('beamng.apps')
         var ownScale = Math.max(70, Math.min(130, Number(scope.cfg.seriesSlotScale[index]) || 100)) / 100;
         return Math.round(seriesUnit() * Number(slot.scale || 1) * globalScale * ownScale);
       }
+      function seriesCarHeight(index) {
+        var slot = scope.seriesSlots[index] || scope.seriesSlots[0];
+        return Math.round(seriesCarWidth(index) * Number(slot.ratio || 0.70));
+      }
       scope.seriesSlotStyle = function(index) {
-        var unit = seriesUnit();
-        var gap = Math.max(-24, Math.min(36, Number(scope.cfg.seriesGap) || 0));
+        var gap = seriesGapValue();
         var offsetX = Math.max(-60, Math.min(60, Number(scope.cfg.seriesSlotX[index]) || 0));
         return {
           width:seriesCarWidth(index) + 'px',
-          height:(unit * 0.76) + 'px',
+          height:seriesCarHeight(index) + 'px',
           marginLeft:index > 0 ? gap + 'px' : '0px',
           transform:'translateX(' + offsetX + 'px)'
         };
@@ -812,33 +864,66 @@ angular.module('beamng.apps')
         if (index < 0) index = 0;
         return { width:seriesCarWidth(index) + 'px' };
       };
+      function seriesAutoMarkRatio(index) {
+        var slot = scope.seriesSlots[index] || scope.seriesSlots[0];
+        var progress = (Number(slot.scale || 0.46) - 0.46) / 0.60;
+        progress = Math.max(0, Math.min(1, progress));
+        // Kurvë jo-lineare: TINY 40% e gjerësisë (më pak se 62% e vjetër),
+        // BIG rritet gradualisht dhe GIANT arrin 82% (më shumë se 62% e vjetër).
+        return 0.40 + 0.42 * Math.pow(progress, 1.35);
+      }
       scope.seriesMarkStyle = function(index) {
         if (index === undefined || index === null) index = 0;
         var glow = Math.max(0, Math.min(30, Number(scope.cfg.markGlow) || 0));
         var outline = Math.max(0, Math.min(4, Number(scope.cfg.markOutline) || 0));
         var manualScale = Math.max(50, Math.min(200, Number(scope.cfg.seriesMarkScale) || 100)) / 100;
         var autoBase = scope.cfg.seriesMarkAuto ? seriesCarWidth(index) : seriesUnit();
+        var fitRatio = scope.cfg.seriesMarkAuto ? seriesAutoMarkRatio(index) : 0.62;
         return {
-          fontSize:Math.max(12, Math.round(autoBase * 0.62 * manualScale)) + 'px',
+          fontSize:Math.max(12, Math.round(autoBase * fitRatio * manualScale)) + 'px',
           textShadow:glow > 0 ? ('0 0 ' + glow + 'px currentColor') : 'none',
+          filter:glow > 0 ? ('drop-shadow(0 0 ' + glow + 'px currentColor)') : 'none',
           WebkitTextStroke:outline > 0 ? (outline + 'px rgba(0,0,0,.88)') : '0px transparent',
           paintOrder:'stroke fill'
         };
       };
+      scope.seriesMarkSvgOutline = function(index) {
+        var fontSize = parseFloat(scope.seriesMarkStyle(index).fontSize) || 12;
+        var outline = Math.max(0, Math.min(4, Number(scope.cfg.markOutline) || 0));
+        return { strokeWidth:outline > 0 ? String(15 + 200 * outline / fontSize) : '0', opacity:outline > 0 ? 1 : 0 };
+      };
       scope.seriesTitleStyle = function() {
         var scale = Math.max(70, Math.min(140, Number(scope.cfg.seriesTitleSize) || 100)) / 100;
         var outline = Math.max(0, Math.min(5, Number(scope.cfg.seriesTitleOutline) || 0));
+        var canvas = scope.seriesCanvas();
+        var base = Math.min(canvas.w * 0.056, canvas.h * 0.065);
         return {
-          fontSize:Math.max(22, Math.round(scope.safeBox().w * 0.056 * scale)) + 'px',
+          fontSize:Math.max(22, Math.round(base * scale)) + 'px',
           WebkitTextStroke:outline > 0 ? (outline + 'px rgba(0,0,0,.96)') : '0px transparent',
           paintOrder:'stroke fill',
           textShadow:'none'
         };
       };
+      function seriesContentHeight() {
+        var maxCar = 0;
+        for (var i = 0; i < 6; i++) maxCar = Math.max(maxCar, seriesCarHeight(i));
+        return maxCar + parseFloat(scope.seriesTitleStyle().fontSize) * 1.16;
+      }
+      var seriesAnchor = 'top';
       scope.resetSeriesSelected = function() {
         var idx = Math.max(0, Math.min(5, Number(scope.selected) || 0));
         scope.cfg.seriesSlotX[idx] = 0;
         scope.cfg.seriesSlotScale[idx] = 100;
+        scope.persist();
+      };
+      scope.resetSeriesPosition = function() {
+        scope.cfg.seriesOffsetX = 0;
+        scope.cfg.seriesOffsetY = 0;
+        scope.persist();
+      };
+      scope.setSeriesView = function(view) {
+        scope.cfg.seriesView = view === 'full' ? 'full' : 'shorts';
+        scope.seriesPlace(seriesAnchor);
         scope.persist();
       };
       scope.resetSeriesAppearance = function() {
@@ -846,6 +931,8 @@ angular.module('beamng.apps')
         scope.cfg.seriesCarScale = 100;
         scope.cfg.seriesSlotX = [0, 0, 0, 0, 0, 0];
         scope.cfg.seriesSlotScale = [100, 100, 100, 100, 100, 100];
+        scope.cfg.seriesOffsetX = 0;
+        scope.cfg.seriesOffsetY = 0;
         scope.cfg.seriesMarkAuto = true;
         scope.cfg.seriesMarkScale = 100;
         scope.cfg.seriesTitleSize = 100;
@@ -892,12 +979,19 @@ angular.module('beamng.apps')
       scope.seriesPlace = function(where) {
         if (!scope.cfg.series6Mode) return;
         measureViewport();
-        var b = scope.safeBox();
-        var h = seriesUnit() * 0.76 + b.w * 0.07;
+        seriesAnchor = where === 'bottom' || where === 'center' ? where : 'top';
+        var b = scope.seriesCanvas();
+        var h = seriesContentHeight();
         scope.cfg.positionX = Math.max(0, Math.round(b.left));
-        if (where === 'bottom') scope.cfg.positionY = Math.round(b.top + b.h * 0.74 - h);
-        else if (where === 'center') scope.cfg.positionY = Math.round(b.cy - h / 2 - b.h * 0.06);
-        else scope.cfg.positionY = Math.round(b.top + b.h * 0.035);
+        if (seriesAnchor === 'bottom') {
+          scope.cfg.positionY = scope.cfg.seriesView === 'full'
+            ? Math.round(b.top + b.h - h - Math.max(24, b.h * 0.05))
+            : Math.round(b.top + b.h * 0.74 - h);
+        } else if (seriesAnchor === 'center') {
+          scope.cfg.positionY = Math.round(b.cy - h / 2 - (scope.cfg.seriesView === 'full' ? 0 : b.h * 0.06));
+        } else {
+          scope.cfg.positionY = Math.round(b.top + b.h * 0.035);
+        }
         scope.cfg.positionY = Math.max(0, scope.cfg.positionY);
         scope.persist();
       };
@@ -1013,6 +1107,7 @@ angular.module('beamng.apps')
         var preset = seriesPresetById(id);
         scope.cfg.seriesPreset = preset.id;
         scope.seriesSlots = preset.slots;
+        if (scope.cfg.series6Mode) scope.seriesPlace(seriesAnchor);
         scope.persist();
       };
       scope.setSeries6Mode = function(enabled) {
@@ -1021,6 +1116,7 @@ angular.module('beamng.apps')
           if (!scope.cfg.shortsMode || !scope.cfg.shortsRestore) scope.setShortsMode(true);
           scope.cfg.shortsMode = true;
           scope.cfg.series6Mode = true;
+          scope.cfg.seriesPreset = seriesPresetById(scope.cfg.seriesPreset).id;
           scope.seriesSlots = seriesPresetById(scope.cfg.seriesPreset).slots;
           if (scope.selected > 5) scope.selected = 0;
           enforceShortsComposition();
@@ -1250,7 +1346,8 @@ angular.module('beamng.apps')
         'theme','layout','gridCols','animLevel','showLabels','labelSize','hudDensity',
         'showMiniButton','soundOn','vehiclesOn','vehiclesKey',
         'guidesOn','guideRatio','guideCenterV','guideCenterH','guideThirds','guideColor',
-        'shortsSafeAreas','seriesGap','seriesCarScale','seriesSlotX','seriesSlotScale',
+        'shortsSafeAreas','seriesPreset','seriesView','seriesOffsetX','seriesOffsetY',
+        'seriesGap','seriesCarScale','seriesSlotX','seriesSlotScale',
         'seriesMarkAuto','seriesMarkScale','seriesTitleSize','seriesTitleOutline'
       ];
 
@@ -1276,6 +1373,8 @@ angular.module('beamng.apps')
           if (k === 'shortsMode' || k === 'shortsRestore') return;
           scope.cfg[k] = angular.copy(v);
         });
+        scope.cfg.seriesPreset = seriesPresetById(scope.cfg.seriesPreset).id;
+        scope.seriesSlots = seriesPresetById(scope.cfg.seriesPreset).slots;
         enforceShortsComposition();
         scope.persist();
       };
@@ -1310,6 +1409,7 @@ angular.module('beamng.apps')
           // ruaj fotot ekzistuese
           var oldImages = (scope.cfg.items || []).map(function(it) { return it.image; });
           scope.cfg = normalizeConfig(parsed, defaults());
+          scope.cfg.seriesPreset = seriesPresetById(scope.cfg.seriesPreset).id;
           scope.seriesSlots = seriesPresetById(scope.cfg.seriesPreset).slots;
           angular.forEach(scope.cfg.items, function(it, i) {
             if (it.image === '[image]' || !it.image) it.image = oldImages[i] || '';
@@ -1574,9 +1674,15 @@ angular.module('beamng.apps')
           fontSize: base + 'px',
           transform: 'translate(' + Number(scope.cfg.markOffsetX || 0) + 'px,' + Number(scope.cfg.markOffsetY || 0) + 'px)',
           textShadow: glow > 0 ? ('0 0 ' + glow + 'px currentColor') : 'none',
+          filter: glow > 0 ? ('drop-shadow(0 0 ' + glow + 'px currentColor)') : 'none',
           WebkitTextStroke: outline > 0 ? (outline + 'px rgba(0,0,0,0.88)') : '0px transparent',
           paintOrder: 'stroke fill'
         };
+      };
+      scope.markSvgOutline = function() {
+        var fontSize = parseFloat(scope.markStyle().fontSize) || 12;
+        var outline = Math.max(0, Math.min(4, Number(scope.cfg.markOutline) || 0));
+        return { strokeWidth:outline > 0 ? String(15 + 200 * outline / fontSize) : '0', opacity:outline > 0 ? 1 : 0 };
       };
       scope.adjustMarkGlow = function(delta) {
         scope.cfg.markGlow = Math.max(0, Math.min(30, Math.round((Number(scope.cfg.markGlow) || 0) + delta)));

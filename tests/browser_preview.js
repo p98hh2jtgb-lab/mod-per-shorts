@@ -117,6 +117,7 @@ async function makeServer(modName) {
     });
     assert.strictEqual(keyState.first, 'pass');
     assert.strictEqual(keyState.selected, 1);
+    assert.strictEqual(await page.locator('.pf-hud .pf-mark.pass svg').count(), 1, 'Standard PASS must use a platform-independent SVG mark');
     await page.keyboard.press('Control+z');
     await page.waitForTimeout(120);
     keyState = await page.evaluate(() => {
@@ -289,6 +290,30 @@ async function makeServer(modName) {
     await page.screenshot({path:'/tmp/creatorpack-series-panel.png'});
     console.log('✓ BMW Series 6 renders six loaded transparent variants in increasing size with active title');
 
+    const presetIds = await page.evaluate(() => {
+      const scope = angular.element(document.querySelector('.cp-panel')).scope();
+      return scope.seriesPresets.map(preset => preset.id);
+    });
+    assert.strictEqual(presetIds.length, 10);
+    assert.strictEqual(await page.locator('.cp-series-preset-card').count(), 10);
+    for (const presetId of presetIds) {
+      await page.evaluate(id => {
+        const scope = angular.element(document.querySelector('.cp-panel')).scope();
+        scope.setSeriesPreset(id); scope.select(0); scope.$apply();
+      }, presetId);
+      await page.waitForFunction(() => {
+        const cars = [...document.querySelectorAll('.pf-series-car')];
+        return cars.length === 6 && cars.every(car => car.complete && car.naturalWidth > 0);
+      }, null, {timeout:10000});
+      if (presetId === 'mcqueen') await page.screenshot({path:'/tmp/creatorpack-series-mcqueen.png'});
+    }
+    await page.evaluate(() => {
+      const scope = angular.element(document.querySelector('.cp-panel')).scope();
+      scope.setSeriesPreset('bmw'); scope.select(0); scope.$apply();
+    });
+    await page.waitForTimeout(200);
+    console.log('✓ All 10 preset cards switch models and load all 60 transparent variants, including McQueen');
+
     await page.evaluate(() => {
       const scope = angular.element(document.querySelector('.cp-panel')).scope();
       scope.cfg.seriesGap = Number(scope.cfg.seriesGap) - 18;
@@ -340,6 +365,51 @@ async function makeServer(modName) {
     await page.waitForTimeout(120);
     console.log('✓ GIANT has independent live X offset and scale, with per-car reset');
 
+    await page.evaluate(() => {
+      const scope = angular.element(document.querySelector('.cp-panel')).scope();
+      scope.resetSeriesAppearance(); scope.setSeriesView('full'); scope.seriesPlace('center'); scope.$apply();
+    });
+    await page.waitForTimeout(300);
+    const fullSeries = await page.evaluate(() => {
+      const scope = angular.element(document.querySelector('.cp-panel')).scope();
+      const hud = document.querySelector('.pf-series-hud').getBoundingClientRect();
+      const cars = [...document.querySelectorAll('.pf-series-car')].map(car => car.getBoundingClientRect());
+      return {view:scope.cfg.seriesView,hudWidth:hud.width,hudLeft:hud.left,hudTop:hud.top,
+        firstLeft:cars[0].left,lastRight:cars[cars.length - 1].right,viewport:innerWidth};
+    });
+    assert.strictEqual(fullSeries.view, 'full');
+    assert(Math.abs(fullSeries.hudWidth - fullSeries.viewport) < 0.2);
+    assert(Math.abs(fullSeries.firstLeft) < 2, 'Full Size must start at the real left screen edge');
+    assert(Math.abs(fullSeries.lastRight - fullSeries.viewport) < 2, 'Full Size must end at the real right screen edge');
+    await page.screenshot({path:'/tmp/creatorpack-series-full.png'});
+    await page.evaluate(() => {
+      const scope = angular.element(document.querySelector('.cp-panel')).scope();
+      scope.cleanCapture(); scope.$apply();
+    });
+    await page.waitForTimeout(180);
+    assert.strictEqual(await page.locator('.cp-panel').count(), 0);
+    assert.strictEqual(await page.locator('.pf-series-car').count(), 6);
+    await page.screenshot({path:'/tmp/creatorpack-series-full-clean.png'});
+    await page.keyboard.press('h');
+    await page.waitForSelector('.cp-panel', {state:'visible'});
+    await page.evaluate(() => {
+      const scope = angular.element(document.querySelector('.cp-panel')).scope();
+      scope.cfg.seriesOffsetX = 32; scope.cfg.seriesOffsetY = 18; scope.$apply();
+    });
+    await page.waitForTimeout(150);
+    const shiftedSeries = await page.evaluate(() => {
+      const rect = document.querySelector('.pf-series-hud').getBoundingClientRect();
+      return {left:rect.left,top:rect.top};
+    });
+    assert(Math.abs(shiftedSeries.left - (fullSeries.hudLeft + 32)) < 0.2);
+    assert(Math.abs(shiftedSeries.top - (fullSeries.hudTop + 18)) < 0.2);
+    await page.evaluate(() => {
+      const scope = angular.element(document.querySelector('.cp-panel')).scope();
+      scope.resetSeriesPosition(); scope.setSeriesView('shorts'); scope.seriesPlace('top'); scope.$apply();
+    });
+    await page.waitForTimeout(200);
+    console.log('✓ Full Size fills the complete screen edge-to-edge; manual X/Y and Shorts return work live');
+
     await page.keyboard.press('k');
     await page.waitForTimeout(120);
     let seriesKey = await page.evaluate(() => {
@@ -353,11 +423,18 @@ async function makeServer(modName) {
       const scope = angular.element(document.querySelector('.cp-panel')).scope();
       const mark = document.querySelector('.pf-series-mark.pass');
       const car = document.querySelectorAll('.pf-series-car')[0];
-      return {fontSize:parseFloat(getComputedStyle(mark).fontSize), carWidth:car.getBoundingClientRect().width,
-        auto:scope.cfg.seriesMarkAuto};
+      const style = getComputedStyle(mark);
+      const rect = mark.getBoundingClientRect();
+      return {fontSize:parseFloat(style.fontSize), carWidth:car.getBoundingClientRect().width,
+        auto:scope.cfg.seriesMarkAuto,color:style.color,display:style.display,visibility:style.visibility,
+        opacity:style.opacity,rect:{x:rect.x,y:rect.y,width:rect.width,height:rect.height},svgPaths:mark.querySelectorAll('svg path').length};
     });
     assert.strictEqual(autoMark.auto, true);
-    assert(Math.abs(autoMark.fontSize - autoMark.carWidth * 0.62) <= 1, 'PASS must auto-fit TINY');
+    assert(Math.abs(autoMark.fontSize - autoMark.carWidth * 0.40) <= 1, 'PASS must use the smaller non-linear TINY fit');
+    assert.strictEqual(autoMark.display, 'flex');
+    assert.strictEqual(autoMark.visibility, 'visible');
+    assert(autoMark.rect.width > 0 && autoMark.rect.height > 0);
+    assert.strictEqual(autoMark.svgPaths, 2, 'Series PASS must render an outlined SVG instead of a missing font glyph');
     await page.screenshot({path:'/tmp/creatorpack-series-auto-mark.png'});
     await page.evaluate(() => {
       const scope = angular.element(document.querySelector('.cp-panel')).scope();
@@ -382,7 +459,7 @@ async function makeServer(modName) {
       scope.cfg.seriesMarkAuto = true; scope.cfg.seriesMarkScale = 100; scope.$apply();
     });
     await page.waitForTimeout(120);
-    console.log('✓ PASS/FAIL auto-fit each car; manual 150% and fixed-size mode work live');
+    console.log('✓ PASS/FAIL non-linear auto-fit, manual 150% and fixed-size mode work live');
     await page.keyboard.press('Control+z');
     await page.waitForTimeout(120);
     await page.keyboard.press('l');

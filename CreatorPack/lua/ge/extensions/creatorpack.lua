@@ -331,7 +331,7 @@ end
 
 -- Shenim ne log-un e lojes (per diagnoze)
 local function pfhudNote(txt)
-  local msg = '[CreatorPack Studio v6.1.3] ' .. tostring(txt or '')
+  local msg = '[CreatorPack Studio v6.2.0] ' .. tostring(txt or '')
   pcall(print, msg)
   return msg
 end

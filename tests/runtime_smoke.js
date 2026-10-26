@@ -177,7 +177,7 @@ const mainBindingCount = checkHtmlBindings(
 ok('CreatorPack Angular bindings resolved (' + mainBindingCount + ' expressions)');
 // CreatorPack runtime logic.
 const main = instantiate('CreatorPack/ui/modules/apps/CreatorPack/app.js', 'creatorpackPanel');
-assert.strictEqual(main.modVersion, '6.1.3');
+assert.strictEqual(main.modVersion, '6.2.0');
 assert.strictEqual(main.cfg.items.length, 8);
 assert.strictEqual(main.toggleCost, undefined);
 ok('CreatorPack boots with clean vehicle-only configuration');
@@ -247,6 +247,29 @@ main.setSeries6Mode(true);
 assert.strictEqual(main.cfg.series6Mode, true);
 assert.strictEqual(main.cfg.shortsMode, true);
 assert.strictEqual(main.cfg.seriesPreset, 'bmw');
+assert.strictEqual(main.seriesPresets.length, 10);
+assert.deepStrictEqual(main.seriesPresets.map(preset => preset.name), [
+  'BMW', 'Toyota LC300', 'Lightning McQueen', 'Mercedes G-Class',
+  'Lamborghini Huracán', 'Nissan GT-R R34', 'Toyota Supra MK4',
+  'Ford Mustang GT', 'Jeep Wrangler', 'Semi Truck'
+]);
+const expectedSeriesColors = ['#f4df28', '#3978f6', '#ff8a32', '#f04444', '#58d83e', '#f45bd5'];
+const expectedSeriesScales = [0.46, 0.58, 0.70, 0.82, 0.94, 1.06];
+let seriesAssetCount = 0;
+for (const preset of main.seriesPresets) {
+  main.setSeriesPreset(preset.id);
+  assert.strictEqual(main.cfg.seriesPreset, preset.id);
+  assert.strictEqual(main.seriesSlots.length, 6);
+  assert.deepStrictEqual(main.seriesSlots.map(slot => slot.color), expectedSeriesColors, preset.name + ' palette');
+  assert.deepStrictEqual(main.seriesSlots.map(slot => slot.scale), expectedSeriesScales, preset.name + ' scales');
+  for (const slot of main.seriesSlots) {
+    assert(fs.existsSync(path.join(ROOT, 'CreatorPack', slot.image)), 'Missing Series asset: ' + slot.image);
+    seriesAssetCount++;
+  }
+}
+assert.strictEqual(seriesAssetCount, 60);
+main.setSeriesPreset('bmw');
+ok('All 10 Series presets keep the BMW palette/scales and resolve 60 transparent variants');
 assert.strictEqual(main.seriesSlots.length, 6);
 assert.strictEqual(main.visibleCircleCount(), 6);
 assert.deepStrictEqual(main.seriesSlots.map(slot => slot.label), [
@@ -302,10 +325,40 @@ main.resetSeriesAppearance();
 assert.strictEqual(main.cfg.seriesCarScale, 100);
 assert(main.cfg.seriesSlotX.every(value => value === 0));
 assert(main.cfg.seriesSlotScale.every(value => value === 100));
+const shortsSeriesWidth = parseFloat(main.seriesHudStyle().width);
+const shortsGiantWidth = parseFloat(main.seriesImageStyle(main.seriesSlots[5], 5).width);
+assert.strictEqual(main.cfg.seriesView, 'shorts');
+main.setSeriesView('full');
+assert.strictEqual(main.cfg.seriesView, 'full');
+assert.strictEqual(parseFloat(main.seriesHudStyle().width), main.viewport.w);
+assert(parseFloat(main.seriesImageStyle(main.seriesSlots[5], 5).width) > shortsGiantWidth * 2);
+main.seriesPlace('center');
+const fullBaseLeft = parseFloat(main.seriesHudStyle().left);
+const fullBaseTop = parseFloat(main.seriesHudStyle().top);
+main.cfg.seriesOffsetX = 35;
+main.cfg.seriesOffsetY = -20;
+assert.strictEqual(parseFloat(main.seriesHudStyle().left), fullBaseLeft + 35);
+assert.strictEqual(parseFloat(main.seriesHudStyle().top), fullBaseTop - 20);
+main.resetSeriesPosition();
+assert.strictEqual(main.cfg.seriesOffsetX, 0);
+assert.strictEqual(main.cfg.seriesOffsetY, 0);
+const fullCenterY = main.cfg.positionY;
+main.seriesPlace('bottom');
+assert.notStrictEqual(main.cfg.positionY, fullCenterY);
+main.setSeriesView('shorts');
+assert.strictEqual(parseFloat(main.seriesHudStyle().width), shortsSeriesWidth);
 const autoTinyMark = parseFloat(main.seriesMarkStyle(0).fontSize);
+const autoBigMark = parseFloat(main.seriesMarkStyle(4).fontSize);
 const autoGiantMark = parseFloat(main.seriesMarkStyle(5).fontSize);
+const tinyCarWidth = parseFloat(main.seriesImageStyle(main.seriesSlots[0], 0).width);
+const bigCarWidth = parseFloat(main.seriesImageStyle(main.seriesSlots[4], 4).width);
+const giantCarWidth = parseFloat(main.seriesImageStyle(main.seriesSlots[5], 5).width);
 assert(autoTinyMark < autoGiantMark, 'Auto marks must fit each car instead of using one fixed size');
-assert(Math.abs(autoTinyMark - parseFloat(main.seriesImageStyle(main.seriesSlots[0], 0).width) * 0.62) <= 1);
+assert(Math.abs(autoTinyMark - tinyCarWidth * 0.40) <= 1, 'Non-linear curve must make TINY smaller than the old 62% fit');
+assert(autoTinyMark < tinyCarWidth * 0.62);
+assert(autoBigMark > bigCarWidth * 0.62, 'BIG must be larger than the old linear fit');
+assert(Math.abs(autoGiantMark - giantCarWidth * 0.82) <= 1, 'GIANT must use the enlarged end of the curve');
+assert(autoGiantMark > giantCarWidth * 0.62);
 main.cfg.seriesMarkScale = 150;
 assert(Math.abs(parseFloat(main.seriesMarkStyle(0).fontSize) - autoTinyMark * 1.5) <= 1);
 main.cfg.seriesMarkAuto = false;
@@ -329,6 +382,7 @@ assert.strictEqual(main.selected, 1);
 main.resetStates();
 assert.strictEqual(main.selected, 0);
 assert(main.cfg.items.slice(0, 6).every(item => item.state === 'pending'));
+main.seriesPlace('top');
 const seriesTop = main.cfg.positionY;
 main.seriesPlace('bottom');
 assert.notStrictEqual(main.cfg.positionY, seriesTop);
@@ -347,7 +401,7 @@ assert.strictEqual(main.cfg.layout, 'grid');
 assert.strictEqual(main.cfg.gridCols, 2);
 main.setShortsMode(false);
 assert.strictEqual(main.visibleCircleCount(), 8);
-ok('BMW Series 6 keeps real spacing, per-car controls, auto/manual marks, title outline, K/L flow and separate Shorts');
+ok('Series keeps Full Size, X/Y placement, per-car controls, non-linear marks, title outline, K/L flow and separate Shorts');
 
 main.cfg.markGlow = 0;
 main.cfg.markOutline = 0;
