@@ -43,7 +43,7 @@ angular.module('beamng.apps')
       // v5.3.0 — Versioni shfaqet brenda HUD-it, që të shihet
       // menjëherë nëse BeamNG ka ngarkuar versionin e re.
       // =====================================================
-      var MOD_VERSION = '6.1.1';
+      var MOD_VERSION = '6.1.2';
       scope.modVersion = MOD_VERSION;
       scope.storageKey = STORAGE_KEY;
 
@@ -100,7 +100,11 @@ angular.module('beamng.apps')
           shortsSafeAreas: true,
           series6Mode: false,
           seriesPreset: 'bmw',
-          seriesGap: 0,
+          seriesLayoutVersion: 2,
+          seriesGap: 14,
+          seriesCarScale: 100,
+          seriesSlotX: [0, 0, 0, 0, 0, 0],
+          seriesSlotScale: [100, 100, 100, 100, 100, 100],
           seriesTitleSize: 100,
           seriesTitleOutline: 2.5,
           pendingFillOpacity: 0.16,
@@ -203,11 +207,21 @@ angular.module('beamng.apps')
         if (cfg.shortsSafeAreas == null) cfg.shortsSafeAreas = true;
         if (cfg.series6Mode == null) cfg.series6Mode = false;
         if (!cfg.seriesPreset) cfg.seriesPreset = 'bmw';
-        if (cfg.seriesGap == null) cfg.seriesGap = 0;
+        if (saved && Number(saved.seriesLayoutVersion) !== 2) cfg.seriesGap = 14;
+        cfg.seriesLayoutVersion = 2;
+        if (cfg.seriesGap == null) cfg.seriesGap = 14;
+        if (cfg.seriesCarScale == null) cfg.seriesCarScale = 100;
+        if (!angular.isArray(cfg.seriesSlotX)) cfg.seriesSlotX = [0, 0, 0, 0, 0, 0];
+        if (!angular.isArray(cfg.seriesSlotScale)) cfg.seriesSlotScale = [100, 100, 100, 100, 100, 100];
         if (cfg.seriesTitleSize == null) cfg.seriesTitleSize = 100;
         if (cfg.seriesTitleOutline == null) cfg.seriesTitleOutline = 2.5;
         if (cfg.series6Mode) cfg.shortsMode = true;
         cfg.seriesGap = Math.max(-24, Math.min(36, Number(cfg.seriesGap) || 0));
+        cfg.seriesCarScale = Math.max(70, Math.min(130, Number(cfg.seriesCarScale) || 100));
+        for (var seriesIdx = 0; seriesIdx < 6; seriesIdx++) {
+          cfg.seriesSlotX[seriesIdx] = Math.max(-60, Math.min(60, Number(cfg.seriesSlotX[seriesIdx]) || 0));
+          cfg.seriesSlotScale[seriesIdx] = Math.max(70, Math.min(130, Number(cfg.seriesSlotScale[seriesIdx]) || 100));
+        }
         cfg.seriesTitleSize = Math.max(70, Math.min(140, Number(cfg.seriesTitleSize) || 100));
         cfg.seriesTitleOutline = Math.max(0, Math.min(5, Number(cfg.seriesTitleOutline) || 0));
         cfg.markGlow = Math.max(0, Math.min(30, Number(cfg.markGlow) || 0));
@@ -770,17 +784,27 @@ angular.module('beamng.apps')
           width:scope.safeBox().w + 'px'
         };
       };
+      function seriesCarWidth(index) {
+        var slot = scope.seriesSlots[index] || scope.seriesSlots[0];
+        var globalScale = Math.max(70, Math.min(130, Number(scope.cfg.seriesCarScale) || 100)) / 100;
+        var ownScale = Math.max(70, Math.min(130, Number(scope.cfg.seriesSlotScale[index]) || 100)) / 100;
+        return Math.round(seriesUnit() * Number(slot.scale || 1) * globalScale * ownScale);
+      }
       scope.seriesSlotStyle = function(index) {
         var unit = seriesUnit();
         var gap = Math.max(-24, Math.min(36, Number(scope.cfg.seriesGap) || 0));
+        var offsetX = Math.max(-60, Math.min(60, Number(scope.cfg.seriesSlotX[index]) || 0));
         return {
-          width:unit + 'px',
+          width:seriesCarWidth(index) + 'px',
           height:(unit * 0.76) + 'px',
-          marginLeft:index > 0 ? gap + 'px' : '0px'
+          marginLeft:index > 0 ? gap + 'px' : '0px',
+          transform:'translateX(' + offsetX + 'px)'
         };
       };
-      scope.seriesImageStyle = function(slot) {
-        return { width:Math.round(seriesUnit() * Number(slot.scale || 1)) + 'px' };
+      scope.seriesImageStyle = function(slot, index) {
+        if (index === undefined || index === null) index = scope.seriesSlots.indexOf(slot);
+        if (index < 0) index = 0;
+        return { width:seriesCarWidth(index) + 'px' };
       };
       scope.seriesMarkStyle = function() {
         var glow = Math.max(0, Math.min(30, Number(scope.cfg.markGlow) || 0));
@@ -802,8 +826,17 @@ angular.module('beamng.apps')
           textShadow:'none'
         };
       };
+      scope.resetSeriesSelected = function() {
+        var idx = Math.max(0, Math.min(5, Number(scope.selected) || 0));
+        scope.cfg.seriesSlotX[idx] = 0;
+        scope.cfg.seriesSlotScale[idx] = 100;
+        scope.persist();
+      };
       scope.resetSeriesAppearance = function() {
-        scope.cfg.seriesGap = 0;
+        scope.cfg.seriesGap = 14;
+        scope.cfg.seriesCarScale = 100;
+        scope.cfg.seriesSlotX = [0, 0, 0, 0, 0, 0];
+        scope.cfg.seriesSlotScale = [100, 100, 100, 100, 100, 100];
         scope.cfg.seriesTitleSize = 100;
         scope.cfg.seriesTitleOutline = 2.5;
         scope.persist();
@@ -1206,14 +1239,15 @@ angular.module('beamng.apps')
         'theme','layout','gridCols','animLevel','showLabels','labelSize','hudDensity',
         'showMiniButton','soundOn','vehiclesOn','vehiclesKey',
         'guidesOn','guideRatio','guideCenterV','guideCenterH','guideThirds','guideColor',
-        'shortsSafeAreas','seriesGap','seriesTitleSize','seriesTitleOutline'
+        'shortsSafeAreas','seriesGap','seriesCarScale','seriesSlotX','seriesSlotScale',
+        'seriesTitleSize','seriesTitleOutline'
       ];
 
       scope.savePreset = function() {
         var name = (scope.presetName || '').trim();
         if (!name) { scope.storageWarning = 'Shkruaj nje emer per preset-in.'; return; }
         var data = {};
-        angular.forEach(PRESET_FIELDS, function(k) { data[k] = scope.cfg[k]; });
+        angular.forEach(PRESET_FIELDS, function(k) { data[k] = angular.copy(scope.cfg[k]); });
 
         var existing = null;
         angular.forEach(scope.cfg.presets, function(p) { if (p.name === name) existing = p; });
@@ -1229,7 +1263,7 @@ angular.module('beamng.apps')
         angular.forEach(preset.data, function(v, k) {
           // A preset changes style, never enters/leaves the active Shorts workspace.
           if (k === 'shortsMode' || k === 'shortsRestore') return;
-          scope.cfg[k] = v;
+          scope.cfg[k] = angular.copy(v);
         });
         enforceShortsComposition();
         scope.persist();

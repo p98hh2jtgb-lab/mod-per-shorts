@@ -796,6 +796,9 @@
     .cp-series-standard { width:100%; display:flex; justify-content:space-between; gap:10px; margin-top:9px; padding:11px 12px; border:1px solid rgba(255,255,255,.06); border-radius:10px; background:transparent; color:rgba(195,215,227,.55); font-size:10px; cursor:pointer; }
     .cp-series-standard span { color:rgba(125,231,255,.50); }
     .cp-series-standard:hover { border-color:rgba(125,231,255,.16); color:#e2f6ff; }
+    .cp-series-manual { margin-top:13px; padding-top:11px; border-top:1px solid rgba(255,255,255,.055); }
+    .cp-series-manual-head { display:flex; align-items:center; justify-content:space-between; gap:10px; color:rgba(174,196,210,.42); font-size:8px; letter-spacing:.08em; }
+    .cp-series-manual-head b { color:#bfefff; font-size:9px; letter-spacing:.03em; }
     .cp-series-appearance-note { margin-top:10px; color:rgba(174,196,210,.40); font-size:8px; line-height:1.45; }
     .cp-series-note { margin:12px 0 2px; color:rgba(174,196,210,.38); font-size:9px; line-height:1.45; text-align:center; }
 
@@ -841,7 +844,7 @@
       <div class="pf-series-slot" ng-repeat="slot in seriesSlots track by $index"
            ng-class="{'is-selected':selected === $index, 'state-pass':cfg.items[$index].state === 'pass', 'state-fail':cfg.items[$index].state === 'fail'}"
            ng-style="seriesSlotStyle($index)" ng-click="select($index)" title="{{slot.label}}">
-        <img class="pf-series-car" ng-src="{{slot.image}}" ng-style="seriesImageStyle(slot)" alt="{{slot.label}}" draggable="false">
+        <img class="pf-series-car" ng-src="{{slot.image}}" ng-style="seriesImageStyle(slot, $index)" alt="{{slot.label}}" draggable="false">
         <div ng-if="cfg.showMarks && cfg.items[$index].state === 'pass'" class="pf-series-mark pass" ng-style="seriesMarkStyle()">✓</div>
         <div ng-if="cfg.showMarks && cfg.items[$index].state === 'fail'" class="pf-series-mark fail" ng-style="seriesMarkStyle()">✕</div>
       </div>
@@ -1044,18 +1047,33 @@
         </div>
 
         <div class="cp-control-card">
-          <div class="cp-control-title"><span>02</span><div><b>Hapësira & titulli</b><small>Afro ose largo makinat dhe personalizo tekstin aktiv.</small></div></div>
+          <div class="cp-control-title"><span>02</span><div><b>Makinat në ekran</b><small>Hapësirë e barabartë dhe rregullim manual për secilën makinë.</small></div></div>
           <div class="cp-two-controls">
             <label>Hapësira <b>{{cfg.seriesGap}} px</b><input type="range" min="-24" max="36" step="1" ng-model="cfg.seriesGap" ng-change="persist()"></label>
-            <label>Madhësia e titullit <b>{{cfg.seriesTitleSize}}%</b><input type="range" min="70" max="140" step="1" ng-model="cfg.seriesTitleSize" ng-change="persist()"></label>
+            <label>Të gjitha · madhësia <b>{{cfg.seriesCarScale}}%</b><input type="range" min="70" max="130" step="1" ng-model="cfg.seriesCarScale" ng-change="persist()"></label>
           </div>
-          <label class="cp-range-label">Outline i zi i titullit <b>{{cfg.seriesTitleOutline}} px</b><input type="range" min="0" max="5" step="0.5" ng-model="cfg.seriesTitleOutline" ng-change="persist()"></label>
-          <div class="cp-series-appearance-note">Hapësira negative i afroan makinat; ajo positive i largon. Outline 0 e heq kornizën e tekstit.</div>
-          <button class="cp-text-button" ng-click="resetSeriesAppearance()">↺ Rikthe hapësirën dhe titullin</button>
+          <div class="cp-series-manual">
+            <div class="cp-series-manual-head"><span>RREGULLIM MANUAL</span><b>{{seriesActiveTitle()}}</b></div>
+            <div class="cp-two-controls">
+              <label>Zhvendosja X <b>{{cfg.seriesSlotX[selected]}} px</b><input type="range" min="-60" max="60" step="1" ng-model="cfg.seriesSlotX[selected]" ng-change="persist()"></label>
+              <label>Kjo makinë · madhësia <b>{{cfg.seriesSlotScale[selected]}}%</b><input type="range" min="70" max="130" step="1" ng-model="cfg.seriesSlotScale[selected]" ng-change="persist()"></label>
+            </div>
+            <button class="cp-text-button" ng-click="resetSeriesSelected()">↺ Rikthe vetëm këtë makinë</button>
+          </div>
+          <div class="cp-series-appearance-note">Zgjidh TINY, SMALL, MEDIUM, NORMAL, BIG ose GIANT më lart dhe rregulloje veçmas. Hapësira negative i afroan, ajo positive i largon.</div>
         </div>
 
         <div class="cp-control-card">
-          <div class="cp-control-title"><span>03</span><div><b>Provimi & regjistrimi</b><small>Auto-advance, undo dhe clean capture përdorin kontrollet ekzistuese.</small></div></div>
+          <div class="cp-control-title"><span>03</span><div><b>Titulli aktiv</b><small>Madhësia dhe outline-i i zi i tekstit sportiv.</small></div></div>
+          <div class="cp-two-controls">
+            <label>Madhësia e titullit <b>{{cfg.seriesTitleSize}}%</b><input type="range" min="70" max="140" step="1" ng-model="cfg.seriesTitleSize" ng-change="persist()"></label>
+            <label>Outline i zi <b>{{cfg.seriesTitleOutline}} px</b><input type="range" min="0" max="5" step="0.5" ng-model="cfg.seriesTitleOutline" ng-change="persist()"></label>
+          </div>
+          <button class="cp-text-button" ng-click="resetSeriesAppearance()">↺ Rikthe të gjithë pamjen</button>
+        </div>
+
+        <div class="cp-control-card">
+          <div class="cp-control-title"><span>04</span><div><b>Provimi & regjistrimi</b><small>Auto-advance, undo dhe clean capture përdorin kontrollet ekzistuese.</small></div></div>
           <div class="cp-check-grid">
             <label><input type="checkbox" ng-model="cfg.autoAdvance" ng-change="persist()"><span></span>Kalo automatikisht</label>
             <label><input type="checkbox" ng-model="cfg.guidesOn" ng-change="persist()"><span></span>Korniza 9:16</label>

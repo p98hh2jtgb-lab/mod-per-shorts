@@ -262,11 +262,13 @@ async function makeServer(modName) {
     const series = await page.evaluate(() => {
       const scope = angular.element(document.querySelector('.cp-panel')).scope();
       const cars = [...document.querySelectorAll('.pf-series-car')];
+      const rects = cars.map(car => car.getBoundingClientRect());
       return {
         count:cars.length,
         standardCircles:document.querySelectorAll('.pf-hud .pf-item').length,
         title:document.querySelector('.pf-series-active')?.textContent.trim(),
-        widths:cars.map(car => car.getBoundingClientRect().width),
+        widths:rects.map(rect => rect.width),
+        gaps:rects.slice(1).map((rect, i) => rect.left - rects[i].right),
         centers:[...document.querySelectorAll('.pf-series-slot')].map(slot => {
           const rect = slot.getBoundingClientRect(); return rect.left + rect.width / 2;
         }),
@@ -283,12 +285,13 @@ async function makeServer(modName) {
     assert.strictEqual(series.titleOutline, '2.5px');
     assert.strictEqual(series.loaded, true, 'Every transparent BMW variant must load');
     assert(series.widths.every((width, i) => i === 0 || width > series.widths[i - 1]), 'Car widths must increase Tiny → Giant');
+    assert(series.gaps.every(gap => Math.abs(gap - 14) < 0.2), 'Default visible gaps must be equal, including BIG → GIANT');
     await page.screenshot({path:'/tmp/creatorpack-series-panel.png'});
     console.log('✓ BMW Series 6 renders six loaded transparent variants in increasing size with active title');
 
     await page.evaluate(() => {
       const scope = angular.element(document.querySelector('.cp-panel')).scope();
-      scope.cfg.seriesGap = -18;
+      scope.cfg.seriesGap = Number(scope.cfg.seriesGap) - 18;
       scope.cfg.seriesTitleSize = 115;
       scope.cfg.seriesTitleOutline = 3;
       scope.persist(); scope.$apply();
@@ -311,6 +314,31 @@ async function makeServer(modName) {
     assert.strictEqual(customizedSeries.fontStyle, 'italic');
     await page.screenshot({path:'/tmp/creatorpack-series-custom.png'});
     console.log('✓ Series spacing compacts live and the sport title has adjustable black outline/size');
+
+    await page.evaluate(() => {
+      const scope = angular.element(document.querySelector('.cp-panel')).scope();
+      scope.select(5);
+      scope.cfg.seriesSlotX[5] = 24;
+      scope.cfg.seriesSlotScale[5] = 120;
+      scope.persist(); scope.$apply();
+    });
+    await page.waitForTimeout(200);
+    const manualGiant = await page.evaluate(() => {
+      const slots = document.querySelectorAll('.pf-series-slot');
+      const cars = document.querySelectorAll('.pf-series-car');
+      return {transform:slots[5].style.transform, width:cars[5].getBoundingClientRect().width,
+        title:document.querySelector('.pf-series-active').textContent.trim()};
+    });
+    assert.strictEqual(manualGiant.transform, 'translateX(24px)');
+    assert(manualGiant.width > series.widths[5] * 1.15, 'Per-car scale must resize GIANT live');
+    assert.strictEqual(manualGiant.title, 'GIANT CAR');
+    await page.screenshot({path:'/tmp/creatorpack-series-manual.png'});
+    await page.evaluate(() => {
+      const scope = angular.element(document.querySelector('.cp-panel')).scope();
+      scope.resetSeriesSelected(); scope.select(0); scope.$apply();
+    });
+    await page.waitForTimeout(120);
+    console.log('✓ GIANT has independent live X offset and scale, with per-car reset');
 
     await page.keyboard.press('k');
     await page.waitForTimeout(120);
