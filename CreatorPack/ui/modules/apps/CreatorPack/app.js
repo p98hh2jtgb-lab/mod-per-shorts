@@ -68,7 +68,7 @@ angular.module('beamng.apps')
       // v5.3.0 — Versioni shfaqet brenda HUD-it, që të shihet
       // menjëherë nëse BeamNG ka ngarkuar versionin e re.
       // =====================================================
-      var MOD_VERSION = '6.0.0';
+      var MOD_VERSION = '6.0.1';
       scope.modVersion = MOD_VERSION;
       scope.storageKey = STORAGE_KEY;
 
@@ -1457,8 +1457,39 @@ angular.module('beamng.apps')
       var pfSounds = {}, pfSoundTry = { pass: 0, fail: 0 };
 
       var pfBuf = {}, pfLoading = {};
+      var pfAudioState = { ctx:null };
 
-      // v5.10: XHR + decodeAudioData —
+      function audioCtx() {
+        try {
+          var C = $window.AudioContext || $window.webkitAudioContext;
+          if (!C) return null;
+          if (!pfAudioState.ctx) pfAudioState.ctx = new C();
+          if (pfAudioState.ctx.state === 'suspended' && pfAudioState.ctx.resume) {
+            var resumed = pfAudioState.ctx.resume();
+            if (resumed && resumed.catch) resumed.catch(function() {});
+          }
+          return pfAudioState.ctx;
+        } catch (e) { return null; }
+      }
+
+      function xhrBuf(url, ok, fail) {
+        try {
+          var XHR = $window.XMLHttpRequest;
+          if (!XHR && typeof XMLHttpRequest !== 'undefined') XHR = XMLHttpRequest;
+          if (!XHR) { fail(); return; }
+          var x = new XHR();
+          x.open('GET', url, true);
+          x.responseType = 'arraybuffer';
+          x.onload = function() {
+            if ((x.status === 200 || x.status === 0) && x.response && x.response.byteLength > 200) ok(x.response);
+            else fail();
+          };
+          x.onerror = fail;
+          x.send();
+        } catch (e) { fail(); }
+      }
+
+      // Decode each sound independently; a failure for PASS must never block FAIL.
       // ne BeamNG CEF ky osht ma i sigurt se elementi <audio>.
       function loadPFBuffer(kind, done) {
         if (pfBuf[kind]) return done(pfBuf[kind]);
@@ -1502,9 +1533,9 @@ angular.module('beamng.apps')
       }
 
       function initPFSounds() {
-        try {
-          if (!$window.Audio) return;
-          angular.forEach(PF_SOUND_URLS, function(list, kind) {
+        if (!$window.Audio) return;
+        angular.forEach(PF_SOUND_URLS, function(list, kind) {
+          try {
             var a = new $window.Audio();
             a.preload = 'auto';
             a.volume = markSoundVolume();
@@ -1518,9 +1549,9 @@ angular.module('beamng.apps')
             a.src = list[0];
             try { a.load(); } catch (e) {}
             pfSounds[kind] = a;
-            loadPFBuffer(kind, function() {});   // v5.10: parangarko edhe buferin WebAudio
-          });
-        } catch (e) {}
+          } catch (e) {}
+          try { loadPFBuffer(kind, function() {}); } catch (e) {}
+        });
       }
 
       initPFSounds();
@@ -2434,9 +2465,8 @@ angular.module('beamng.apps')
         try { $window.removeEventListener('keydown', hotkeyEntry, true); } catch (e) {}
         try { if (node) node.removeEventListener('keydown', hotkeyEntry, true); } catch (e) {}
         $window.removeEventListener('resize', onResize);
-        try {
-        } catch(e) {}
         $document.off('click', onDocClickPicker);
+        try { if (pfAudioState.ctx && pfAudioState.ctx.close) pfAudioState.ctx.close(); } catch (e) {}
       });
 
       // =====================================================

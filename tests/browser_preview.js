@@ -38,6 +38,16 @@ async function makeServer(modName) {
       </style><script src="/angular.js"></script><script>
         angular.module('beamng.apps',[]);
         window.bngApi={engineLua:function(){},engineLuaAsync:function(){}};
+        window.__pfAudioElements=[];
+        const NativeAudio=window.Audio;
+        if(NativeAudio){
+          window.Audio=function(...args){
+            const audio=new NativeAudio(...args);
+            window.__pfAudioElements.push(audio);
+            return audio;
+          };
+          window.Audio.prototype=NativeAudio.prototype;
+        }
       </script><script src="${directiveJs}"></script></head><body><${tag}></${tag}></body></html>`);
       return;
     }
@@ -75,6 +85,25 @@ async function makeServer(modName) {
     assert(geometry.left >= 0 && geometry.top >= 0 && geometry.right <= geometry.width && geometry.bottom <= geometry.height);
     console.log('✓ CreatorPack Workspace renders inside 1920×1080 viewport');
 
+    const initializedSounds = await page.evaluate(() => window.__pfAudioElements.map(audio => audio.src));
+    assert(initializedSounds.some(src => src.endsWith('/sounds/pass.mp3')), 'PASS was not initialized in Chromium');
+    assert(initializedSounds.some(src => src.endsWith('/sounds/fail.mp3')), 'FAIL was not initialized in Chromium');
+    const decodedSounds = await page.evaluate(async() => {
+      const Context = window.AudioContext || window.webkitAudioContext;
+      const context = new Context();
+      const result = {};
+      for (const kind of ['pass','fail']) {
+        const response = await fetch(`/ui/modules/apps/CreatorPack/sounds/${kind}.mp3`);
+        const bytes = await response.arrayBuffer();
+        const buffer = await context.decodeAudioData(bytes);
+        result[kind] = {duration:buffer.duration,sampleRate:buffer.sampleRate};
+      }
+      await context.close();
+      return result;
+    });
+    assert(decodedSounds.pass.duration > 0.2 && decodedSounds.fail.duration > 0.5);
+    console.log(`✓ PASS and FAIL initialize and decode (${decodedSounds.pass.duration.toFixed(2)}s / ${decodedSounds.fail.duration.toFixed(2)}s)`);
+
     await page.keyboard.press('k');
     await page.waitForTimeout(120);
     let keyState = await page.evaluate(() => {
@@ -91,12 +120,22 @@ async function makeServer(modName) {
     });
     assert.strictEqual(keyState.first, 'pending');
     assert.strictEqual(keyState.selected, 0);
+    await page.keyboard.press('l');
+    await page.waitForTimeout(120);
+    keyState = await page.evaluate(() => {
+      const s = angular.element(document.querySelector('.cp-panel')).scope();
+      return {first:s.cfg.items[0].state,selected:s.selected};
+    });
+    assert.strictEqual(keyState.first, 'fail');
+    assert.strictEqual(keyState.selected, 1);
+    await page.keyboard.press('Control+z');
+    await page.waitForTimeout(120);
     await page.keyboard.press('h');
     await page.waitForTimeout(120);
     assert.strictEqual(await page.locator('.cp-panel').count(), 0);
     await page.keyboard.press('h');
     await page.waitForSelector('.cp-panel', {state:'visible'});
-    console.log('✓ Real H / K / Ctrl+Z keyboard events toggle, mark and undo');
+    console.log('✓ Real H / K / L / Ctrl+Z keyboard events toggle, mark PASS/FAIL and undo');
 
     for (const tab of ['makinat','pamja','fotot','tjera']) {
       await page.evaluate(tabName => {

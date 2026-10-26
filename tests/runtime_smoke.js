@@ -40,10 +40,11 @@ const localStorage = {
 };
 global.localStorage = localStorage;
 
+const audioInstances = [];
 class FakeAudio {
-  constructor() { this.preload = ''; this.volume = 1; this.src = ''; }
+  constructor() { this.preload = ''; this.volume = 1; this.src = ''; this.played = 0; audioInstances.push(this); }
   load() {}
-  play() { return Promise.resolve(); }
+  play() { this.played++; return Promise.resolve(); }
   cloneNode() { const a = new FakeAudio(); a.src = this.src; return a; }
 }
 class FakeXHR {
@@ -170,7 +171,7 @@ const mainBindingCount = checkHtmlBindings(
 ok('CreatorPack Angular bindings resolved (' + mainBindingCount + ' expressions)');
 // CreatorPack runtime logic.
 const main = instantiate('CreatorPack/ui/modules/apps/CreatorPack/app.js', 'creatorpackPanel');
-assert.strictEqual(main.modVersion, '6.0.0');
+assert.strictEqual(main.modVersion, '6.0.1');
 assert.strictEqual(main.cfg.items.length, 8);
 assert.strictEqual(main.toggleCost, undefined);
 ok('CreatorPack boots with clean vehicle-only configuration');
@@ -258,8 +259,12 @@ ok('PASS marking, auto-advance, undo and reset execute without runtime errors');
 
 main.scanImages();
 assert(luaCommands.some(command => command.includes('pfhudListImages')));
+assert(audioInstances.some(audio => audio.src.endsWith('/sounds/pass.mp3')), 'PASS audio was not initialized');
+assert(audioInstances.some(audio => audio.src.endsWith('/sounds/fail.mp3')), 'FAIL audio was not initialized');
 assert.strictEqual(main.testSound('pass'), true);
-ok('Manual image-folder scan and packaged PASS audio path execute');
+assert.strictEqual(main.testSound('fail'), true);
+assert(audioInstances.some(audio => audio.src.endsWith('/sounds/fail.mp3') && audio.played > 0), 'FAIL audio did not play');
+ok('Manual image scan and independent PASS/FAIL audio paths execute');
 
 // Ensure every static asset referenced by the HTML exists.
 for (const app of ['CreatorPack']) {

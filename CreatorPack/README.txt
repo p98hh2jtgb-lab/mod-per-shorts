@@ -1,4 +1,4 @@
-CREATORPACK STUDIO 6.0.0
+CREATORPACK STUDIO 6.0.1
 ========================
 Panel i ri me H · PASS/FAIL circles · Shorts Studio 9:16
 
@@ -6,7 +6,7 @@ Panel i ri me H · PASS/FAIL circles · Shorts Studio 9:16
 INSTALIMI
 ---------
 1. Çaktivizo ose hiq versionin e vjetër CreatorPack/HUD PRO që të mos ketë dy kopje aktive.
-2. Kopjo CreatorPack_v6.0.0.zip pa e hapur te:
+2. Kopjo CreatorPack_v6.0.1.zip pa e hapur te:
    Documents\BeamNG.drive\mods\
 3. Nis lojën. Nëse overlay-i nuk shfaqet vetë:
    Esc → UI Apps → Add App → CreatorPack Studio.
@@ -81,4 +81,4 @@ VERIFIKIMI
 • Render real në Chromium për çdo tab, H/K/Ctrl+Z, clean capture dhe 4 rrethe 2×2.
 • Pa JavaScript errors në render-in final.
 
-Ky dokument përshkruan CreatorPack Studio 6.0.0.
+Ky dokument përshkruan CreatorPack Studio 6.0.1.
