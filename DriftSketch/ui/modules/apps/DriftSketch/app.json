@@ -1,7 +1,7 @@
 {
   "name": "DriftSketch",
   "author": "daimy",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Record any vehicle, build real low-poly mesh cones along the drive and keep them visible for BeamNG replay.",
   "directive": "driftSketchPanel",
   "domElement": "<drift-sketch-panel></drift-sketch-panel>",

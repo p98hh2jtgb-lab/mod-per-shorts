@@ -34,7 +34,7 @@
     .ds-static{border-color:rgba(105,214,221,.14);background:rgba(105,214,221,.045);color:#a5e4e8;letter-spacing:.01em}
     .ds-field input[type=range]{width:100%;height:3px;margin-top:11px;accent-color:#ff7a38}
     .ds-checks{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:12px}.ds-check{display:flex;align-items:center;gap:7px;min-height:31px;padding:7px 8px;border:1px solid rgba(255,255,255,.05);border-radius:8px;color:rgba(197,215,219,.55);font-size:8px;cursor:pointer}
-    .ds-check input{accent-color:#ff7a38}.ds-foot{display:flex;justify-content:space-between;gap:10px;margin-top:12px;color:rgba(174,195,201,.30);font-size:8px}.ds-foot b{color:rgba(255,150,98,.42);font-weight:600}
+    .ds-check input{accent-color:#ff7a38}.ds-check.solid{grid-column:1/3;border-color:rgba(255,112,42,.18);background:rgba(255,112,42,.045);color:#ffb18a}.ds-check.solid small{margin-left:auto;color:rgba(255,190,160,.42);font-size:7px}.ds-foot{display:flex;justify-content:space-between;gap:10px;margin-top:12px;color:rgba(174,195,201,.30);font-size:8px}.ds-foot b{color:rgba(255,150,98,.42);font-weight:600}
     @media(max-width:520px){.ds-root{padding:7px}.ds-panel{width:calc(100vw - 14px);max-height:calc(100vh - 14px)}}
   </style>
 
@@ -79,6 +79,7 @@
         <div class="ds-checks">
           <label class="ds-check"><input type="checkbox" ng-model="settings.smooth" ng-change="pushSetting('smooth')">Smooth path</label>
           <label class="ds-check"><input type="checkbox" ng-model="settings.keepBuilds" ng-change="pushSetting('keepBuilds')">Keep builds</label>
+          <label class="ds-check solid" title="Real static collision. Impacts can stop or damage the car. Existing paths rebuild automatically."><input type="checkbox" ng-model="settings.collision" ng-change="pushSetting('collision')">Solid / car damage <small>REBUILDS</small></label>
         </div>
         <button class="ds-btn rebuild wide" ng-click="rebuild()" ng-disabled="state.recording || state.buildCount === 0">↻ REBUILD WITH CURRENT SETTINGS</button>
         <button class="ds-btn clear wide" ng-click="clear()">× CLEAR GENERATED CONES &amp; SAVED DRIVES</button>

@@ -1,4 +1,4 @@
--- DriftSketch 0.2.0 — record a drive, build real low-poly mesh cones, keep them for replay.
+-- DriftSketch 0.3.0 — record a drive, build real low-poly mesh cones, keep them for replay.
 local M = {}
 
 local SETTINGS = {
@@ -9,7 +9,8 @@ local SETTINGS = {
   groundOffset = -0.55,
   maxCones = 1200,
   smooth = true,
-  keepBuilds = true
+  keepBuilds = true,
+  collision = false
 }
 
 local recording = false
@@ -22,6 +23,8 @@ local status = 'Ready. Press Start and drive.'
 local statusError = false
 local uiClock = 0
 local objectSerial = 0
+local collisionDirty = false
+local collisionWasSolid = false
 
 local function copyPoints(source)
   local out = {}
@@ -92,10 +95,18 @@ local function sendState()
 end
 
 local function removeObjects()
+  if collisionWasSolid then collisionDirty = true end
+  collisionWasSolid = false
   for _, obj in ipairs(spawned) do
     if obj and obj.delete then pcall(function() obj:delete() end) end
   end
   spawned = {}
+end
+
+local function reloadCollision()
+  if not collisionDirty then return end
+  if be and be.reloadCollision then pcall(be.reloadCollision, be) end
+  collisionDirty = false
 end
 
 local function clearAll()
@@ -103,6 +114,7 @@ local function clearAll()
   points = {}
   savedPaths = {}
   removeObjects()
+  reloadCollision()
 end
 
 local function smoothPath(source)
@@ -119,17 +131,17 @@ local function smoothPath(source)
   return out
 end
 
--- Return evenly spaced center-line samples with a horizontal tangent.
-local function samplePath(source, spacing)
-  local path = smoothPath(source)
+-- Resample one already-offset line by its own arc length. Inner and outer
+-- curves have different lengths, so each gets independent physical spacing.
+local function resampleLine(path, spacing, maxSamples)
   if #path < 2 then return {} end
   local total = pathLength(path)
   if total < 0.05 then return {} end
-  spacing = math.max(0.5, tonumber(spacing) or SETTINGS.spacing)
-  local maxSamples = math.max(2, math.floor(SETTINGS.maxCones / 2))
-  local estimated = (math.floor(total / spacing) + 1) * 2
-  if estimated > SETTINGS.maxCones then
-    spacing = total / math.max(1, maxSamples - 1)
+  local count = math.floor(total / spacing) + 1
+  local step = spacing
+  if count > maxSamples then
+    count = maxSamples
+    step = total / math.max(1, count - 1)
   end
 
   local samples = {}
@@ -143,9 +155,8 @@ local function samplePath(source, spacing)
   end
   updateSegment()
 
-  local distance = 0
-  local guard = 0
-  while distance <= total + 0.0001 and guard < maxSamples do
+  for index = 0, count - 1 do
+    local distance = math.min(total, index * step)
     while segment < #path - 1 and distance > segmentStart + segmentLength do
       segmentStart = segmentStart + segmentLength
       segment = segment + 1
@@ -154,18 +165,48 @@ local function samplePath(source, spacing)
     local a, b = path[segment], path[segment + 1]
     if segmentLength > 0.0001 then
       local t = math.max(0, math.min(1, (distance - segmentStart) / segmentLength))
-      local tx, ty = (b.x - a.x) / segmentLength, (b.y - a.y) / segmentLength
       samples[#samples + 1] = {
         x = a.x + (b.x - a.x) * t,
         y = a.y + (b.y - a.y) * t,
-        z = a.z + (b.z - a.z) * t,
-        tx = tx, ty = ty
+        z = a.z + (b.z - a.z) * t
       }
     end
-    distance = distance + spacing
-    guard = guard + 1
   end
   return samples
+end
+
+-- Build two smooth offset polylines using a centered, two-point lookahead.
+-- This avoids the abrupt one-segment normals that made tight turns jagged.
+local function buildOffsetLines(source, halfWidth, spacing)
+  local path = smoothPath(source)
+  if #path < 2 then return {{}, {}} end
+  local raw = {{}, {}}
+  local signs = {-1, 1}
+  for i, p in ipairs(path) do
+    local a, b = path[math.max(1, i - 2)], path[math.min(#path, i + 2)]
+    local dx, dy = b.x - a.x, b.y - a.y
+    local length = math.sqrt(dx * dx + dy * dy)
+    if length < 0.0001 then
+      a, b = path[math.max(1, i - 1)], path[math.min(#path, i + 1)]
+      dx, dy = b.x - a.x, b.y - a.y
+      length = math.sqrt(dx * dx + dy * dy)
+    end
+    if length > 0.0001 then
+      local nx, ny = -dy / length, dx / length
+      for lineIndex, sign in ipairs(signs) do
+        raw[lineIndex][#raw[lineIndex] + 1] = {
+          x = p.x + nx * halfWidth * sign,
+          y = p.y + ny * halfWidth * sign,
+          z = p.z
+        }
+      end
+    end
+  end
+  local maxSamples = math.max(2, math.floor(SETTINGS.maxCones / 2))
+  return {
+    resampleLine(raw[1], spacing, maxSamples),
+    resampleLine(raw[2], spacing, maxSamples)
+  }
 end
 
 local function groundZ(x, y, recordedZ)
@@ -193,9 +234,10 @@ local function spawnMesh(x, y, z)
   obj.canSave = false
   obj.useInstanceRenderData = true
   if obj.setField then
-    obj:setField('collisionType', 0, 'None')
+    obj:setField('collisionType', 0, SETTINGS.collision and 'Visible Mesh Final' or 'None')
     obj:setField('decalType', 0, 'None')
   end
+  if SETTINGS.collision then collisionWasSolid = true; collisionDirty = true end
   obj:setPosition(vec3(x, y, z))
   local scale = SETTINGS.scale
   obj:setScale(vec3(scale, scale, scale))
@@ -206,14 +248,13 @@ local function spawnMesh(x, y, z)
 end
 
 local function buildPath(path)
-  local samples = samplePath(path, SETTINGS.spacing)
-  local halfWidth = SETTINGS.width * 0.5
+  local lines = buildOffsetLines(path, SETTINGS.width * 0.5, math.max(0.5, SETTINGS.spacing))
   local before = #spawned
-  for _, p in ipairs(samples) do
-    local nx, ny = -p.ty, p.tx
-    for _, sign in ipairs({-1, 1}) do
-      local x, y = p.x + nx * halfWidth * sign, p.y + ny * halfWidth * sign
-      spawnMesh(x, y, groundZ(x, y, p.z))
+  local count = math.max(#lines[1], #lines[2])
+  for index = 1, count do
+    for _, line in ipairs(lines) do
+      local p = line[index]
+      if p then spawnMesh(p.x, p.y, groundZ(p.x, p.y, p.z)) end
     end
   end
   return #spawned - before
@@ -224,6 +265,7 @@ function M.start()
   if not SETTINGS.keepBuilds then
     savedPaths = {}
     removeObjects()
+    reloadCollision()
   end
   local veh, id = currentVehicle()
   activeVehicleId = id
@@ -245,6 +287,7 @@ function M.stop()
   end
   savedPaths[#savedPaths + 1] = copyPoints(points)
   local created = buildPath(points)
+  reloadCollision()
   statusError = created == 0
   status = created > 0 and ('Built ' .. tostring(created) .. ' cones. Open BeamNG replay — they stay in the scene.') or 'No cones could be created.'
   return sendState()
@@ -258,6 +301,7 @@ function M.rebuild()
   end
   removeObjects()
   for _, path in ipairs(savedPaths) do buildPath(path) end
+  reloadCollision()
   statusError = false
   status = #savedPaths > 0 and ('Rebuilt ' .. tostring(#spawned) .. ' cones with current settings.') or 'No saved drive yet. Press Start first.'
   return sendState()
@@ -283,6 +327,9 @@ function M.setSetting(key, value)
     SETTINGS.groundOffset = math.max(-2.0, math.min(1.0, tonumber(value) or SETTINGS.groundOffset))
   elseif key == 'maxCones' then
     SETTINGS.maxCones = math.max(100, math.min(3000, math.floor(tonumber(value) or SETTINGS.maxCones)))
+  elseif key == 'collision' then
+    SETTINGS.collision = not (value == false or value == 'false' or value == 0)
+    if not recording and #savedPaths > 0 then return M.rebuild() end
   elseif key == 'smooth' or key == 'keepBuilds' then
     SETTINGS[key] = not (value == false or value == 'false' or value == 0)
   end
