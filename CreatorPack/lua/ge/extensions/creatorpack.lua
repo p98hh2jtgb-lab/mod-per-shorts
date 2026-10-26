@@ -331,7 +331,7 @@ end
 
 -- Shenim ne log-un e lojes (per diagnoze)
 local function pfhudNote(txt)
-  local msg = '[CreatorPack Studio v6.0.1] ' .. tostring(txt or '')
+  local msg = '[CreatorPack Studio v6.0.2] ' .. tostring(txt or '')
   pcall(print, msg)
   return msg
 end
@@ -358,5 +358,15 @@ M.pfhudLogoData = pfhudLogoData
 M.pfhudImageData = pfhudImageData
 M.pfhudNote = pfhudNote
 M.onVehicleSwitched = onVehicleSwitched
+
+-- BeamNG's extension loader requires a valid lifecycle. Without this,
+-- extensions.creatorpack can remain nil and every image/gallery call fails.
+function M.onExtensionLoaded()
+  pcall(sendVehicleInfo)
+  return true
+end
+
+function M.onExtensionUnloaded()
+end
 
 return M

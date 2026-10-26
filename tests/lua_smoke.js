@@ -68,6 +68,11 @@ const mainFile = 'CreatorPack/lua/ge/extensions/creatorpack.lua';
 const mainSource = fs.readFileSync(path.join(ROOT, mainFile), 'utf8');
 run('CreatorPack Lua actions/vehicle info/manual image bridge', mocks + `
 local M = assert(load(${JSON.stringify(mainSource)}, '@${mainFile}'))()
+assert(type(M.onExtensionLoaded) == 'function', 'BeamNG lifecycle must exist')
+assert(M.onExtensionLoaded() == true, 'extension load must succeed')
+assert(type(M.onExtensionUnloaded) == 'function')
+assert(lastEvent('creatorpack.vehicle').brand == 'TestBrand')
+M.onExtensionUnloaded()
 assert(type(M.pfhudVehicle) == 'function')
 assert(type(M.sendVehicleInfo) == 'function')
 local info = M.pfhudVehicle()

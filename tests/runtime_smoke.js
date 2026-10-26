@@ -171,7 +171,7 @@ const mainBindingCount = checkHtmlBindings(
 ok('CreatorPack Angular bindings resolved (' + mainBindingCount + ' expressions)');
 // CreatorPack runtime logic.
 const main = instantiate('CreatorPack/ui/modules/apps/CreatorPack/app.js', 'creatorpackPanel');
-assert.strictEqual(main.modVersion, '6.0.1');
+assert.strictEqual(main.modVersion, '6.0.2');
 assert.strictEqual(main.cfg.items.length, 8);
 assert.strictEqual(main.toggleCost, undefined);
 ok('CreatorPack boots with clean vehicle-only configuration');
@@ -265,6 +265,31 @@ assert.strictEqual(main.testSound('pass'), true);
 assert.strictEqual(main.testSound('fail'), true);
 assert(audioInstances.some(audio => audio.src.endsWith('/sounds/fail.mp3') && audio.played > 0), 'FAIL audio did not play');
 ok('Manual image scan and independent PASS/FAIL audio paths execute');
+
+assert.strictEqual(main.galleryState, 'loading');
+const watchdogEntry = [...timers.entries()].find(([, timer]) => timer.delay === 8000);
+assert(watchdogEntry, 'Gallery must have an 8 second watchdog');
+watchdogEntry[1].fn();
+assert.strictEqual(main.galleryState, 'err');
+assert(main.galleryInfo.includes('nuk u përgjigj'));
+emit('creatorpack.images', {ok:true, dir:'/ui/modules/apps/CreatorPack/imazhet/', files:['volvo.png']});
+assert.strictEqual(main.galleryState, 'ok');
+assert.strictEqual(main.gallery.length, 1);
+assert.strictEqual(main.gallery[0].name, 'volvo.png');
+ok('Gallery timeout exits endless loading and a later Lua response recovers');
+
+main.selected = 0;
+main.media.manualImageName = 'volvo.png';
+main.addImageByName();
+const manualPath = '/ui/modules/apps/CreatorPack/imazhet/volvo.png';
+assert.strictEqual(main.cfg.items[0].imageFile, manualPath);
+assert.strictEqual(main.cfg.items[0].image, manualPath, 'Manual URL must appear immediately');
+assert(main.imageBgStyle(main.cfg.items[0]).backgroundImage.includes('volvo.png'));
+assert(luaCommands.some(command => command.includes('pfhudImageData')));
+emit('creatorpack.imagedata', {path:manualPath, data:'data:image/png;base64,YWJj'});
+assert.strictEqual(main.cfg.items[0].image, 'data:image/png;base64,YWJj');
+assert.strictEqual(main.photoCount(), 1);
+ok('Manual filename places an image immediately and Lua base64 refreshes the same circle');
 
 // Ensure every static asset referenced by the HTML exists.
 for (const app of ['CreatorPack']) {

@@ -1201,7 +1201,7 @@
           <button ng-repeat="g in gallery track by g.url" ng-click="useGalleryImage(g)" title="{{g.name}}"><img ng-src="{{g.url}}" alt=""><span>{{g.name}}</span></button>
         </div>
         <div class="cp-empty-media" ng-if="!gallery.length"><b>▧</b><span>{{galleryInfo || 'S’ka imazhe të ngarkuara ende.'}}</span><small>Shto PNG në folderin imazhet dhe shtyp “Rifresko galerinë”.</small></div>
-        <div class="cp-manual-file"><input type="text" ng-model="manualImageName" placeholder="Ose shkruaj emrin: foto_1.png"><button class="cp-secondary" ng-click="addImageByName()">Vendose</button></div>
+        <div class="cp-manual-file"><input type="text" ng-model="media.manualImageName" placeholder="Ose shkruaj emrin: foto_1.png"><button class="cp-secondary" ng-click="addImageByName()">Vendose</button></div>
       </div>
       <div class="cp-control-card">
         <div class="cp-control-title"><span>◆</span><div><b>Logot e markave</b><small>logo_bmw.png ose bmw.png njihet automatikisht.</small></div></div>

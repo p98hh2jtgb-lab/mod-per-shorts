@@ -8,8 +8,9 @@ const http = require('http');
 const assert = require('assert');
 const ROOT = path.resolve(__dirname, '..');
 const MODULES = process.env.BROWSER_TEST_MODULES || path.join(__dirname, 'node_modules');
+const { pathToFileURL } = require('url');
 const { chromium: playwright } = require(path.join(MODULES, 'playwright-core'));
-const chromium = require(path.join(MODULES, '@sparticuz/chromium'));
+const chromiumPath = path.join(MODULES, '@sparticuz', 'chromium', 'build', 'index.js');
 const angularPath = path.join(MODULES, 'angular', 'angular.min.js');
 
 const mime = {
@@ -63,6 +64,7 @@ async function makeServer(modName) {
 }
 
 (async() => {
+  const { default: chromium } = await import(pathToFileURL(chromiumPath).href);
   const executablePath = await chromium.executablePath();
   const browser = await playwright.launch({ executablePath, args:chromium.args, headless:true });
   const errors = [];
@@ -146,6 +148,72 @@ async function makeServer(modName) {
       await page.screenshot({path:`/tmp/creatorpack-${tab}.png`});
     }
     console.log('✓ Rrethet, Stili, Fotot and Më shumë render in Chromium');
+
+    await page.evaluate(() => {
+      const scope = angular.element(document.querySelector('.cp-panel')).scope();
+      window.bngApi.engineLua = function(command, callback) {
+        if (command.includes('pfhudListImages') && callback) {
+          setTimeout(() => callback({ok:true, dir:'/ui/modules/apps/CreatorPack/imazhet/', files:['volvo.png']}), 0);
+        }
+      };
+      scope.tab = 'fotot'; scope.scanImages(false);
+    });
+    await page.waitForFunction(() => {
+      const scope = angular.element(document.querySelector('.cp-panel')).scope();
+      const image = document.querySelector('.cp-gallery img');
+      return scope.galleryState === 'ok' && scope.gallery.length === 1 && image && image.complete && image.naturalWidth > 0;
+    }, null, {timeout:10000});
+    await page.evaluate(() => {
+      const scope = angular.element(document.querySelector('.cp-panel')).scope();
+      scope.select(0);
+    });
+    await page.locator('.cp-manual-file input').fill('volvo.png');
+    await page.locator('.cp-manual-file button').click();
+    assert.strictEqual(await page.locator('.cp-manual-file input').inputValue(), '');
+    await page.waitForTimeout(500);
+    const immediateImage = await page.evaluate(() => {
+      const scope = angular.element(document.querySelector('.cp-panel')).scope();
+      const circleImage = document.querySelector('.pf-hud .pf-item-image');
+      return {
+        stored:String(scope.cfg.items[0].image || ''),
+        file:scope.cfg.items[0].imageFile,
+        circleBackground:circleImage ? getComputedStyle(circleImage).backgroundImage.slice(0, 80) : 'missing'
+      };
+    });
+    assert(immediateImage.stored.startsWith('data:image') || immediateImage.stored.endsWith('/volvo.png'), JSON.stringify(immediateImage));
+    assert.strictEqual(immediateImage.file, '/ui/modules/apps/CreatorPack/imazhet/volvo.png');
+    assert(immediateImage.circleBackground.startsWith('url('));
+    await page.evaluate(() => {
+      const scope = angular.element(document.querySelector('.cp-panel')).scope();
+      const image = document.querySelector('.cp-gallery img');
+      const canvas = document.createElement('canvas');
+      canvas.width = image.naturalWidth; canvas.height = image.naturalHeight;
+      canvas.getContext('2d').drawImage(image, 0, 0);
+      scope.$root.$broadcast('creatorpack.imagedata', {
+        path:'/ui/modules/apps/CreatorPack/imazhet/volvo.png', data:canvas.toDataURL('image/png')
+      });
+    });
+    await page.waitForFunction(() => {
+      const scope = angular.element(document.querySelector('.cp-panel')).scope();
+      return String(scope.cfg.items[0].image || '').startsWith('data:image');
+    }, null, {timeout:10000});
+    const manualImage = await page.evaluate(() => {
+      const scope = angular.element(document.querySelector('.cp-panel')).scope();
+      const circleImage = document.querySelector('.pf-hud .pf-item-image');
+      return {
+        galleryState:scope.galleryState,
+        galleryCount:scope.gallery.length,
+        photoCount:scope.photoCount(),
+        imagePrefix:String(scope.cfg.items[0].image).slice(0, 20),
+        circleBackground:circleImage ? getComputedStyle(circleImage).backgroundImage.slice(0, 40) : 'missing'
+      };
+    });
+    assert.strictEqual(manualImage.galleryState, 'ok');
+    assert.strictEqual(manualImage.galleryCount, 1);
+    assert(manualImage.photoCount >= 1);
+    assert(manualImage.circleBackground.startsWith('url('));
+    await page.screenshot({path:'/tmp/creatorpack-manual-volvo.png'});
+    console.log('✓ Gallery lists volvo.png and manual filename renders a real decoded image in its circle');
 
     await page.evaluate(() => {
       const scope = angular.element(document.querySelector('.cp-panel')).scope();

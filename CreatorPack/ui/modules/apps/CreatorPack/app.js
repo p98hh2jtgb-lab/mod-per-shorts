@@ -68,7 +68,7 @@ angular.module('beamng.apps')
       // v5.3.0 — Versioni shfaqet brenda HUD-it, që të shihet
       // menjëherë nëse BeamNG ka ngarkuar versionin e re.
       // =====================================================
-      var MOD_VERSION = '6.0.1';
+      var MOD_VERSION = '6.0.2';
       scope.modVersion = MOD_VERSION;
       scope.storageKey = STORAGE_KEY;
 
@@ -2059,7 +2059,11 @@ angular.module('beamng.apps')
 
       function applyImageData(res) {
         try {
-          if (!res || !res.path || !res.data) return;
+          if (!res || !res.path) return;
+          if (!res.data) {
+            if (res.err) notify('✗ Fotoja nuk u lexu: ' + res.err);
+            return;
+          }
           fileDataCache[res.path] = res.data;
           angular.forEach(scope.cfg.items || [], function (it) {
             if (it && it.imageFile === res.path) it.image = res.data;
@@ -2178,9 +2182,18 @@ angular.module('beamng.apps')
 
       // ---- Galeria e folderit (Lua lexon, UI shfaq) ----
       function applyImageList(res) {
+        cancelImageScanWatchdog();
+        try { if (imgScanTimer) $timeout.cancel(imgScanTimer); } catch (e) {}
+        imgScanTimer = null;
         try {
           if (typeof res === 'string') { try { res = JSON.parse(res); } catch (e) {} }
           if (!res || typeof res !== 'object') { scope.galleryState = 'err'; scope.galleryInfo = 's\'u lexu lista e folderit'; return; }
+          if (res.err) {
+            scope.galleryState = 'err';
+            scope.galleryInfo = 'gabim Lua: ' + res.err;
+            scheduleImageScan();
+            return;
+          }
           var dir = res.dir || IMG_DIR;
           var files = res.files || [];
           if (files.length && typeof files[0] === 'object') {
@@ -2212,17 +2225,42 @@ angular.module('beamng.apps')
           scope.galleryInfo = 'gabim: ' + ((e && e.message) || '');
         }
       }
-      var imgScanTries = 0, imgScanTimer = null;
+      var imgScanTries = 0, imgScanTimer = null, imgScanWatchdog = null;
+      function cancelImageScanWatchdog() {
+        if (!imgScanWatchdog) return;
+        try { $timeout.cancel(imgScanWatchdog); } catch (e) {}
+        imgScanWatchdog = null;
+      }
       function scheduleImageScan() {
         if (imgScanTries >= 12) return;               // ~2 minuta provime
         imgScanTries++;
-        try { if (imgScanTimer) clearTimeout(imgScanTimer); } catch (e) {}
-        try { imgScanTimer = setTimeout(function () { try { scope.scanImages(true); } catch (e) {} }, 6000); } catch (e) {}
+        try { if (imgScanTimer) $timeout.cancel(imgScanTimer); } catch (e) {}
+        try {
+          imgScanTimer = $timeout(function () {
+            imgScanTimer = null;
+            try { scope.scanImages(true); } catch (e) {}
+          }, 6000);
+        } catch (e) {}
       }
       scope.scanImages = function (auto) {
-        if (!auto) { imgScanTries = 0; try { scope.refreshLogos(true); } catch (e) {} }
+        if (!auto) {
+          imgScanTries = 0;
+          try { if (imgScanTimer) $timeout.cancel(imgScanTimer); } catch (e) {}
+          imgScanTimer = null;
+          try { scope.refreshLogos(true); } catch (e) {}
+        }
+        cancelImageScanWatchdog();
         scope.galleryState = 'loading';
         scope.galleryInfo = 'duke lexu folderin…';
+        // Never leave the gallery in an endless loading state when the Lua
+        // extension is unavailable or a CEF callback is dropped.
+        imgScanWatchdog = $timeout(function () {
+          imgScanWatchdog = null;
+          if (scope.galleryState !== 'loading') return;
+          scope.galleryState = 'err';
+          scope.galleryInfo = 'leximi nuk u përgjigj — provo Rifresko ose rihap panelin';
+          scheduleImageScan();
+        }, 8000);
         var sent = false;
         try {
           if (window.bngApi && typeof window.bngApi.engineLua === 'function') {
@@ -2236,9 +2274,12 @@ angular.module('beamng.apps')
       };
       // v5.11.2: nese lista e folderit s'lexohet (ndonjehere FS s'e jep listen),
       // shkruaje emrin e file-it me dore — gjithashtu pa "Choose File".
-      scope.manualImageName = '';
+      // Object-backed model: ng-if creates a child scope for the panel.
+      // A primitive ng-model would otherwise stay in that child and this
+      // function would always read an empty value from the parent scope.
+      scope.media = { manualImageName: '' };
       scope.addImageByName = function () {
-        var name = String(scope.manualImageName || '').trim().replace(/^.*[\\/]/, '');
+        var name = String(scope.media.manualImageName || '').trim().replace(/^.*[\\/]/, '');
         if (!name) { notify('ℹ️ Shkruaj emrin e file-it, p.sh. logo_bmw.png ose foto_1.png'); return; }
         if (!/\.(png|jpe?g|webp)$/i.test(name)) name += '.png';
         var url = IMG_DIR + name;
@@ -2252,7 +2293,7 @@ angular.module('beamng.apps')
           else ensurePhotoData(url, idx);                   // v5.11.3: base64 i ruajtur
           scope.persist();
         }
-        scope.manualImageName = '';
+        scope.media.manualImageName = '';
         notify('📷 U vendos "' + name + '" në rrathullakun ' + (idx + 1));
       };
 
@@ -2467,6 +2508,8 @@ angular.module('beamng.apps')
         $window.removeEventListener('resize', onResize);
         $document.off('click', onDocClickPicker);
         try { if (pfAudioState.ctx && pfAudioState.ctx.close) pfAudioState.ctx.close(); } catch (e) {}
+        cancelImageScanWatchdog();
+        try { if (imgScanTimer) $timeout.cancel(imgScanTimer); } catch (e) {}
       });
 
       // =====================================================

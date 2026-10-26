@@ -1,4 +1,4 @@
-CREATORPACK STUDIO 6.0.1
+CREATORPACK STUDIO 6.0.2
 ========================
 Panel i ri me H · PASS/FAIL circles · Shorts Studio 9:16
 
@@ -6,7 +6,7 @@ Panel i ri me H · PASS/FAIL circles · Shorts Studio 9:16
 INSTALIMI
 ---------
 1. Çaktivizo ose hiq versionin e vjetër CreatorPack/HUD PRO që të mos ketë dy kopje aktive.
-2. Kopjo CreatorPack_v6.0.1.zip pa e hapur te:
+2. Kopjo CreatorPack_v6.0.2.zip pa e hapur te:
    Documents\BeamNG.drive\mods\
 3. Nis lojën. Nëse overlay-i nuk shfaqet vetë:
    Esc → UI Apps → Add App → CreatorPack Studio.
@@ -66,6 +66,14 @@ FOTOT DHE LOGOT — VETËM MANUALE
   prekur ndonjë binding PASS/FAIL.
 
 
+HOTFIX 6.0.2
+------------
+• Rikthen onExtensionLoaded/onExtensionUnloaded që BeamNG të ngarkojë Lua bridge-in.
+• Korrigjon emrin manual të fotos në child scope-in e panelit; “Vendose” lexon emrin real.
+• Galeria del nga loading pas 8 sekondash nëse Lua nuk përgjigjet dhe shfaq gabimin.
+• Gabimet e leximit base64 shfaqen; fotot vazhdojnë të kenë URL + base64 fallback.
+
+
 PASTRIMI I KONFIGURIMIT
 -----------------------
 Fushat repair cost/damage, AutoFoto, LIVE dhe stream të konfigurimeve të vjetra
@@ -77,8 +85,10 @@ VERIFIKIMI
 ----------
 • JavaScript syntax dhe Lua 5.1 runtime me BeamNG API të simuluar.
 • Runtime smoke me Angular/CEF të simuluar për boot, Shorts/restore, PASS/FAIL,
-  undo/reset, glow/outline, audio, galeri, path security dhe persistence.
-• Render real në Chromium për çdo tab, H/K/Ctrl+Z, clean capture dhe 4 rrethe 2×2.
+  undo/reset, glow/outline, audio, galeri, timeout, foto manuale dhe persistence.
+• Lua lifecycle + FS/base64/path security me BeamNG API të simuluar.
+• Render real në Chromium për çdo tab, H/K/L/Ctrl+Z, galeri, volvo.png me input + klik,
+  Lua/base64 event, clean capture dhe 4 rrethe 2×2.
 • Pa JavaScript errors në render-in final.
 
-Ky dokument përshkruan CreatorPack Studio 6.0.1.
+Ky dokument përshkruan CreatorPack Studio 6.0.2.
