@@ -177,7 +177,7 @@ const mainBindingCount = checkHtmlBindings(
 ok('CreatorPack Angular bindings resolved (' + mainBindingCount + ' expressions)');
 // CreatorPack runtime logic.
 const main = instantiate('CreatorPack/ui/modules/apps/CreatorPack/app.js', 'creatorpackPanel');
-assert.strictEqual(main.modVersion, '6.1.2');
+assert.strictEqual(main.modVersion, '6.1.3');
 assert.strictEqual(main.cfg.items.length, 8);
 assert.strictEqual(main.toggleCost, undefined);
 ok('CreatorPack boots with clean vehicle-only configuration');
@@ -302,6 +302,17 @@ main.resetSeriesAppearance();
 assert.strictEqual(main.cfg.seriesCarScale, 100);
 assert(main.cfg.seriesSlotX.every(value => value === 0));
 assert(main.cfg.seriesSlotScale.every(value => value === 100));
+const autoTinyMark = parseFloat(main.seriesMarkStyle(0).fontSize);
+const autoGiantMark = parseFloat(main.seriesMarkStyle(5).fontSize);
+assert(autoTinyMark < autoGiantMark, 'Auto marks must fit each car instead of using one fixed size');
+assert(Math.abs(autoTinyMark - parseFloat(main.seriesImageStyle(main.seriesSlots[0], 0).width) * 0.62) <= 1);
+main.cfg.seriesMarkScale = 150;
+assert(Math.abs(parseFloat(main.seriesMarkStyle(0).fontSize) - autoTinyMark * 1.5) <= 1);
+main.cfg.seriesMarkAuto = false;
+assert.strictEqual(main.seriesMarkStyle(0).fontSize, main.seriesMarkStyle(5).fontSize);
+main.resetSeriesAppearance();
+assert.strictEqual(main.cfg.seriesMarkAuto, true);
+assert.strictEqual(main.cfg.seriesMarkScale, 100);
 main.next();
 assert.strictEqual(main.selected, 5, 'Series navigation must stop at GIANT');
 main.select(0);
@@ -336,7 +347,7 @@ assert.strictEqual(main.cfg.layout, 'grid');
 assert.strictEqual(main.cfg.gridCols, 2);
 main.setShortsMode(false);
 assert.strictEqual(main.visibleCircleCount(), 8);
-ok('BMW Series 6 keeps equal real spacing, per-car manual controls, title outline, K/L flow and separate Shorts');
+ok('BMW Series 6 keeps real spacing, per-car controls, auto/manual marks, title outline, K/L flow and separate Shorts');
 
 main.cfg.markGlow = 0;
 main.cfg.markOutline = 0;

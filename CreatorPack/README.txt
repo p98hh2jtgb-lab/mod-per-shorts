@@ -1,4 +1,4 @@
-CREATORPACK STUDIO 6.1.2
+CREATORPACK STUDIO 6.1.3
 ========================
 Panel me H · PASS/FAIL circles · Shorts 2×2 · Series 6 BMW test
 
@@ -6,7 +6,7 @@ Panel me H · PASS/FAIL circles · Shorts 2×2 · Series 6 BMW test
 INSTALIMI
 ---------
 1. Çaktivizo ose hiq versionin e vjetër CreatorPack/HUD PRO që të mos ketë dy kopje aktive.
-2. Kopjo CreatorPack_v6.1.2.zip pa e hapur te:
+2. Kopjo CreatorPack_v6.1.3.zip pa e hapur te:
    Documents\BeamNG.drive\mods\
 3. Nis lojën. Nëse overlay-i nuk shfaqet vetë:
    Esc → UI Apps → Add App → CreatorPack Studio.
@@ -58,8 +58,12 @@ SERIES 6 — PRESET 1 BMW (TEST)
 9. Zgjidh slot-in dhe përdor “Rregullim manual”: zhvendosje X -60 deri +60 px dhe
    madhësi 70–130% vetëm për atë makinë. “Rikthe vetëm këtë makinë” e reseton atë.
 10. “Titulli aktiv” rregullon madhësinë 70–140% dhe outline-in e zi 0–5 px.
-    “Rikthe të gjithë pamjen” kthen hapësirën, makinat dhe titullin në default.
-11. “Kthehu te Shorts standard” rikthen saktësisht 4 rrethet në 2×2.
+11. “Shenjat ✓/✕” ka Auto-fit të aktivizuar: madhësia llogaritet nga gjerësia reale
+    e secilës veturë, pra TINY merr shenjë më të vogël dhe GIANT më të madhe.
+    “Madhësia manuale e shenjave” 50–200% e shkallëzon edhe Auto-fit-in. Me Auto
+    fikur përdoret një bazë fikse për të gjitha; “Shfaq shenjat” i shfaq/fshin.
+12. “Rikthe të gjithë pamjen” kthen makinat, hapësirën, shenjat dhe titullin në default.
+    “Kthehu te Shorts standard” rikthen saktësisht 4 rrethet në 2×2.
 
 Me kalimin në layout-in e ri, hapësira e versionit të vjetër rikthehet një herë në
 14 px për të hequr ngushtimin BIG/GIANT; rregullimet e reja ruhen normalisht.
@@ -107,15 +111,15 @@ Nuk ka kontroll të errësimit jashtë kornizës: Shorts/Series nuk zbeh lojën 
 VERIFIKIMI
 ----------
 • JavaScript syntax dhe Lua 5.1 runtime me BeamNG API të simuluar.
-• 12 runtime smoke checks me Angular/CEF të simuluar; 475 Angular expressions.
+• 12 runtime smoke checks me Angular/CEF të simuluar; 482 Angular expressions.
 • Shorts/restore, BMW Series 6, PASS/FAIL, auto-advance, undo/reset, glow/outline,
   audio, 87 imazhe galerie, timeout dhe one-click placement kaluan.
 • Lua lifecycle + FS/base64/path security me BeamNG API të simuluar kaloi.
 • Render real në Chromium: 87/87 imazhe galerie dhe 6/6 variante BMW të ngarkuara,
   madhësi në rritje, pesë hapësira reale 14 px, rregullim live -18 px, X/scale
-  manual për GIANT, outline/madhësi titulli, H/K/L/Ctrl+Z, clean capture dhe
-  kthim në 4 rrethe 2×2.
+  manual për GIANT, Auto-fit i shenjave sipas veturës, manual 150%, fixed-size,
+  outline/madhësi titulli, H/K/L/Ctrl+Z, clean capture dhe kthim në 4 rrethe 2×2.
 • Pa JavaScript errors në render-in final.
 
 Testimi është bërë me Lua mocks dhe Chromium/Angular. Verifikimi final në instalimin
-real të BeamNG bëhet nga përdoruesi. Ky dokument përshkruan CreatorPack Studio 6.1.2.
+real të BeamNG bëhet nga përdoruesi. Ky dokument përshkruan CreatorPack Studio 6.1.3.

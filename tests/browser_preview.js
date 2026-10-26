@@ -349,6 +349,40 @@ async function makeServer(modName) {
         pass:document.querySelectorAll('.pf-series-mark.pass').length};
     });
     assert.deepStrictEqual(seriesKey, {first:'pass',selected:1,title:'SMALL CAR',pass:1});
+    const autoMark = await page.evaluate(() => {
+      const scope = angular.element(document.querySelector('.cp-panel')).scope();
+      const mark = document.querySelector('.pf-series-mark.pass');
+      const car = document.querySelectorAll('.pf-series-car')[0];
+      return {fontSize:parseFloat(getComputedStyle(mark).fontSize), carWidth:car.getBoundingClientRect().width,
+        auto:scope.cfg.seriesMarkAuto};
+    });
+    assert.strictEqual(autoMark.auto, true);
+    assert(Math.abs(autoMark.fontSize - autoMark.carWidth * 0.62) <= 1, 'PASS must auto-fit TINY');
+    await page.screenshot({path:'/tmp/creatorpack-series-auto-mark.png'});
+    await page.evaluate(() => {
+      const scope = angular.element(document.querySelector('.cp-panel')).scope();
+      scope.cfg.seriesMarkScale = 150; scope.$apply();
+    });
+    await page.waitForTimeout(120);
+    const manualMarkSize = await page.evaluate(() => parseFloat(getComputedStyle(document.querySelector('.pf-series-mark.pass')).fontSize));
+    assert(Math.abs(manualMarkSize - autoMark.fontSize * 1.5) <= 1, 'Manual mark scale must resize auto-fit');
+    await page.evaluate(() => {
+      const scope = angular.element(document.querySelector('.cp-panel')).scope();
+      scope.cfg.seriesMarkAuto = false; scope.$apply();
+    });
+    await page.waitForTimeout(120);
+    const fixedMarks = await page.evaluate(() => {
+      const scope = angular.element(document.querySelector('.cp-panel')).scope();
+      return {tiny:parseFloat(getComputedStyle(document.querySelector('.pf-series-mark.pass')).fontSize),
+        giant:parseFloat(scope.seriesMarkStyle(5).fontSize)};
+    });
+    assert.strictEqual(fixedMarks.tiny, fixedMarks.giant, 'Disabling Auto must use the same fixed base for all marks');
+    await page.evaluate(() => {
+      const scope = angular.element(document.querySelector('.cp-panel')).scope();
+      scope.cfg.seriesMarkAuto = true; scope.cfg.seriesMarkScale = 100; scope.$apply();
+    });
+    await page.waitForTimeout(120);
+    console.log('✓ PASS/FAIL auto-fit each car; manual 150% and fixed-size mode work live');
     await page.keyboard.press('Control+z');
     await page.waitForTimeout(120);
     await page.keyboard.press('l');

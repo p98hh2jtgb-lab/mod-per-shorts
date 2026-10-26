@@ -43,7 +43,7 @@ angular.module('beamng.apps')
       // v5.3.0 — Versioni shfaqet brenda HUD-it, që të shihet
       // menjëherë nëse BeamNG ka ngarkuar versionin e re.
       // =====================================================
-      var MOD_VERSION = '6.1.2';
+      var MOD_VERSION = '6.1.3';
       scope.modVersion = MOD_VERSION;
       scope.storageKey = STORAGE_KEY;
 
@@ -105,6 +105,8 @@ angular.module('beamng.apps')
           seriesCarScale: 100,
           seriesSlotX: [0, 0, 0, 0, 0, 0],
           seriesSlotScale: [100, 100, 100, 100, 100, 100],
+          seriesMarkAuto: true,
+          seriesMarkScale: 100,
           seriesTitleSize: 100,
           seriesTitleOutline: 2.5,
           pendingFillOpacity: 0.16,
@@ -213,6 +215,8 @@ angular.module('beamng.apps')
         if (cfg.seriesCarScale == null) cfg.seriesCarScale = 100;
         if (!angular.isArray(cfg.seriesSlotX)) cfg.seriesSlotX = [0, 0, 0, 0, 0, 0];
         if (!angular.isArray(cfg.seriesSlotScale)) cfg.seriesSlotScale = [100, 100, 100, 100, 100, 100];
+        if (cfg.seriesMarkAuto == null) cfg.seriesMarkAuto = true;
+        if (cfg.seriesMarkScale == null) cfg.seriesMarkScale = 100;
         if (cfg.seriesTitleSize == null) cfg.seriesTitleSize = 100;
         if (cfg.seriesTitleOutline == null) cfg.seriesTitleOutline = 2.5;
         if (cfg.series6Mode) cfg.shortsMode = true;
@@ -222,6 +226,8 @@ angular.module('beamng.apps')
           cfg.seriesSlotX[seriesIdx] = Math.max(-60, Math.min(60, Number(cfg.seriesSlotX[seriesIdx]) || 0));
           cfg.seriesSlotScale[seriesIdx] = Math.max(70, Math.min(130, Number(cfg.seriesSlotScale[seriesIdx]) || 100));
         }
+        cfg.seriesMarkAuto = !(cfg.seriesMarkAuto === false || cfg.seriesMarkAuto === 'false');
+        cfg.seriesMarkScale = Math.max(50, Math.min(200, Number(cfg.seriesMarkScale) || 100));
         cfg.seriesTitleSize = Math.max(70, Math.min(140, Number(cfg.seriesTitleSize) || 100));
         cfg.seriesTitleOutline = Math.max(0, Math.min(5, Number(cfg.seriesTitleOutline) || 0));
         cfg.markGlow = Math.max(0, Math.min(30, Number(cfg.markGlow) || 0));
@@ -806,11 +812,14 @@ angular.module('beamng.apps')
         if (index < 0) index = 0;
         return { width:seriesCarWidth(index) + 'px' };
       };
-      scope.seriesMarkStyle = function() {
+      scope.seriesMarkStyle = function(index) {
+        if (index === undefined || index === null) index = 0;
         var glow = Math.max(0, Math.min(30, Number(scope.cfg.markGlow) || 0));
         var outline = Math.max(0, Math.min(4, Number(scope.cfg.markOutline) || 0));
+        var manualScale = Math.max(50, Math.min(200, Number(scope.cfg.seriesMarkScale) || 100)) / 100;
+        var autoBase = scope.cfg.seriesMarkAuto ? seriesCarWidth(index) : seriesUnit();
         return {
-          fontSize:Math.max(24, Math.round(seriesUnit() * 0.62)) + 'px',
+          fontSize:Math.max(12, Math.round(autoBase * 0.62 * manualScale)) + 'px',
           textShadow:glow > 0 ? ('0 0 ' + glow + 'px currentColor') : 'none',
           WebkitTextStroke:outline > 0 ? (outline + 'px rgba(0,0,0,.88)') : '0px transparent',
           paintOrder:'stroke fill'
@@ -837,6 +846,8 @@ angular.module('beamng.apps')
         scope.cfg.seriesCarScale = 100;
         scope.cfg.seriesSlotX = [0, 0, 0, 0, 0, 0];
         scope.cfg.seriesSlotScale = [100, 100, 100, 100, 100, 100];
+        scope.cfg.seriesMarkAuto = true;
+        scope.cfg.seriesMarkScale = 100;
         scope.cfg.seriesTitleSize = 100;
         scope.cfg.seriesTitleOutline = 2.5;
         scope.persist();
@@ -1240,7 +1251,7 @@ angular.module('beamng.apps')
         'showMiniButton','soundOn','vehiclesOn','vehiclesKey',
         'guidesOn','guideRatio','guideCenterV','guideCenterH','guideThirds','guideColor',
         'shortsSafeAreas','seriesGap','seriesCarScale','seriesSlotX','seriesSlotScale',
-        'seriesTitleSize','seriesTitleOutline'
+        'seriesMarkAuto','seriesMarkScale','seriesTitleSize','seriesTitleOutline'
       ];
 
       scope.savePreset = function() {
