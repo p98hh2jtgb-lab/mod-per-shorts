@@ -1,7 +1,7 @@
 {
   "name": "CreatorPack Studio",
   "author": "daimy",
-  "version": "6.1.0",
+  "version": "6.1.1",
   "description": "Redesigned H panel, Pass/Fail vehicle circles, an 87-image one-click gallery, four-circle 9:16 Shorts Studio and a separate BMW Tiny-to-Giant Series 6 test preset.",
   "directive": "creatorpackPanel",
   "domElement": "<creatorpack-panel></creatorpack-panel>",

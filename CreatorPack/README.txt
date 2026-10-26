@@ -1,4 +1,4 @@
-CREATORPACK STUDIO 6.1.0
+CREATORPACK STUDIO 6.1.1
 ========================
 Panel me H · PASS/FAIL circles · Shorts 2×2 · Series 6 BMW test
 
@@ -6,7 +6,7 @@ Panel me H · PASS/FAIL circles · Shorts 2×2 · Series 6 BMW test
 INSTALIMI
 ---------
 1. Çaktivizo ose hiq versionin e vjetër CreatorPack/HUD PRO që të mos ketë dy kopje aktive.
-2. Kopjo CreatorPack_v6.1.0.zip pa e hapur te:
+2. Kopjo CreatorPack_v6.1.1.zip pa e hapur te:
    Documents\BeamNG.drive\mods\
 3. Nis lojën. Nëse overlay-i nuk shfaqet vetë:
    Esc → UI Apps → Add App → CreatorPack Studio.
@@ -52,7 +52,10 @@ SERIES 6 — PRESET 1 BMW (TEST)
 6. PageUp/PageDown ose slotet në panel zgjedhin variantin. Auto-advance, Ctrl+Z,
    Reset dhe “Regjistrim i pastër” përdorin të njëjtat kontrolle të testuara të CreatorPack.
 7. Pozicioni Lart / Mes / Poshtë e vendos serinë brenda kornizës 9:16.
-8. “Kthehu te Shorts standard” rikthen saktësisht 4 rrethet në 2×2.
+8. “Hapësira & titulli” rregullon live distancën mes makinave (-24 deri +36 px),
+   madhësinë e titullit (70–140%) dhe outline-in e zi (0–5 px). Vlerat negative
+   e ngushtojnë serinë; “Rikthe hapësirën dhe titullin” kthen pamjen default.
+9. “Kthehu te Shorts standard” rikthen saktësisht 4 rrethet në 2×2.
 
 Ky release përmban vetëm preset-in e parë BMW për testim. Series 6 është overlay/panel;
 nuk bën spawn dhe nuk ndryshon fizikën e makinave reale në lojë.
@@ -97,13 +100,14 @@ Nuk ka kontroll të errësimit jashtë kornizës: Shorts/Series nuk zbeh lojën 
 VERIFIKIMI
 ----------
 • JavaScript syntax dhe Lua 5.1 runtime me BeamNG API të simuluar.
-• 12 runtime smoke checks me Angular/CEF të simuluar; 454 Angular expressions.
+• 12 runtime smoke checks me Angular/CEF të simuluar; 464 Angular expressions.
 • Shorts/restore, BMW Series 6, PASS/FAIL, auto-advance, undo/reset, glow/outline,
   audio, 87 imazhe galerie, timeout dhe one-click placement kaluan.
 • Lua lifecycle + FS/base64/path security me BeamNG API të simuluar kaloi.
 • Render real në Chromium: 87/87 imazhe galerie dhe 6/6 variante BMW të ngarkuara,
-  madhësi në rritje, titull aktiv, H/K/L/Ctrl+Z, clean capture dhe kthim në 4 rrethe 2×2.
+  madhësi në rritje, titull aktiv, hapësirë live -18 px, outline/madhësi titulli,
+  H/K/L/Ctrl+Z, clean capture dhe kthim në 4 rrethe 2×2.
 • Pa JavaScript errors në render-in final.
 
 Testimi është bërë me Lua mocks dhe Chromium/Angular. Verifikimi final në instalimin
-real të BeamNG bëhet nga përdoruesi. Ky dokument përshkruan CreatorPack Studio 6.1.0.
+real të BeamNG bëhet nga përdoruesi. Ky dokument përshkruan CreatorPack Studio 6.1.1.

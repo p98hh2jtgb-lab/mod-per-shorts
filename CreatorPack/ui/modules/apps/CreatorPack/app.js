@@ -43,7 +43,7 @@ angular.module('beamng.apps')
       // v5.3.0 — Versioni shfaqet brenda HUD-it, që të shihet
       // menjëherë nëse BeamNG ka ngarkuar versionin e re.
       // =====================================================
-      var MOD_VERSION = '6.1.0';
+      var MOD_VERSION = '6.1.1';
       scope.modVersion = MOD_VERSION;
       scope.storageKey = STORAGE_KEY;
 
@@ -100,6 +100,9 @@ angular.module('beamng.apps')
           shortsSafeAreas: true,
           series6Mode: false,
           seriesPreset: 'bmw',
+          seriesGap: 0,
+          seriesTitleSize: 100,
+          seriesTitleOutline: 2.5,
           pendingFillOpacity: 0.16,
           pendingOutlineOpacity: 0.00,
           currentIndex: 0,
@@ -200,7 +203,13 @@ angular.module('beamng.apps')
         if (cfg.shortsSafeAreas == null) cfg.shortsSafeAreas = true;
         if (cfg.series6Mode == null) cfg.series6Mode = false;
         if (!cfg.seriesPreset) cfg.seriesPreset = 'bmw';
+        if (cfg.seriesGap == null) cfg.seriesGap = 0;
+        if (cfg.seriesTitleSize == null) cfg.seriesTitleSize = 100;
+        if (cfg.seriesTitleOutline == null) cfg.seriesTitleOutline = 2.5;
         if (cfg.series6Mode) cfg.shortsMode = true;
+        cfg.seriesGap = Math.max(-24, Math.min(36, Number(cfg.seriesGap) || 0));
+        cfg.seriesTitleSize = Math.max(70, Math.min(140, Number(cfg.seriesTitleSize) || 100));
+        cfg.seriesTitleOutline = Math.max(0, Math.min(5, Number(cfg.seriesTitleOutline) || 0));
         cfg.markGlow = Math.max(0, Math.min(30, Number(cfg.markGlow) || 0));
         cfg.markOutline = Math.max(0, Math.min(4, Number(cfg.markOutline) || 0));
 
@@ -761,9 +770,14 @@ angular.module('beamng.apps')
           width:scope.safeBox().w + 'px'
         };
       };
-      scope.seriesSlotStyle = function() {
+      scope.seriesSlotStyle = function(index) {
         var unit = seriesUnit();
-        return { width:unit + 'px', height:(unit * 0.76) + 'px' };
+        var gap = Math.max(-24, Math.min(36, Number(scope.cfg.seriesGap) || 0));
+        return {
+          width:unit + 'px',
+          height:(unit * 0.76) + 'px',
+          marginLeft:index > 0 ? gap + 'px' : '0px'
+        };
       };
       scope.seriesImageStyle = function(slot) {
         return { width:Math.round(seriesUnit() * Number(slot.scale || 1)) + 'px' };
@@ -779,7 +793,20 @@ angular.module('beamng.apps')
         };
       };
       scope.seriesTitleStyle = function() {
-        return { fontSize:Math.max(22, Math.round(scope.safeBox().w * 0.056)) + 'px' };
+        var scale = Math.max(70, Math.min(140, Number(scope.cfg.seriesTitleSize) || 100)) / 100;
+        var outline = Math.max(0, Math.min(5, Number(scope.cfg.seriesTitleOutline) || 0));
+        return {
+          fontSize:Math.max(22, Math.round(scope.safeBox().w * 0.056 * scale)) + 'px',
+          WebkitTextStroke:outline > 0 ? (outline + 'px rgba(0,0,0,.96)') : '0px transparent',
+          paintOrder:'stroke fill',
+          textShadow:'none'
+        };
+      };
+      scope.resetSeriesAppearance = function() {
+        scope.cfg.seriesGap = 0;
+        scope.cfg.seriesTitleSize = 100;
+        scope.cfg.seriesTitleOutline = 2.5;
+        scope.persist();
       };
 
       scope.circleVisible = function(index) {
@@ -1179,7 +1206,7 @@ angular.module('beamng.apps')
         'theme','layout','gridCols','animLevel','showLabels','labelSize','hudDensity',
         'showMiniButton','soundOn','vehiclesOn','vehiclesKey',
         'guidesOn','guideRatio','guideCenterV','guideCenterH','guideThirds','guideColor',
-        'shortsSafeAreas'
+        'shortsSafeAreas','seriesGap','seriesTitleSize','seriesTitleOutline'
       ];
 
       scope.savePreset = function() {

@@ -267,6 +267,10 @@ async function makeServer(modName) {
         standardCircles:document.querySelectorAll('.pf-hud .pf-item').length,
         title:document.querySelector('.pf-series-active')?.textContent.trim(),
         widths:cars.map(car => car.getBoundingClientRect().width),
+        centers:[...document.querySelectorAll('.pf-series-slot')].map(slot => {
+          const rect = slot.getBoundingClientRect(); return rect.left + rect.width / 2;
+        }),
+        titleOutline:getComputedStyle(document.querySelector('.pf-series-active')).getPropertyValue('-webkit-text-stroke-width'),
         loaded:cars.every(car => car.complete && car.naturalWidth > 0),
         visible:scope.visibleCircleCount(),
         labels:scope.seriesSlots.map(slot => slot.label)
@@ -276,10 +280,37 @@ async function makeServer(modName) {
     assert.strictEqual(series.standardCircles, 0);
     assert.strictEqual(series.visible, 6);
     assert.strictEqual(series.title, 'TINY CAR');
+    assert.strictEqual(series.titleOutline, '2.5px');
     assert.strictEqual(series.loaded, true, 'Every transparent BMW variant must load');
     assert(series.widths.every((width, i) => i === 0 || width > series.widths[i - 1]), 'Car widths must increase Tiny → Giant');
     await page.screenshot({path:'/tmp/creatorpack-series-panel.png'});
     console.log('✓ BMW Series 6 renders six loaded transparent variants in increasing size with active title');
+
+    await page.evaluate(() => {
+      const scope = angular.element(document.querySelector('.cp-panel')).scope();
+      scope.cfg.seriesGap = -18;
+      scope.cfg.seriesTitleSize = 115;
+      scope.cfg.seriesTitleOutline = 3;
+      scope.persist(); scope.$apply();
+    });
+    await page.waitForTimeout(200);
+    const customizedSeries = await page.evaluate(() => {
+      const title = document.querySelector('.pf-series-active');
+      const style = getComputedStyle(title);
+      const slots = [...document.querySelectorAll('.pf-series-slot')].map(slot => {
+        const rect = slot.getBoundingClientRect(); return rect.left + rect.width / 2;
+      });
+      return {centers:slots, outline:style.getPropertyValue('-webkit-text-stroke-width'),
+        fontStyle:style.fontStyle, fontSize:parseFloat(style.fontSize)};
+    });
+    const baseSpacing = series.centers[1] - series.centers[0];
+    const compactSpacing = customizedSeries.centers[1] - customizedSeries.centers[0];
+    assert(compactSpacing < baseSpacing, 'Negative spacing must bring cars closer together');
+    assert(Math.abs((baseSpacing - compactSpacing) - 18) < 0.1, 'Spacing slider must change the real car distance by 18px');
+    assert.strictEqual(customizedSeries.outline, '3px');
+    assert.strictEqual(customizedSeries.fontStyle, 'italic');
+    await page.screenshot({path:'/tmp/creatorpack-series-custom.png'});
+    console.log('✓ Series spacing compacts live and the sport title has adjustable black outline/size');
 
     await page.keyboard.press('k');
     await page.waitForTimeout(120);

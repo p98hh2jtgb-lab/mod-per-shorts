@@ -177,7 +177,7 @@ const mainBindingCount = checkHtmlBindings(
 ok('CreatorPack Angular bindings resolved (' + mainBindingCount + ' expressions)');
 // CreatorPack runtime logic.
 const main = instantiate('CreatorPack/ui/modules/apps/CreatorPack/app.js', 'creatorpackPanel');
-assert.strictEqual(main.modVersion, '6.1.0');
+assert.strictEqual(main.modVersion, '6.1.1');
 assert.strictEqual(main.cfg.items.length, 8);
 assert.strictEqual(main.toggleCost, undefined);
 ok('CreatorPack boots with clean vehicle-only configuration');
@@ -265,6 +265,25 @@ for (let i = 0; i < 6; i++) {
 assert.strictEqual(main.circleVisible(6), false);
 assert(main.seriesSlots.every((slot, i, all) => i === 0 || slot.scale > all[i - 1].scale));
 assert.strictEqual(main.seriesActiveTitle(), 'TINY CAR');
+assert.strictEqual(main.seriesSlotStyle(1).marginLeft, '0px');
+assert(main.seriesTitleStyle().WebkitTextStroke.includes('2.5px'));
+assert.strictEqual(main.seriesTitleStyle().textShadow, 'none');
+const normalSlotWidth = parseFloat(main.seriesSlotStyle(1).width);
+main.cfg.seriesGap = -18;
+assert.strictEqual(main.seriesSlotStyle(1).marginLeft, '-18px');
+assert.strictEqual(parseFloat(main.seriesSlotStyle(1).width), normalSlotWidth);
+main.cfg.seriesGap = 24;
+assert.strictEqual(main.seriesSlotStyle(1).marginLeft, '24px');
+assert.strictEqual(parseFloat(main.seriesSlotStyle(1).width), normalSlotWidth);
+const normalTitleSize = parseFloat(main.seriesTitleStyle().fontSize);
+main.cfg.seriesTitleSize = 125;
+assert(parseFloat(main.seriesTitleStyle().fontSize) > normalTitleSize);
+main.cfg.seriesTitleOutline = 0;
+assert.strictEqual(main.seriesTitleStyle().WebkitTextStroke, '0px transparent');
+main.resetSeriesAppearance();
+assert.strictEqual(main.cfg.seriesGap, 0);
+assert.strictEqual(main.cfg.seriesTitleSize, 100);
+assert.strictEqual(main.cfg.seriesTitleOutline, 2.5);
 main.select(5);
 assert.strictEqual(main.seriesActiveTitle(), 'GIANT CAR');
 main.next();
@@ -301,7 +320,7 @@ assert.strictEqual(main.cfg.layout, 'grid');
 assert.strictEqual(main.cfg.gridCols, 2);
 main.setShortsMode(false);
 assert.strictEqual(main.visibleCircleCount(), 8);
-ok('BMW Series 6 keeps six ordered variants, active titles, K/L state flow and separate standard Shorts');
+ok('BMW Series 6 keeps six ordered variants, adjustable spacing/title outline, K/L flow and separate standard Shorts');
 
 main.cfg.markGlow = 0;
 main.cfg.markOutline = 0;
