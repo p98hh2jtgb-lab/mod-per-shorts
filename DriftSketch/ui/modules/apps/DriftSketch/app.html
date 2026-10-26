@@ -1,0 +1,88 @@
+<div class="ds-root" tabindex="0">
+  <style>
+    drift-sketch-panel,.ds-root{display:block;width:100%;height:100%}
+    .ds-root{position:absolute;inset:0;padding:14px;box-sizing:border-box;pointer-events:none;font-family:'Segoe UI',Arial,sans-serif;color:#edf6f7}
+    .ds-panel{width:348px;max-height:calc(100vh - 28px);overflow:auto;box-sizing:border-box;border:1px solid rgba(255,132,55,.19);border-radius:18px;background:linear-gradient(145deg,rgba(15,22,26,.97),rgba(7,12,16,.96));box-shadow:0 18px 50px rgba(0,0,0,.38);pointer-events:auto}
+    .ds-panel::-webkit-scrollbar{width:7px}.ds-panel::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:10px}
+    .ds-head{display:flex;align-items:center;gap:12px;padding:16px 16px 14px;border-bottom:1px solid rgba(255,255,255,.055)}
+    .ds-logo{position:relative;width:38px;height:42px;flex:none;border:1px solid rgba(255,137,63,.18);border-radius:11px;background:rgba(255,111,36,.06)}
+    .ds-logo:before{content:'';position:absolute;left:11px;top:7px;width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-bottom:23px solid #ff7433;filter:drop-shadow(0 0 5px rgba(255,104,40,.25))}
+    .ds-logo:after{content:'';position:absolute;left:7px;bottom:6px;width:24px;height:5px;border-radius:2px;background:#ff9b62}
+    .ds-head-copy{flex:1;min-width:0}.ds-eyebrow{color:rgba(255,158,99,.58);font-size:8px;font-weight:800;letter-spacing:.18em}
+    .ds-title{margin-top:3px;font-size:22px;font-weight:800;letter-spacing:-.045em}.ds-title span{color:#ff8242}
+    .ds-version{padding:4px 7px;border:1px solid rgba(255,255,255,.07);border-radius:7px;color:rgba(208,225,229,.42);font-size:8px}
+    .ds-body{padding:13px 14px 14px}.ds-status{padding:12px;border:1px solid rgba(255,255,255,.06);border-radius:12px;background:rgba(255,255,255,.022)}
+    .ds-live{display:flex;align-items:center;gap:7px;color:rgba(200,220,225,.55);font-size:9px;font-weight:700;letter-spacing:.06em}
+    .ds-live i{width:7px;height:7px;border-radius:50%;background:#627177}.ds-live.on i{background:#ff7334;box-shadow:0 0 9px rgba(255,105,43,.65)}
+    .ds-vehicle{margin-top:7px;overflow:hidden;color:#edf7f8;font-size:14px;font-weight:700;text-overflow:ellipsis;white-space:nowrap}
+    .ds-status-text{margin-top:6px;color:rgba(190,211,216,.48);font-size:10px;line-height:1.45}.ds-status-text.error{color:#ff9281}
+    .ds-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:9px}
+    .ds-metric{padding:9px 7px;text-align:center;border:1px solid rgba(255,255,255,.05);border-radius:9px;background:rgba(0,0,0,.12)}
+    .ds-metric b{display:block;color:#f1f8f9;font-size:15px}.ds-metric span{display:block;margin-top:3px;color:rgba(185,207,212,.38);font-size:7px;letter-spacing:.11em}
+    .ds-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:11px}
+    .ds-btn{min-height:38px;padding:9px 11px;border:1px solid rgba(255,255,255,.08);border-radius:10px;background:rgba(255,255,255,.045);color:rgba(228,240,242,.75);font-family:inherit;font-size:10px;font-weight:750;cursor:pointer;transition:.15s ease}
+    .ds-btn:hover:not(:disabled){transform:translateY(-1px);border-color:rgba(255,137,65,.25);color:#fff}.ds-btn:disabled{opacity:.3;cursor:default}
+    .ds-btn.start{border-color:rgba(255,134,61,.28);background:linear-gradient(135deg,#ff8b48,#f26328);color:#1e0d05;box-shadow:0 5px 18px rgba(255,98,35,.12)}
+    .ds-btn.stop{border-color:rgba(255,134,61,.23);background:rgba(255,112,42,.10);color:#ffab7d}
+    .ds-btn.wide{width:100%;margin-top:8px}.ds-btn.rebuild{border-color:rgba(105,214,221,.15);background:rgba(105,214,221,.055);color:#a5e4e8}
+    .ds-btn.clear{color:rgba(255,150,135,.58)}.ds-replay-note{margin-top:10px;padding:10px 11px;border:1px solid rgba(105,214,221,.10);border-radius:10px;background:rgba(105,214,221,.035);color:rgba(177,219,223,.58);font-size:9px;line-height:1.5}
+    .ds-replay-note b{color:#bfeef0}.ds-section-label{margin:17px 1px 8px;color:rgba(255,158,99,.42);font-size:8px;font-weight:800;letter-spacing:.16em}
+    .ds-form{padding:12px;border:1px solid rgba(255,255,255,.055);border-radius:12px;background:rgba(255,255,255,.018)}
+    .ds-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px}.ds-field{display:block;min-width:0;color:rgba(190,211,216,.48);font-size:9px}
+    .ds-field.full{grid-column:1/3}.ds-field>b{float:right;color:rgba(255,185,143,.68);font-weight:600}
+    .ds-field select{width:100%;margin-top:7px;padding:8px;border:1px solid rgba(255,255,255,.07);border-radius:8px;outline:none;background:#141d22;color:#dce9eb;font-family:inherit;font-size:10px}
+    .ds-field input[type=range]{width:100%;height:3px;margin-top:11px;accent-color:#ff7a38}
+    .ds-checks{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:12px}.ds-check{display:flex;align-items:center;gap:7px;min-height:31px;padding:7px 8px;border:1px solid rgba(255,255,255,.05);border-radius:8px;color:rgba(197,215,219,.55);font-size:8px;cursor:pointer}
+    .ds-check input{accent-color:#ff7a38}.ds-foot{display:flex;justify-content:space-between;gap:10px;margin-top:12px;color:rgba(174,195,201,.30);font-size:8px}.ds-foot b{color:rgba(255,150,98,.42);font-weight:600}
+    @media(max-width:520px){.ds-root{padding:7px}.ds-panel{width:calc(100vw - 14px);max-height:calc(100vh - 14px)}}
+  </style>
+
+  <div class="ds-panel">
+    <div class="ds-head">
+      <div class="ds-logo" aria-hidden="true"></div>
+      <div class="ds-head-copy"><div class="ds-eyebrow">PATH → MESH → REPLAY</div><div class="ds-title">Drift<span>Sketch</span></div></div>
+      <span class="ds-version">v{{modVersion}}</span>
+    </div>
+    <div class="ds-body">
+      <div class="ds-status">
+        <div class="ds-live" ng-class="{on:state.recording}"><i></i>{{state.recording ? 'RECORDING LIVE PATH' : 'READY TO SKETCH'}}</div>
+        <div class="ds-vehicle">{{state.vehicleName}}</div>
+        <div class="ds-status-text" ng-class="{error:state.statusError}">{{state.status}}</div>
+      </div>
+      <div class="ds-metrics">
+        <div class="ds-metric"><b>{{integer(state.pointCount)}}</b><span>PATH POINTS</span></div>
+        <div class="ds-metric"><b>{{meters(state.pathLength)}}</b><span>DRIVE LENGTH</span></div>
+        <div class="ds-metric"><b>{{integer(state.coneCount)}}</b><span>REAL MESHES</span></div>
+      </div>
+      <div class="ds-actions">
+        <button class="ds-btn start" ng-click="start()" ng-disabled="state.recording">● START</button>
+        <button class="ds-btn stop" ng-click="stop()" ng-disabled="!state.recording">■ STOP &amp; BUILD</button>
+      </div>
+      <div class="ds-replay-note" ng-if="state.buildCount > 0 && !state.recording"><b>{{state.buildCount}} saved drive(s).</b> Hap replay-in normal të BeamNG. Konusat janë objekte reale në skenë dhe mbeten aty.</div>
+
+      <div class="ds-section-label">MESH &amp; TRACK SETTINGS</div>
+      <div class="ds-form">
+        <div class="ds-grid">
+          <label class="ds-field">Mesh
+            <select ng-model="settings.mesh" ng-change="pushSetting('mesh')"><option value="cone">Traffic Cone</option><option value="pylon">Tall Pylon</option></select>
+          </label>
+          <label class="ds-field">Sides
+            <select ng-model="settings.sides" ng-change="pushSetting('sides')"><option value="both">Both sides</option><option value="left">Left only</option><option value="right">Right only</option></select>
+          </label>
+          <label class="ds-field">Spacing <b>{{settings.spacing}} m</b><input type="range" min="1" max="10" step="0.1" ng-model="settings.spacing" ng-change="pushSetting('spacing')"></label>
+          <label class="ds-field">Track width <b>{{settings.width}} m</b><input type="range" min="1.5" max="12" step="0.1" ng-model="settings.width" ng-change="pushSetting('width')"></label>
+          <label class="ds-field">Mesh scale <b>{{settings.scale}}×</b><input type="range" min="0.5" max="2" step="0.05" ng-model="settings.scale" ng-change="pushSetting('scale')"></label>
+          <label class="ds-field">Ground fallback <b>{{settings.groundOffset}} m</b><input type="range" min="-2" max="1" step="0.05" ng-model="settings.groundOffset" ng-change="pushSetting('groundOffset')"></label>
+          <label class="ds-field full">Performance cap <b>{{settings.maxCones}} cones</b><input type="range" min="100" max="3000" step="100" ng-model="settings.maxCones" ng-change="pushSetting('maxCones')"></label>
+        </div>
+        <div class="ds-checks">
+          <label class="ds-check"><input type="checkbox" ng-model="settings.smooth" ng-change="pushSetting('smooth')">Smooth path</label>
+          <label class="ds-check"><input type="checkbox" ng-model="settings.keepBuilds" ng-change="pushSetting('keepBuilds')">Keep builds</label>
+        </div>
+        <button class="ds-btn rebuild wide" ng-click="rebuild()" ng-disabled="state.recording || state.buildCount === 0">↻ REBUILD WITH CURRENT SETTINGS</button>
+        <button class="ds-btn clear wide" ng-click="clear()">× CLEAR GENERATED CONES &amp; SAVED DRIVES</button>
+      </div>
+      <div class="ds-foot"><span>Real low-poly meshes · no JBeam cone vehicles</span><b>Prototype</b></div>
+    </div>
+  </div>
+</div>

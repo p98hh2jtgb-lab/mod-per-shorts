@@ -1,0 +1,6 @@
+{
+  "name": "DriftSketch",
+  "version": "0.1.0",
+  "author": "daimy",
+  "description": "Start → drive → Stop & Build → replay. Real mesh cones generated from the recorded vehicle path."
+}
