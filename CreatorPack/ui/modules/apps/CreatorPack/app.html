@@ -75,6 +75,16 @@
     .pf-mark.pass { color:rgba(104,255,164,0.98); }
     .pf-mark.fail { color:rgba(255,88,88,0.98); }
 
+    /* Series 6: transparent, one-line size comparison; no circles or backdrop. */
+    .pf-series-hud { position:absolute; z-index:3; display:flex; flex-direction:column; align-items:center; pointer-events:auto; background:none; filter:none; }
+    .pf-series-row { width:100%; display:flex; align-items:flex-end; justify-content:center; }
+    .pf-series-slot { position:relative; flex:none; display:flex; align-items:flex-end; justify-content:center; overflow:visible; cursor:pointer; }
+    .pf-series-car { display:block; flex:none; width:auto; max-width:none; height:auto; object-fit:contain; pointer-events:none; user-select:none; background:none; filter:none; }
+    .pf-series-mark { position:absolute; inset:0; z-index:2; display:flex; align-items:center; justify-content:center; font-weight:900; line-height:1; pointer-events:none; }
+    .pf-series-mark.pass { color:#68ffa4; }
+    .pf-series-mark.fail { color:#ff6262; }
+    .pf-series-active { margin-top:.10em; color:#fff; font-weight:900; line-height:1.05; letter-spacing:.01em; text-align:center; white-space:nowrap; text-shadow:none; }
+
     .pf-arrow {
       color:rgba(255,255,255,0.55);
       font-size:28px;
@@ -587,7 +597,7 @@
     .cp-panel .cp-close { flex:none; width:36px; height:36px; display:grid; place-items:center; padding:0 0 2px; border-radius:11px; border:1px solid rgba(255,255,255,.08); background:rgba(255,255,255,.035); color:rgba(224,238,247,.62); font-size:22px; font-weight:350; cursor:pointer; transition:.18s ease; }
     .cp-panel .cp-close:hover { color:#fff; border-color:rgba(255,124,140,.32); background:rgba(255,124,140,.10); transform:rotate(3deg); }
 
-    .cp-nav { flex:none; display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:3px; margin:14px 20px 3px; padding:4px; border:1px solid rgba(255,255,255,.055); border-radius:13px; background:rgba(1,6,11,.32); }
+    .cp-nav { flex:none; display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:3px; margin:14px 20px 3px; padding:4px; border:1px solid rgba(255,255,255,.055); border-radius:13px; background:rgba(1,6,11,.32); }
     .cp-nav button { min-width:0; height:38px; padding:0 5px; border:1px solid transparent; border-radius:9px; background:transparent; color:rgba(178,199,213,.52); font-size:10px; font-weight:680; white-space:nowrap; cursor:pointer; transition:.17s ease; }
     .cp-nav button > span { display:inline-block; margin-right:5px; color:rgba(137,198,221,.56); font-size:12px; vertical-align:-1px; }
     .cp-nav button:hover { color:#eaf7ff; background:rgba(255,255,255,.045); }
@@ -642,6 +652,7 @@
     .cp-selected-card { display:flex; align-items:center; gap:14px; margin-top:12px; padding:13px 15px; border:1px solid rgba(255,255,255,.06); border-radius:15px; background:rgba(1,6,11,.22); }
     .cp-selected-preview { position:relative; width:68px!important; height:68px!important; flex:none; display:grid; place-items:center; overflow:hidden; border-style:solid; }
     .cp-selected-preview .pf-thumb-img { position:absolute; inset:0; background-repeat:no-repeat; }
+    .cp-selected-preview .cp-selected-series-car { width:62px; max-width:none; height:auto; object-fit:contain; }
     .cp-selected-preview > span { color:rgba(255,255,255,.23); font-size:20px; font-weight:700; }
     .cp-selected-info { flex:1; min-width:0; }
     .cp-selected-info p { margin:0 0 9px; color:rgba(180,201,214,.45); font-size:9px; }
@@ -750,6 +761,43 @@
     .cp-panel .pf-pop { background:#101923; border-color:rgba(125,231,255,.15); }
     .cp-reset-help { color:rgba(174,196,210,.40); font-size:9px; }
 
+    /* Series 6 preset workspace (panel only; the standard Shorts HUD is unchanged). */
+    .cp-series-hero { overflow:hidden; margin-top:15px; padding:13px 14px 14px; border:1px solid rgba(125,231,255,.10); border-radius:14px; background:linear-gradient(145deg,rgba(62,130,161,.10),rgba(255,255,255,.018) 58%,rgba(244,91,213,.035)); }
+    .cp-series-hero.active { border-color:rgba(104,239,174,.19); }
+    .cp-series-preview { height:66px; display:flex; align-items:flex-end; justify-content:center; gap:9px; padding:4px 4px 9px; border-bottom:1px solid rgba(255,255,255,.065); }
+    .cp-series-preview img { display:block; max-width:none; height:auto; object-fit:contain; }
+    .cp-series-hero-copy { padding:11px 1px 10px; }
+    .cp-series-hero-copy h3 { margin:4px 0 5px; color:#edf8ff; font-size:18px; letter-spacing:-.025em; }
+    .cp-series-hero-copy p { margin:0; color:rgba(185,208,222,.52); font-size:10px; line-height:1.5; }
+    .cp-series-hero > .cp-primary { width:100%; }
+    .cp-series-preset-card { margin-top:10px; padding:12px 13px; border:1px solid rgba(255,255,255,.06); border-radius:12px; background:rgba(255,255,255,.022); }
+    .cp-series-preset-top, .cp-series-preset-top > div, .cp-series-preset-meta { display:flex; align-items:center; }
+    .cp-series-preset-top { justify-content:space-between; gap:10px; }
+    .cp-series-preset-top > div { gap:9px; color:#e6f3fb; font-size:12px; }
+    .cp-preset-number { display:grid; place-items:center; width:25px; height:25px; border:1px solid rgba(125,231,255,.15); border-radius:8px; background:rgba(125,231,255,.06); color:#9eeeff; font-size:9px; }
+    .cp-test-badge { padding:4px 7px; border-radius:99px; background:rgba(255,209,133,.07); color:rgba(255,209,133,.66); font-size:7px; font-weight:800; letter-spacing:.10em; }
+    .cp-series-colors { display:grid; grid-template-columns:repeat(6,1fr); gap:5px; margin:11px 0 9px; }
+    .cp-series-colors i { height:4px; border-radius:99px; opacity:.88; }
+    .cp-series-preset-meta { gap:14px; color:rgba(174,198,211,.43); font-size:8px; }
+    .cp-series-preset-meta span:before { content:'·'; margin-right:5px; color:rgba(125,231,255,.50); }
+    .cp-series-settings { margin-top:11px; }
+    .cp-series-active-card { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 13px; border:1px solid rgba(125,231,255,.10); border-radius:12px; background:rgba(125,231,255,.035); }
+    .cp-series-active-card h3 { margin:4px 0 0; color:#f2f9ff; font-size:16px; letter-spacing:.01em; }
+    .cp-series-active-card .cp-inline-actions { flex:none; margin:0; }
+    .cp-series-slot-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin:9px 0; }
+    .cp-series-slot-grid button { position:relative; min-width:0; height:34px; display:flex; align-items:center; gap:7px; padding:0 10px; border:1px solid rgba(255,255,255,.06); border-radius:9px; background:rgba(255,255,255,.022); color:rgba(196,215,227,.55); font-size:8px; font-weight:800; letter-spacing:.06em; cursor:pointer; }
+    .cp-series-slot-grid button:hover, .cp-series-slot-grid button.selected { border-color:rgba(125,231,255,.20); background:rgba(125,231,255,.065); color:#dff8ff; }
+    .cp-series-slot-grid button > i { flex:none; width:7px; height:7px; border-radius:50%; }
+    .cp-series-slot-grid button > b { margin-left:auto; font-size:12px; }
+    .cp-series-slot-grid .pass { color:#68ffa4; } .cp-series-slot-grid .fail { color:#ff6262; }
+    .cp-series-tools { display:flex; align-items:center; gap:7px; margin-top:11px; }
+    .cp-series-tools .cp-primary { flex:1; min-height:34px; padding:8px 10px; font-size:10px; }
+    .cp-series-tools .pf-btn:disabled { opacity:.32; cursor:default; }
+    .cp-series-standard { width:100%; display:flex; justify-content:space-between; gap:10px; margin-top:9px; padding:11px 12px; border:1px solid rgba(255,255,255,.06); border-radius:10px; background:transparent; color:rgba(195,215,227,.55); font-size:10px; cursor:pointer; }
+    .cp-series-standard span { color:rgba(125,231,255,.50); }
+    .cp-series-standard:hover { border-color:rgba(125,231,255,.16); color:#e2f6ff; }
+    .cp-series-note { margin:12px 0 2px; color:rgba(174,196,210,.38); font-size:9px; line-height:1.45; text-align:center; }
+
     @media (max-width:720px) {
       .pf-root .cp-panel { width:calc(100vw - 20px)!important; max-height:calc(100vh - 130px)!important; }
       .cp-nav { grid-template-columns:repeat(3,1fr); }
@@ -786,7 +834,21 @@
 
 
 
-  <div class="pf-hud" ng-if="vehiclesVisible()" ng-style="hudStyle()">
+  <!-- Series 6 është HUD veçmas: Shorts standard 2×2 mbetet i paprekur. -->
+  <div class="pf-series-hud" ng-if="cfg.series6Mode && vehiclesVisible()" ng-style="seriesHudStyle()">
+    <div class="pf-series-row">
+      <div class="pf-series-slot" ng-repeat="slot in seriesSlots track by $index"
+           ng-class="{'is-selected':selected === $index, 'state-pass':cfg.items[$index].state === 'pass', 'state-fail':cfg.items[$index].state === 'fail'}"
+           ng-style="seriesSlotStyle()" ng-click="select($index)" title="{{slot.label}}">
+        <img class="pf-series-car" ng-src="{{slot.image}}" ng-style="seriesImageStyle(slot)" alt="{{slot.label}}" draggable="false">
+        <div ng-if="cfg.showMarks && cfg.items[$index].state === 'pass'" class="pf-series-mark pass" ng-style="seriesMarkStyle()">✓</div>
+        <div ng-if="cfg.showMarks && cfg.items[$index].state === 'fail'" class="pf-series-mark fail" ng-style="seriesMarkStyle()">✕</div>
+      </div>
+    </div>
+    <div class="pf-series-active" ng-style="seriesTitleStyle()">{{seriesActiveTitle()}}</div>
+  </div>
+
+  <div class="pf-hud" ng-if="vehiclesVisible() && !cfg.series6Mode" ng-style="hudStyle()">
     <div ng-repeat="item in cfg.items track by $index" ng-if="circleVisible($index) && (cfg.shortsMode || item.enabled !== false)" style="display:flex; align-items:center;">
       <!-- kolone: rrethi siper, kostoja poshte tij (jashte .pf-item sepse ai ka overflow:hidden) -->
       <div class="pf-item-col">
@@ -822,6 +884,7 @@
     <div class="cp-nav" role="tablist">
       <button ng-class="{active:tab==='kryesore'}" ng-click="tab='kryesore'"><span>⌂</span>Kryesore</button>
       <button ng-class="{active:tab==='shorts'}" ng-click="tab='shorts'"><span>▯</span>Shorts</button>
+      <button ng-class="{active:tab==='series'}" ng-click="tab='series'"><span>↗</span>Series 6</button>
       <button ng-class="{active:tab==='makinat'}" ng-click="tab='makinat'"><span>◉</span>Rrethet</button>
       <button ng-class="{active:tab==='pamja'}" ng-click="tab='pamja'"><span>✦</span>Stili</button>
       <button ng-class="{active:tab==='fotot'}" ng-click="tab='fotot'"><span>▧</span>Fotot</button>
@@ -856,16 +919,18 @@
         <button ng-click="tab='makinat'"><span class="cp-action-icon">◉</span><b>Menaxho rrethet</b><small>Foto, emra dhe rezultate</small></button>
         <button ng-click="tab='fotot'; scanImages(false)"><span class="cp-action-icon">▧</span><b>Biblioteka e fotove</b><small>{{photoCount()}} foto të ngarkuara</small></button>
         <button ng-if="!cfg.shortsMode" ng-click="addItem()"><span class="cp-action-icon">＋</span><b>Shto një rreth</b><small>Zgjero serinë aktuale</small></button>
+        <button ng-click="tab='series'"><span class="cp-action-icon">↗</span><b>Series 6 · BMW</b><small>Tiny → Giant, 6 ngjyra</small></button>
         <button ng-click="cleanCapture()"><span class="cp-action-icon">⌁</span><b>Regjistrim i pastër</b><small>Fsheh panelin dhe guidat</small></button>
       </div>
       <div class="cp-selected-card" ng-if="cfg.items[selected]">
         <div class="cp-selected-preview" ng-style="thumbStyle(cfg.items[selected])">
-          <div ng-if="cfg.items[selected].image" class="pf-thumb-img" ng-style="thumbImgStyle(cfg.items[selected])"></div>
-          <span ng-if="!cfg.items[selected].image">{{selected + 1}}</span>
+          <img ng-if="cfg.series6Mode" class="cp-selected-series-car" ng-src="{{seriesSlots[selected].image}}" alt="{{seriesActiveTitle()}}">
+          <div ng-if="!cfg.series6Mode && cfg.items[selected].image" class="pf-thumb-img" ng-style="thumbImgStyle(cfg.items[selected])"></div>
+          <span ng-if="!cfg.series6Mode && !cfg.items[selected].image">{{selected + 1}}</span>
         </div>
         <div class="cp-selected-info">
           <div class="cp-kicker">RRETHI I ZGJEDHUR · #{{selected + 1}}</div>
-          <h3>{{cfg.items[selected].label || 'Makina ' + (selected + 1)}}</h3>
+          <h3>{{cfg.series6Mode ? seriesActiveTitle() : (cfg.items[selected].label || 'Makina ' + (selected + 1))}}</h3>
           <p>{{cfg.items[selected].state === 'pending' ? 'Në pritje të rezultatit' : (cfg.items[selected].state === 'pass' ? 'Shënuar si PASS' : 'Shënuar si FAIL')}}</p>
           <div class="cp-inline-actions">
             <button class="cp-pass" ng-click="markState('pass')">✓ PASS <kbd>K</kbd></button>
@@ -881,18 +946,20 @@
     <div class="pf-section cp-shorts" ng-show="tab==='shorts'">
       <div class="cp-section-title">
         <div><div class="cp-kicker">VERTICAL COMPOSER</div><h2>Shorts Studio</h2><p>Një kompozim i pastër 9:16 për YouTube Shorts.</p></div>
-        <span class="cp-status-pill" ng-class="{on:cfg.shortsMode}"><i></i>{{cfg.shortsMode ? 'AKTIV' : 'JO AKTIV'}}</span>
+        <span class="cp-status-pill" ng-class="{on:cfg.shortsMode && !cfg.series6Mode}"><i></i>{{cfg.series6Mode ? 'SERIES 6' : (cfg.shortsMode ? 'AKTIV' : 'JO AKTIV')}}</span>
       </div>
-      <div class="cp-shorts-master" ng-class="{active:cfg.shortsMode}">
+      <div class="cp-shorts-master" ng-class="{active:cfg.shortsMode && !cfg.series6Mode}">
         <div class="cp-phone"><div><span></span><span></span><span></span><span></span></div></div>
         <div class="cp-shorts-master-copy">
-          <h3>{{cfg.shortsMode ? '4 rrethe. Gati për regjistrim.' : 'Aktivizo kompozimin 2×2'}}</h3>
+          <h3>{{cfg.series6Mode ? 'Series 6 është aktiv.' : (cfg.shortsMode ? '4 rrethe. Gati për regjistrim.' : 'Aktivizo kompozimin 2×2')}}</h3>
           <p ng-if="!cfg.shortsMode">Kur e aktivizon, modi përdor saktësisht katër rrethet e para dhe i vendos brenda kornizës 9:16.</p>
-          <p ng-if="cfg.shortsMode">Rrethet e tjerë fshehen vetëm përkohësisht. Kur e fik Shorts, layout-i yt i mëparshëm rikthehet.</p>
-          <button class="cp-primary" ng-click="toggleShorts()">{{cfg.shortsMode ? '✓ Shorts është aktiv — fike' : 'Aktivizo Shorts · 4 rrethe'}}</button>
+          <p ng-if="cfg.series6Mode">Series 6 është një HUD veçmas me 6 variante. Kthehu këtu për Shorts-in standard 2×2.</p>
+          <p ng-if="cfg.shortsMode && !cfg.series6Mode">Rrethet e tjerë fshehen vetëm përkohësisht. Kur e fik Shorts, layout-i yt i mëparshëm rikthehet.</p>
+          <button ng-if="!cfg.series6Mode" class="cp-primary" ng-click="toggleShorts()">{{cfg.shortsMode ? '✓ Shorts është aktiv — fike' : 'Aktivizo Shorts · 4 rrethe'}}</button>
+          <button ng-if="cfg.series6Mode" class="cp-primary" ng-click="setShortsMode(true)">Aktivizo Shorts standard · 4 rrethe</button>
         </div>
       </div>
-      <div ng-if="cfg.shortsMode" class="cp-shorts-settings">
+      <div ng-if="cfg.shortsMode && !cfg.series6Mode" class="cp-shorts-settings">
         <div class="cp-mini-stats"><span><b>4</b> rrethe</span><span><b>2×2</b> rrjetë</span><span><b>9:16</b> kornizë</span></div>
         <div class="cp-control-card">
           <div class="cp-control-title"><span>01</span><div><b>Pozicioni i kompozimit</b><small>Mbaj rrethet larg elementeve të YouTube.</small></div></div>
@@ -925,8 +992,80 @@
         <div><b>1</b><span>Aktivizo Shorts</span></div><i></i><div><b>2</b><span>Vendos 4 makinat</span></div><i></i><div><b>3</b><span>Regjistro pa guidat</span></div>
       </div>
     </div>
+    <div class="pf-section cp-series" ng-show="tab==='series'">
+      <div class="cp-section-title">
+        <div><div class="cp-kicker">SIZE COMPARISON</div><h2>Series 6</h2><p>E njëjta makinë. Gjashtë ngjyra. Madhësi në rritje.</p></div>
+        <span class="cp-status-pill" ng-class="{on:cfg.series6Mode}"><i></i>{{cfg.series6Mode ? 'AKTIV' : 'TEST'}}</span>
+      </div>
+
+      <div class="cp-series-hero" ng-class="{active:cfg.series6Mode}">
+        <div class="cp-series-preview" aria-hidden="true">
+          <img ng-repeat="slot in seriesSlots track by $index" ng-src="{{slot.image}}" ng-style="{width:(20 + ($index * 6)) + 'px'}" alt="">
+        </div>
+        <div class="cp-series-hero-copy">
+          <div class="cp-kicker">PRESET 1 · BMW</div>
+          <h3>Tiny → Giant</h3>
+          <p>Një rresht transparent me titullin e variantit aktiv dhe shenjat ✓/✕ nga K/L.</p>
+        </div>
+        <button class="cp-primary" ng-click="setSeries6Mode(!cfg.series6Mode)">{{cfg.series6Mode ? '✓ Series 6 është aktiv' : 'Aktivizo BMW Series 6'}}</button>
+      </div>
+
+      <div class="cp-series-preset-card">
+        <div class="cp-series-preset-top"><div><span class="cp-preset-number">01</span><b>BMW</b></div><span class="cp-test-badge">PRESET TESTIMI</span></div>
+        <div class="cp-series-colors"><i ng-repeat="slot in seriesSlots track by $index" ng-style="{background:slot.color}" title="{{slot.label}}"></i></div>
+        <div class="cp-series-preset-meta"><span>1 model</span><span>6 variante</span><span>Pa logo</span></div>
+      </div>
+
+      <div ng-if="cfg.series6Mode" class="cp-series-settings">
+        <div class="cp-series-active-card">
+          <div><div class="cp-kicker">VARIANTI AKTIV · {{selected + 1}}/6</div><h3>{{seriesActiveTitle()}}</h3></div>
+          <div class="cp-inline-actions">
+            <button class="cp-pass" ng-click="markState('pass')">✓ PASS <kbd>K</kbd></button>
+            <button class="cp-fail" ng-click="markState('fail')">✕ FAIL <kbd>L</kbd></button>
+          </div>
+        </div>
+
+        <div class="cp-series-slot-grid">
+          <button ng-repeat="slot in seriesSlots track by $index" ng-class="{selected:selected === $index}" ng-click="select($index)">
+            <i ng-style="{background:slot.color}"></i><span>{{slot.short}}</span>
+            <b ng-if="cfg.items[$index].state === 'pass'" class="pass">✓</b>
+            <b ng-if="cfg.items[$index].state === 'fail'" class="fail">✕</b>
+          </button>
+        </div>
+
+        <div class="cp-control-card">
+          <div class="cp-control-title"><span>01</span><div><b>Pozicioni i serisë</b><small>Brenda kornizës vertikale 9:16.</small></div></div>
+          <div class="cp-segmented">
+            <button ng-click="seriesPlace('top')">↑ Lart</button>
+            <button ng-click="seriesPlace('center')">◆ Mes</button>
+            <button ng-click="seriesPlace('bottom')">↓ Poshtë</button>
+          </div>
+        </div>
+
+        <div class="cp-control-card">
+          <div class="cp-control-title"><span>02</span><div><b>Provimi & regjistrimi</b><small>Auto-advance, undo dhe clean capture përdorin kontrollet ekzistuese.</small></div></div>
+          <div class="cp-check-grid">
+            <label><input type="checkbox" ng-model="cfg.autoAdvance" ng-change="persist()"><span></span>Kalo automatikisht</label>
+            <label><input type="checkbox" ng-model="cfg.guidesOn" ng-change="persist()"><span></span>Korniza 9:16</label>
+          </div>
+          <div class="cp-series-tools">
+            <button class="pf-btn" ng-click="undo()" ng-disabled="!canUndo()">↶ Undo</button>
+            <button class="pf-btn" ng-click="resetStates()">↺ Reset</button>
+            <button class="cp-primary" ng-click="cleanCapture()">Regjistrim i pastër →</button>
+          </div>
+        </div>
+
+        <button class="cp-series-standard" ng-click="setShortsMode(true); tab='shorts'">Kthehu te Shorts standard <span>4 rrethe · 2×2</span></button>
+      </div>
+
+      <div class="cp-empty-guide" ng-if="!cfg.series6Mode">
+        <div><b>1</b><span>Aktivizo BMW</span></div><i></i><div><b>2</b><span>Shëno me K / L</span></div><i></i><div><b>3</b><span>Regjistro pa panel</span></div>
+      </div>
+      <div class="cp-series-note">Shorts standard mbetet veçmas me saktësisht 4 rrethe në 2×2.</div>
+    </div>
+
     <div class="pf-section" ng-show="tab==='pamja'">
-      <div class="pf-label">Pozicioni & pamja e rretheve</div>
+      <div class="pf-label">Pozicioni &amp; pamja e rretheve</div>
       <div class="pf-grid">
         <div class="pf-card">
           <div class="mini">Pozicioni X i HUD-it</div>
@@ -1116,7 +1255,8 @@
           <input class="pf-range" type="range" min="1" max="8" step="1" ng-model="cfg.gridCols" ng-change="persist()">
         </div>
       </div>
-      <div class="pf-note" ng-if="cfg.shortsMode">Shorts është fiks në 2×2 me 4 rrethe. Fike Shorts për të ndryshuar renditjen.</div>
+      <div class="pf-note" ng-if="cfg.shortsMode && !cfg.series6Mode">Shorts është fiks në 2×2 me 4 rrethe. Fike Shorts për të ndryshuar renditjen.</div>
+      <div class="pf-note" ng-if="cfg.series6Mode">Series 6 përdor një rresht fiks me 6 variante; madhësia dhe ngjyra vijnë nga preset-i BMW.</div>
     </div>
 
     
@@ -1222,10 +1362,14 @@
       </div>
     </div>
     <div class="pf-section" ng-show="tab==='makinat'">
-      <div class="pf-label">Makinat</div>
+      <div class="pf-label">{{cfg.series6Mode ? 'Series 6 · BMW' : 'Makinat'}}</div>
+      <div class="cp-series-active-card" ng-if="cfg.series6Mode">
+        <div><div class="cp-kicker">PRESET ME 6 SLOT-E FIKS</div><h3>{{seriesActiveTitle()}}</h3></div>
+        <button class="cp-primary" ng-click="tab='series'">Hap Series 6 →</button>
+      </div>
     </div>
 
-    <div class="pf-items" ng-show="tab==='makinat'">
+    <div class="pf-items" ng-show="tab==='makinat' && !cfg.series6Mode">
       <div class="pf-editor" ng-repeat="item in cfg.items track by $index" ng-if="circleVisible($index)">
         <div class="pf-thumb-wrap">
           <!-- Preview i madh rrethor: e njejta pamje si ne HUD -->
@@ -1314,7 +1458,7 @@
       <div class="pf-card cp-diagnostics">
         <div><span>Versioni</span><b>CreatorPack Studio v{{modVersion}}</b></div>
         <div><span>Konfigurimi</span><b ng-class="loadState==='ok' ? 'ok' : 'warn'">{{loadState === 'ok' ? 'Në rregull' : loadState}}</b></div>
-        <div><span>Rrethet në Shorts</span><b class="ok">{{cfg.shortsMode ? visibleCircleCount() + ' / 4' : 'Shorts jo aktiv'}}</b></div>
+        <div><span>Kompozimi aktiv</span><b class="ok">{{cfg.series6Mode ? 'Series 6 · ' + visibleCircleCount() + ' / 6' : (cfg.shortsMode ? 'Shorts · ' + visibleCircleCount() + ' / 4' : 'Shorts jo aktiv')}}</b></div>
         <div><span>Fotot</span><b class="ok">{{photoCount()}} në rrethe · {{photoSavedKB}} KB arkivë</b></div>
         <div><span>Galeria</span><b>{{gallery.length}} imazhe · {{galleryState}}</b></div>
         <div><span>Full-screen HUD</span><b class="ok">Aktiv · pa hije të HUD-it</b></div>

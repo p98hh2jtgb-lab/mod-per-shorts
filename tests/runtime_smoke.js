@@ -177,7 +177,7 @@ const mainBindingCount = checkHtmlBindings(
 ok('CreatorPack Angular bindings resolved (' + mainBindingCount + ' expressions)');
 // CreatorPack runtime logic.
 const main = instantiate('CreatorPack/ui/modules/apps/CreatorPack/app.js', 'creatorpackPanel');
-assert.strictEqual(main.modVersion, '6.0.3');
+assert.strictEqual(main.modVersion, '6.1.0');
 assert.strictEqual(main.cfg.items.length, 8);
 assert.strictEqual(main.toggleCost, undefined);
 ok('CreatorPack boots with clean vehicle-only configuration');
@@ -242,6 +242,66 @@ assert.strictEqual(main.cfg.shortsMode, true);
 emit('pfhud.action', { action: 'toggleShorts' });
 assert.strictEqual(main.cfg.shortsMode, false);
 ok('Shorts restores the previous layout and Lua action toggles both ways');
+
+main.setSeries6Mode(true);
+assert.strictEqual(main.cfg.series6Mode, true);
+assert.strictEqual(main.cfg.shortsMode, true);
+assert.strictEqual(main.cfg.seriesPreset, 'bmw');
+assert.strictEqual(main.seriesSlots.length, 6);
+assert.strictEqual(main.visibleCircleCount(), 6);
+assert.deepStrictEqual(main.seriesSlots.map(slot => slot.label), [
+  'TINY CAR', 'SMALL CAR', 'MEDIUM CAR', 'NORMAL CAR', 'BIG CAR', 'GIANT CAR'
+]);
+assert.deepStrictEqual(main.seriesSlots.map(slot => slot.color), [
+  '#f4df28', '#3978f6', '#ff8a32', '#f04444', '#58d83e', '#f45bd5'
+]);
+for (let i = 0; i < 6; i++) {
+  assert.strictEqual(main.circleVisible(i), true);
+  assert.strictEqual(main.cfg.items[i].enabled, true);
+  const asset = path.join(ROOT, 'CreatorPack', main.seriesSlots[i].image);
+  assert(fs.existsSync(asset), 'Missing Series 6 asset: ' + main.seriesSlots[i].image);
+  assert(main.seriesImageStyle(main.seriesSlots[i]).width.endsWith('px'));
+}
+assert.strictEqual(main.circleVisible(6), false);
+assert(main.seriesSlots.every((slot, i, all) => i === 0 || slot.scale > all[i - 1].scale));
+assert.strictEqual(main.seriesActiveTitle(), 'TINY CAR');
+main.select(5);
+assert.strictEqual(main.seriesActiveTitle(), 'GIANT CAR');
+main.next();
+assert.strictEqual(main.selected, 5, 'Series navigation must stop at GIANT');
+main.select(0);
+main.markState('pass');
+assert.strictEqual(main.cfg.items[0].state, 'pass');
+assert.strictEqual(main.selected, 1);
+assert.strictEqual(main.seriesActiveTitle(), 'SMALL CAR');
+main.undo();
+assert.strictEqual(main.cfg.items[0].state, 'pending');
+assert.strictEqual(main.selected, 0);
+main.markState('fail');
+assert.strictEqual(main.cfg.items[0].state, 'fail');
+assert.strictEqual(main.selected, 1);
+main.resetStates();
+assert.strictEqual(main.selected, 0);
+assert(main.cfg.items.slice(0, 6).every(item => item.state === 'pending'));
+const seriesTop = main.cfg.positionY;
+main.seriesPlace('bottom');
+assert.notStrictEqual(main.cfg.positionY, seriesTop);
+assert(main.cfg.positionY >= 0);
+main.cleanCapture();
+assert.strictEqual(main.cfg.showPanel, false);
+assert.strictEqual(main.cfg.guidesOn, false);
+assert.strictEqual(main.visibleCircleCount(), 6);
+main.togglePanel();
+assert.strictEqual(main.cfg.showPanel, true);
+assert.strictEqual(main.cfg.guidesOn, true);
+main.setShortsMode(true);
+assert.strictEqual(main.cfg.series6Mode, false);
+assert.strictEqual(main.visibleCircleCount(), 4);
+assert.strictEqual(main.cfg.layout, 'grid');
+assert.strictEqual(main.cfg.gridCols, 2);
+main.setShortsMode(false);
+assert.strictEqual(main.visibleCircleCount(), 8);
+ok('BMW Series 6 keeps six ordered variants, active titles, K/L state flow and separate standard Shorts');
 
 main.cfg.markGlow = 0;
 main.cfg.markOutline = 0;

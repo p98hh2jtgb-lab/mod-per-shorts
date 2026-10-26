@@ -142,7 +142,7 @@ async function makeServer(modName) {
     await page.waitForSelector('.cp-panel', {state:'visible'});
     console.log('✓ Real H / K / L / Ctrl+Z keyboard events toggle, mark PASS/FAIL and undo');
 
-    for (const tab of ['makinat','pamja','fotot','tjera']) {
+    for (const tab of ['makinat','pamja','fotot','series','tjera']) {
       await page.evaluate(tabName => {
         const scope = angular.element(document.querySelector('.cp-panel')).scope();
         scope.tab = tabName; scope.$apply();
@@ -150,7 +150,7 @@ async function makeServer(modName) {
       await page.waitForTimeout(150);
       await page.screenshot({path:`/tmp/creatorpack-${tab}.png`});
     }
-    console.log('✓ Rrethet, Stili, Fotot and Më shumë render in Chromium');
+    console.log('✓ Rrethet, Stili, Fotot, Series 6 and Më shumë render in Chromium');
 
     await page.evaluate(() => {
       const scope = angular.element(document.querySelector('.cp-panel')).scope();
@@ -253,6 +253,78 @@ async function makeServer(modName) {
     await page.waitForTimeout(120);
     assert.strictEqual(await page.locator('.pf-guides').count(), 1);
     console.log('✓ H returns from clean capture with Shorts guides restored');
+
+    await page.evaluate(() => {
+      const scope = angular.element(document.querySelector('.cp-panel')).scope();
+      scope.setSeries6Mode(true); scope.tab='series'; scope.$apply();
+    });
+    await page.waitForTimeout(400);
+    const series = await page.evaluate(() => {
+      const scope = angular.element(document.querySelector('.cp-panel')).scope();
+      const cars = [...document.querySelectorAll('.pf-series-car')];
+      return {
+        count:cars.length,
+        standardCircles:document.querySelectorAll('.pf-hud .pf-item').length,
+        title:document.querySelector('.pf-series-active')?.textContent.trim(),
+        widths:cars.map(car => car.getBoundingClientRect().width),
+        loaded:cars.every(car => car.complete && car.naturalWidth > 0),
+        visible:scope.visibleCircleCount(),
+        labels:scope.seriesSlots.map(slot => slot.label)
+      };
+    });
+    assert.strictEqual(series.count, 6);
+    assert.strictEqual(series.standardCircles, 0);
+    assert.strictEqual(series.visible, 6);
+    assert.strictEqual(series.title, 'TINY CAR');
+    assert.strictEqual(series.loaded, true, 'Every transparent BMW variant must load');
+    assert(series.widths.every((width, i) => i === 0 || width > series.widths[i - 1]), 'Car widths must increase Tiny → Giant');
+    await page.screenshot({path:'/tmp/creatorpack-series-panel.png'});
+    console.log('✓ BMW Series 6 renders six loaded transparent variants in increasing size with active title');
+
+    await page.keyboard.press('k');
+    await page.waitForTimeout(120);
+    let seriesKey = await page.evaluate(() => {
+      const scope = angular.element(document.querySelector('.cp-panel')).scope();
+      return {first:scope.cfg.items[0].state, selected:scope.selected,
+        title:document.querySelector('.pf-series-active')?.textContent.trim(),
+        pass:document.querySelectorAll('.pf-series-mark.pass').length};
+    });
+    assert.deepStrictEqual(seriesKey, {first:'pass',selected:1,title:'SMALL CAR',pass:1});
+    await page.keyboard.press('Control+z');
+    await page.waitForTimeout(120);
+    await page.keyboard.press('l');
+    await page.waitForTimeout(120);
+    seriesKey = await page.evaluate(() => {
+      const scope = angular.element(document.querySelector('.cp-panel')).scope();
+      return {first:scope.cfg.items[0].state, selected:scope.selected,
+        title:document.querySelector('.pf-series-active')?.textContent.trim(),
+        fail:document.querySelectorAll('.pf-series-mark.fail').length};
+    });
+    assert.deepStrictEqual(seriesKey, {first:'fail',selected:1,title:'SMALL CAR',fail:1});
+    await page.keyboard.press('Control+z');
+    await page.waitForTimeout(120);
+    console.log('✓ Series 6 K / L / auto-advance / Ctrl+Z update the same six slot states');
+
+    await page.evaluate(() => {
+      const scope = angular.element(document.querySelector('.cp-panel')).scope();
+      scope.cleanCapture(); scope.$apply();
+    });
+    await page.waitForTimeout(200);
+    assert.strictEqual(await page.locator('.cp-panel').count(), 0);
+    assert.strictEqual(await page.locator('.pf-guides').count(), 0);
+    assert.strictEqual(await page.locator('.pf-series-car').count(), 6);
+    await page.screenshot({path:'/tmp/creatorpack-series-clean.png'});
+    await page.keyboard.press('h');
+    await page.waitForSelector('.cp-panel', {state:'visible'});
+    await page.waitForTimeout(120);
+    await page.evaluate(() => {
+      const scope = angular.element(document.querySelector('.cp-panel')).scope();
+      scope.setShortsMode(true); scope.tab='shorts'; scope.$apply();
+    });
+    await page.waitForTimeout(250);
+    assert.strictEqual(await page.locator('.pf-series-car').count(), 0);
+    assert.strictEqual(await page.locator('.pf-hud .pf-item').count(), 4);
+    console.log('✓ Series clean capture keeps six cars; returning to standard Shorts restores exactly four circles');
     await page.close();
     await new Promise(resolve => env.server.close(resolve));
     assert.deepStrictEqual(errors, []);
