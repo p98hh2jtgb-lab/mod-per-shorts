@@ -1,4 +1,4 @@
-DRIFTSKETCH 0.7.0 — PROTOTYPE
+DRIFTSKETCH 0.7.1 — PROTOTYPE
 ================================
 
 Record a real drive, then build an object-marked path from your actual trajectory.
@@ -7,7 +7,7 @@ DriftSketch is a standalone mod. It does not require CreatorPack.
 INSTALL
 -------
 1. Open BeamNG.drive > Mods > Open Mod Folder (or your user mods folder).
-2. Copy DriftSketch_v0.7.0.zip there without extracting it.
+2. Copy DriftSketch_v0.7.1.zip there without extracting it.
 3. Enable DriftSketch in the Mod Manager if needed.
 4. In a map, open the top app menu > Add App > DriftSketch.
 
@@ -22,6 +22,16 @@ WORKFLOW
    again. Keep builds controls whether a new run preserves older runs.
 6. Clear generated objects & saved drives deletes only this mod's generated
    objects and saved paths. It does not clear map objects or other mods.
+
+HOTFIX 0.7.1 — ONE-CLICK MESH BUTTONS
+------------------------------------
+- Removed the native Mesh dropdown, whose popup could not open reliably inside
+  the BeamNG app viewport.
+- Traffic Cone, Tall Pylon, Single Tire and Tire Stack are now four visible
+  buttons. One click selects the mesh and sends the real GE setting command;
+  there is no dropdown or second confirmation step.
+- The active button is highlighted immediately. New selections apply to the next
+  Stop & Build; use Rebuild to update an already saved drive.
 
 NEW IN 0.7.0
 ------------
@@ -83,8 +93,9 @@ DRIFT WIDTH / REAR CLEARANCE
 
 PANEL SETTINGS
 --------------
-Mesh: original low-poly Traffic Cone or Tall Pylon (256 triangles each),
-Single Tire (352 triangles) or Tire Stack (768 triangles).
+Mesh: four always-visible one-click buttons, with no dropdown: original low-poly
+Traffic Cone or Tall Pylon (256 triangles each), Single Tire (352 triangles)
+or Tire Stack (768 triangles).
 Layout: Both sides, always.
 Spacing: approximate distance between cones on the same line; lower means more
 cones. Inner and outer curves are sampled independently.
@@ -135,7 +146,8 @@ A separate check covers real OOBB half-axis/rear-wing clearance and fallback
 behavior. Mesh selection tests cover cone, pylon, Single Tire and Tire Stack,
 including tire-specific clearance. A long-run stress case covers roughly 700
 points and 1,500+ objects.
-Angular runtime and Chromium interaction tests cover the panel and commands.
+Angular runtime and Chromium interaction tests cover the panel and commands,
+including four visible mesh buttons, no native select and one-click Tire Stack.
 A real BeamNG pass is still recommended for each vehicle/map to tune width,
 ground fallback, collision behavior and performance for your driving style.
 

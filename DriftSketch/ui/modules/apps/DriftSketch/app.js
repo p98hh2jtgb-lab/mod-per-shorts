@@ -5,7 +5,7 @@ angular.module('beamng.apps')
     restrict: 'EA',
     templateUrl: '/ui/modules/apps/DriftSketch/app.html',
     link: function(scope) {
-      scope.modVersion = '0.7.0';
+      scope.modVersion = '0.7.1';
       scope.state = {recording:false, pointCount:0, pathLength:0, buildCount:0, coneCount:0,
         vehicleName:'No vehicle', status:'Loading DriftSketch…', statusError:false};
       scope.settings = {mesh:'cone', spacing:2.4, width:4.2, scale:1.0,
@@ -22,6 +22,13 @@ angular.module('beamng.apps')
         var value = scope.settings[key];
         if (['spacing','width','scale','groundOffset','maxCones'].indexOf(key) >= 0) value = Number(value);
         lua('extensions.driftSketch.setSetting(' + JSON.stringify(key) + ',' + JSON.stringify(value) + ')');
+      };
+      scope.selectMesh = function(mesh) {
+        if (['cone','pylon','tire','tireStack'].indexOf(mesh) < 0) return;
+        // Native select popups are unreliable in the BeamNG app viewport.
+        // These always-visible buttons update the real GE setting in one click.
+        scope.settings.mesh = mesh;
+        scope.pushSetting('mesh');
       };
       scope.meters = function(value) { return (Number(value) || 0).toFixed(1) + ' m'; };
       scope.integer = function(value) { return Math.round(Number(value) || 0); };
