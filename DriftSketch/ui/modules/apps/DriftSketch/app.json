@@ -1,8 +1,8 @@
 {
   "name": "DriftSketch",
   "author": "daimy",
-  "version": "0.8.0",
-  "description": "Record any vehicle and build real markers, colorful drift tires and aligned textured Start/Finish gates with proper BeamNG materials.",
+  "version": "0.8.1",
+  "description": "Record any vehicle and build yellow/white markers, drift tires and aligned textured Start/Finish gates with explicitly loaded BeamNG materials.",
   "directive": "driftSketchPanel",
   "domElement": "<drift-sketch-panel></drift-sketch-panel>",
   "css": {

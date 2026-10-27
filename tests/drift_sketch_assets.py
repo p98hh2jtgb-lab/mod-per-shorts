@@ -7,7 +7,7 @@ import struct
 import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
-ASSETS = ROOT / "DriftSketch" / "art" / "shapes" / "driftsketch"
+ASSETS = ROOT / "DriftSketch" / "art" / "shapes" / "driftsketch_yw"
 MATERIALS = ASSETS / "main.materials.json"
 NS = {"c": "http://www.collada.org/2005/11/COLLADASchema"}
 EXPECTED = {
@@ -18,11 +18,13 @@ EXPECTED = {
     "gate_start.dae": 220,
     "gate_finish.dae": 220,
 }
-REQUIRED_SLOTS = {
-    "tire.dae": {"driftsketch_rubber", "driftsketch_tread", "driftsketch_cyan", "driftsketch_orange", "driftsketch_metal"},
-    "tire_stack.dae": {"driftsketch_orange", "driftsketch_white", "driftsketch_cyan"},
-    "gate_start.dae": {"driftsketch_start_banner", "driftsketch_cyan", "driftsketch_frame"},
-    "gate_finish.dae": {"driftsketch_finish_banner", "driftsketch_red", "driftsketch_frame"},
+EXPECTED_SLOTS = {
+    "cone.dae": {"driftsketch_rubber", "driftsketch_yellow", "driftsketch_white"},
+    "pylon.dae": {"driftsketch_rubber", "driftsketch_yellow", "driftsketch_white"},
+    "tire.dae": {"driftsketch_rubber", "driftsketch_tread", "driftsketch_yellow", "driftsketch_white", "driftsketch_metal", "driftsketch_black"},
+    "tire_stack.dae": {"driftsketch_yellow", "driftsketch_white"},
+    "gate_start.dae": {"driftsketch_start_banner", "driftsketch_yellow", "driftsketch_white", "driftsketch_frame", "driftsketch_black"},
+    "gate_finish.dae": {"driftsketch_finish_banner", "driftsketch_yellow", "driftsketch_white", "driftsketch_frame", "driftsketch_black"},
 }
 
 
@@ -51,7 +53,7 @@ def validate(name, expected_triangles):
     materials = {node.attrib["id"] for node in material_nodes}
     slot_names = {node.attrib.get("name", node.attrib["id"]) for node in material_nodes}
     assert all(slot.startswith("driftsketch_") for slot in slot_names)
-    assert REQUIRED_SLOTS.get(name, set()) <= slot_names
+    assert slot_names == EXPECTED_SLOTS[name], (name, slot_names)
     bindings = {
         node.attrib["symbol"]: node.attrib["target"].lstrip("#")
         for node in root.findall(".//c:instance_material", NS)
@@ -122,14 +124,16 @@ def validate_material_definitions(used_slots):
         assert 0 <= stage["roughnessFactor"] <= 1
         if "baseColorMap" in stage:
             path = stage["baseColorMap"]
-            prefix = "/art/shapes/driftsketch/"
+            prefix = "/art/shapes/driftsketch_yw/"
             assert path.startswith(prefix)
             texture = ASSETS / path[len(prefix):]
-            assert texture.is_file()
+            assert texture.is_file() and texture.name.endswith(".color.png")
             payload = texture.read_bytes()
             assert payload[:8] == b"\x89PNG\r\n\x1a\n"
             assert struct.unpack(">II", payload[16:24]) == (1536, 288)
-    print(f"OK main.materials.json: {len(used_slots)} used slots resolve with mapTo; no generic/yellow fallback names")
+    assert data["driftsketch_yellow"]["Stages"][0]["baseColorFactor"] == [1.0, 0.78, 0.02, 1]
+    assert not {"driftsketch_orange", "driftsketch_cyan", "driftsketch_red"} & set(data)
+    print(f"OK main.materials.json: {len(used_slots)} yellow/white slots resolve with mapTo and .color.png textures")
 
 
 if __name__ == "__main__":

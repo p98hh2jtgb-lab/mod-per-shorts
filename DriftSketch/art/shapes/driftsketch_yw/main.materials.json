@@ -109,43 +109,21 @@
     ],
     "doubleSided": false
   },
-  "driftsketch_orange": {
-    "name": "driftsketch_orange",
-    "mapTo": "driftsketch_orange",
+  "driftsketch_yellow": {
+    "name": "driftsketch_yellow",
+    "mapTo": "driftsketch_yellow",
     "class": "Material",
     "version": 1.5,
     "Stages": [
       {
         "baseColorFactor": [
-          0.95,
-          0.16,
-          0.025,
-          1
-        ],
-        "metallicFactor": 0.1,
-        "roughnessFactor": 0.5
-      },
-      {},
-      {},
-      {}
-    ],
-    "doubleSided": false
-  },
-  "driftsketch_cyan": {
-    "name": "driftsketch_cyan",
-    "mapTo": "driftsketch_cyan",
-    "class": "Material",
-    "version": 1.5,
-    "Stages": [
-      {
-        "baseColorFactor": [
-          0.0,
-          0.62,
+          1.0,
           0.78,
+          0.02,
           1
         ],
-        "metallicFactor": 0.1,
-        "roughnessFactor": 0.45
+        "metallicFactor": 0.05,
+        "roughnessFactor": 0.55
       },
       {},
       {},
@@ -175,28 +153,6 @@
     ],
     "doubleSided": false
   },
-  "driftsketch_red": {
-    "name": "driftsketch_red",
-    "mapTo": "driftsketch_red",
-    "class": "Material",
-    "version": 1.5,
-    "Stages": [
-      {
-        "baseColorFactor": [
-          0.86,
-          0.025,
-          0.045,
-          1
-        ],
-        "metallicFactor": 0.1,
-        "roughnessFactor": 0.48
-      },
-      {},
-      {},
-      {}
-    ],
-    "doubleSided": false
-  },
   "driftsketch_start_banner": {
     "name": "driftsketch_start_banner",
     "mapTo": "driftsketch_start_banner",
@@ -212,7 +168,7 @@
         ],
         "metallicFactor": 0.05,
         "roughnessFactor": 0.58,
-        "baseColorMap": "/art/shapes/driftsketch/gate_start.png",
+        "baseColorMap": "/art/shapes/driftsketch_yw/gate_start_b.color.png",
         "useAnisotropic": true
       },
       {},
@@ -236,7 +192,7 @@
         ],
         "metallicFactor": 0.05,
         "roughnessFactor": 0.58,
-        "baseColorMap": "/art/shapes/driftsketch/gate_finish.png",
+        "baseColorMap": "/art/shapes/driftsketch_yw/gate_finish_b.color.png",
         "useAnisotropic": true
       },
       {},

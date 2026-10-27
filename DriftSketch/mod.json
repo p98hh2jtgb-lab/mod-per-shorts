@@ -1,6 +1,6 @@
 {
   "name": "DriftSketch",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "author": "daimy",
-  "description": "Record a drive and build real mesh markers, colorful drift tires and adaptive Start/Finish gates with proper BeamNG materials."
+  "description": "Record a drive and build real yellow/white mesh markers, drift tires and adaptive Start/Finish gates with explicitly loaded BeamNG materials."
 }

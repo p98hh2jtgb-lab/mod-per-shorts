@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Rebuild DriftSketch 0.8.0 materials, painted tires and textured gates.
+"""Rebuild DriftSketch 0.8.1 materials, yellow/white tires and textured gates.
 
 Original procedural geometry only. Requires Pillow just for the two original
 banner PNGs; all DAE/material generation otherwise uses the standard library.
@@ -12,7 +12,7 @@ import xml.etree.ElementTree as ET
 from PIL import Image, ImageDraw, ImageFont
 
 ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / "DriftSketch" / "art" / "shapes" / "driftsketch"
+OUT = ROOT / "DriftSketch" / "art" / "shapes" / "driftsketch_yw"
 NS = "http://www.collada.org/2005/11/COLLADASchema"
 N = {"c": NS}
 ET.register_namespace("", NS)
@@ -23,10 +23,8 @@ COLORS = {
     "driftsketch_metal": (0.16, 0.19, 0.22, 1),
     "driftsketch_frame": (0.025, 0.035, 0.045, 1),
     "driftsketch_black": (0.008, 0.012, 0.018, 1),
-    "driftsketch_orange": (0.95, 0.16, 0.025, 1),
-    "driftsketch_cyan": (0.00, 0.62, 0.78, 1),
+    "driftsketch_yellow": (1.00, 0.78, 0.020, 1),
     "driftsketch_white": (0.88, 0.92, 0.94, 1),
-    "driftsketch_red": (0.86, 0.025, 0.045, 1),
     "driftsketch_start_banner": (1, 1, 1, 1),
     "driftsketch_finish_banner": (1, 1, 1, 1),
 }
@@ -36,24 +34,22 @@ PBR = {
     "driftsketch_metal": (0.65, 0.38),
     "driftsketch_frame": (0.55, 0.42),
     "driftsketch_black": (0.15, 0.62),
-    "driftsketch_orange": (0.10, 0.50),
-    "driftsketch_cyan": (0.10, 0.45),
+    "driftsketch_yellow": (0.05, 0.55),
     "driftsketch_white": (0.05, 0.58),
-    "driftsketch_red": (0.10, 0.48),
     "driftsketch_start_banner": (0.05, 0.58),
     "driftsketch_finish_banner": (0.05, 0.58),
 }
 ORDER = list(COLORS)
 TEXTURES = {
-    "driftsketch_start_banner": "gate_start.png",
-    "driftsketch_finish_banner": "gate_finish.png",
+    "driftsketch_start_banner": "gate_start_b.color.png",
+    "driftsketch_finish_banner": "gate_finish_b.color.png",
 }
 RENAME = {
     "rubber": "driftsketch_rubber",
-    "orange": "driftsketch_orange",
+    "orange": "driftsketch_yellow",
     "white": "driftsketch_white",
     "metal": "driftsketch_metal",
-    "metalLight": "driftsketch_metal_light",
+    "metalLight": "driftsketch_white",
     "frame": "driftsketch_frame",
     "black": "driftsketch_black",
 }
@@ -85,7 +81,7 @@ def classify_single(positions, indices, offset):
     radius = math.hypot(x, y)
     sector = int((math.atan2(y, x) + math.pi) / (2 * math.pi) * 16) % 16
     if radius < 0.31 and z > 0.185:
-        return "driftsketch_cyan"
+        return "driftsketch_yellow"
     if radius > 0.39 and sector % 2 == 0:
         return "driftsketch_tread"
     return "driftsketch_rubber"
@@ -93,11 +89,9 @@ def classify_single(positions, indices, offset):
 
 def classify_stack(positions, indices, offset):
     z = triangle_centroid(positions, indices, offset)[2]
-    if z < 0.21:
-        return "driftsketch_orange"
     if z < 0.42:
-        return "driftsketch_white"
-    return "driftsketch_cyan"
+        return "driftsketch_yellow" if z < 0.21 else "driftsketch_white"
+    return "driftsketch_yellow"
 
 
 def classify_rim(positions, indices, offset):
@@ -199,7 +193,7 @@ def update_existing(filename):
             elif filename == "tire.dae" and old == "rubber":
                 material = classify_single(positions, indices, offset)
             elif filename == "tire.dae" and old == "metalLight":
-                material = "driftsketch_orange"
+                material = "driftsketch_white"
             elif filename == "tire.dae" and old == "metal":
                 material = classify_rim(positions, indices, offset)
             elif filename == "tire_stack.dae" and old == "rubber":
@@ -212,7 +206,7 @@ def update_existing(filename):
     rewrite_materials(root, set(groups))
     comment = root.find(".//c:asset/c:contributor/c:comments", N)
     if comment is not None:
-        comment.text = "Original DriftSketch 0.8.0 mesh with unique BeamNG material slots; no extracted game assets"
+        comment.text = "Original DriftSketch 0.8.1 yellow/white mesh with unique BeamNG material slots; no extracted game assets"
     tree.write(path, encoding="utf-8", xml_declaration=True)
     print(filename, "materials", {key: len(value) // 6 for key, value in groups.items()})
 
@@ -303,7 +297,7 @@ class Mesh:
 
 def make_gate(text):
     mesh = Mesh()
-    accent = "driftsketch_cyan" if text == "START" else "driftsketch_red"
+    accent = "driftsketch_yellow"
     banner = "driftsketch_start_banner" if text == "START" else "driftsketch_finish_banner"
     for x in (-2.82, 2.82):
         sign = -1 if x < 0 else 1
@@ -328,7 +322,7 @@ def write_gate(mesh, name, text):
     asset = E(root, "asset")
     contributor = E(asset, "contributor")
     E(contributor, "author", text="daimy")
-    E(contributor, "comments", text="Original DriftSketch 0.8.0 motorsport gate; procedural mesh and original PNG banner")
+    E(contributor, "comments", text="Original DriftSketch 0.8.1 yellow/white motorsport gate; procedural mesh and original PNG banner")
     E(asset, "created", text="2026-10-27T00:00:00Z")
     E(asset, "modified", text="2026-10-27T00:00:00Z")
     E(asset, "unit", {"meter": "1", "name": "meter"})
@@ -435,7 +429,7 @@ def write_material_json():
             "roughnessFactor": roughness,
         }
         if name in TEXTURES:
-            stage["baseColorMap"] = "/art/shapes/driftsketch/" + TEXTURES[name]
+            stage["baseColorMap"] = "/art/shapes/driftsketch_yw/" + TEXTURES[name]
             stage["useAnisotropic"] = True
         data[name] = {
             "name": name,
@@ -451,8 +445,8 @@ def write_material_json():
 
 
 def main():
-    make_banner("START", (16, 199, 190), "gate_start.png")
-    make_banner("FINISH", (239, 45, 65), "gate_finish.png")
+    make_banner("START", (255, 205, 25), "gate_start_b.color.png")
+    make_banner("FINISH", (255, 205, 25), "gate_finish_b.color.png")
     for filename in ("cone.dae", "pylon.dae", "tire.dae", "tire_stack.dae"):
         update_existing(filename)
     write_gate(make_gate("START"), "gate_start", "START")

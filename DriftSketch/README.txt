@@ -1,4 +1,4 @@
-DRIFTSKETCH 0.8.0 — DRIFT-TRACK VISUALS
+DRIFTSKETCH 0.8.1 — RUNTIME MATERIAL FIX / YELLOW-WHITE
 ================================
 
 Record a real drive, then build an object-marked path from your actual trajectory.
@@ -8,7 +8,7 @@ INSTALL
 -------
 1. Open BeamNG.drive > Mods > Open Mod Folder (or your user mods folder).
 2. Remove older DriftSketch ZIP versions so two copies cannot load together.
-3. Copy DriftSketch_v0.8.0.zip there without extracting it.
+3. Copy DriftSketch_v0.8.1.zip there without extracting it.
 4. Enable DriftSketch in the Mod Manager if needed.
 5. Restart BeamNG after replacing an older version so DAEs and materials reload.
 6. In a map, open the top app menu > Add App > DriftSketch.
@@ -25,22 +25,24 @@ WORKFLOW
 6. Clear generated objects & saved drives deletes only this mod's generated
    objects and saved paths. It does not clear map objects or other mods.
 
-NEW IN 0.8.0 — DRIFT-TRACK VISUALS AND MATERIAL FIX
---------------------------------------------------
-- Added art/shapes/driftsketch/main.materials.json with unique driftsketch_*
-  Material names and matching mapTo entries. BeamNG no longer has to substitute
-  a generic/warning material for the old unnamed rubber, metal, frame or banner
-  slots. Solid colors use PBR baseColorFactor; gates use packed PNG textures.
-- Single Tire now has black rubber, darker tread sectors, a cyan sidewall ring,
-  metal/black rim spokes and an orange hub. It remains only 352 triangles.
-- Tire Stack uses visible drift-track paint: orange on the bottom, white in the
-  middle and cyan on top. It remains 768 triangles, with no added draw geometry.
-- Start and Finish gates have new diagonal motorsport braces, colored side fins,
-  cyan/red post details and crisp original 1536x288 banner textures. START and
-  FINISH use large white typography instead of low-resolution pixel blocks.
-- Each gate is now only 220 triangles, down from 378/418. The two PNGs are the
-  only added texture assets; no BeamNG content was extracted and no JBeam props
-  or live-driving physics queries were introduced.
+HOTFIX 0.8.1 — REAL RUNTIME MATERIAL LOADING / YELLOW-WHITE
+----------------------------------------------------------
+- The 0.8.0 material JSON existed but was not explicitly loaded before runtime
+  TSStatic creation. BeamNG could therefore show its orange No Texture material.
+  DriftSketch now calls loadJsonMaterialsFile once before the first TSStatic,
+  after checking that the material file exists in the packed mod VFS.
+- The complete asset folder moved to art/shapes/driftsketch_yw/. This fresh path
+  prevents an older cached Collada shape from reusing the previous material slots.
+- Gate textures now use BeamNG's recommended *.color.png source naming. Unique
+  driftsketch_* Material names and mapTo entries remain covered by asset tests.
+- Yellow/white is consistent across the track set: cones and pylons have yellow
+  bodies with white bands; Tire Stack is yellow/white/yellow; Single Tire keeps
+  black rubber and metal spokes but adds a yellow sidewall ring and white hub.
+- Start and Finish use the same deliberate yellow/white motorsport language,
+  with diagonal braces, post bands and crisp original 1536x288 banner textures.
+  START and FINISH retain large white typography on dark, yellow-accent panels.
+- Geometry budgets are unchanged: Single Tire 352 triangles, Tire Stack 768,
+  each gate 220. No JBeam props or live-driving physics queries were added.
 
 HOTFIX 0.7.1 — ONE-CLICK MESH BUTTONS
 ------------------------------------
@@ -153,7 +155,9 @@ VALIDATION
 ----------
 Automated Lua smoke tests cover straight versus sideways clearance, full rear
 footprint allowance, exact fixed width with Drift widen OFF, curved spacing,
-stationary spins, collision switching and replay-object retention. Gate tests
+stationary spins, collision switching and replay-object retention. A runtime
+regression also requires the material JSON to load exactly once before the first
+TSStatic and to stay loaded across all mesh/gate rebuilds. Gate tests
 cover default ON, mesh paths, endpoint positions, +Y quaternion alignment,
 adaptive sideways clearance, collision/toggle rebuilds and cap reservation.
 A dedicated drifting-bend regression checks every generated cone against

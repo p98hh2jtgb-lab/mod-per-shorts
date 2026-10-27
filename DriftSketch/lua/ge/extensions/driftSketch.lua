@@ -1,4 +1,4 @@
--- DriftSketch 0.8.0 — record a drive, build real low-poly mesh objects, keep them for replay.
+-- DriftSketch 0.8.1 — record a drive, build real low-poly mesh objects, keep them for replay.
 local M = {}
 
 local SETTINGS = {
@@ -491,13 +491,36 @@ local function groundZ(x, y, recordedZ)
   return recordedZ + SETTINGS.groundOffset
 end
 
+local MATERIAL_FILE = '/art/shapes/driftsketch_yw/main.materials.json'
+local materialsLoaded = false
+
+-- Runtime-created TSStatic shapes do not reliably cause a mod-root material
+-- library to be loaded. Load it explicitly once, before the first shape is
+-- created; retry on the next build if the VFS was not ready on the first try.
+local function ensureMaterials()
+  if materialsLoaded then return true end
+  if type(loadJsonMaterialsFile) ~= 'function' then return false end
+  if FS and FS.fileExists then
+    local ok, exists = pcall(FS.fileExists, FS, MATERIAL_FILE)
+    if not ok or not exists then return false end
+  end
+  local ok, err = pcall(loadJsonMaterialsFile, MATERIAL_FILE)
+  if not ok then
+    if log then log('E', 'driftSketch', 'Cannot load materials: ' .. tostring(err)) end
+    return false
+  end
+  materialsLoaded = true
+  if log then log('I', 'driftSketch', 'Loaded ' .. MATERIAL_FILE) end
+  return true
+end
+
 local function shapePath()
   -- Mod-root virtual path: works both unpacked and directly from the ZIP.
   local file = 'cone.dae'
   if SETTINGS.mesh == 'pylon' then file = 'pylon.dae'
   elseif SETTINGS.mesh == 'tire' then file = 'tire.dae'
   elseif SETTINGS.mesh == 'tireStack' then file = 'tire_stack.dae' end
-  return '/art/shapes/driftsketch/' .. file
+  return '/art/shapes/driftsketch_yw/' .. file
 end
 
 local function objectNoun()
@@ -596,13 +619,14 @@ local function spawnGate(path, index, kind, lines)
   end
   local shape = kind == 'finish' and 'gate_finish.dae' or 'gate_start.dae'
   return spawnMesh(p.x, p.y, groundZ(p.x, p.y, p.z), {
-    shapeName='/art/shapes/driftsketch/' .. shape,
+    shapeName='/art/shapes/driftsketch_yw/' .. shape,
     scale=vec3(insideEdge / 2.54, 1, 1),
     rotation=gateRotation(tx, ty)
   })
 end
 
 local function buildPath(path)
+  ensureMaterials()
   local reserveObjects = SETTINGS.gates and 2 or 0
   local lines = buildOffsetLines(path, SETTINGS.width * 0.5, math.max(0.5, SETTINGS.spacing), reserveObjects)
   local before = #spawned
@@ -738,6 +762,7 @@ function M.onExtensionLoaded()
 end
 
 function M.onClientEndMission()
+  materialsLoaded = false
   clearAll()
 end
 
