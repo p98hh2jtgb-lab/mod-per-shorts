@@ -1,6 +1,37 @@
 
 angular.module('beamng.apps')
 
+// v6.3.0: "Ngarko nga kompjuteri" — <input type="file" cp-file-pick="fn($files)">.
+// Klikimi bie direkt mbi input-in (jo .click() programatik), siç e do CEF-i.
+.directive('cpFilePick', function() {
+  return {
+    restrict: 'A',
+    link: function(scope, element, attrs) {
+      element.on('change', function(evt) {
+        var input = evt.target, list = [];
+        for (var i = 0; input && input.files && i < input.files.length; i++) list.push(input.files[i]);
+        scope.$applyAsync(function() { scope.$eval(attrs.cpFilePick, { $files: list }); });
+        try { input.value = ''; } catch (e) {}            // e njëjta foto mund të zgjidhet prapë
+      });
+    }
+  };
+})
+
+// v6.3.0: miniaturat e galerisë — nëse CEF-i s'e hap URL-në, kërkohet nga Lua.
+.directive('cpImgEvents', function() {
+  return {
+    restrict: 'A',
+    link: function(scope, element, attrs) {
+      element.on('error', function() {
+        if (attrs.cpImgError) scope.$applyAsync(function() { scope.$eval(attrs.cpImgError); });
+      });
+      element.on('load', function() {
+        if (attrs.cpImgLoad) scope.$applyAsync(function() { scope.$eval(attrs.cpImgLoad); });
+      });
+    }
+  };
+})
+
 .directive('creatorpackPanel', ['$document', '$window', '$timeout', '$rootScope', function($document, $window, $timeout, $rootScope) {
   return {
     replace: true,
@@ -43,7 +74,7 @@ angular.module('beamng.apps')
       // v5.3.0 — Versioni shfaqet brenda HUD-it, që të shihet
       // menjëherë nëse BeamNG ka ngarkuar versionin e re.
       // =====================================================
-      var MOD_VERSION = '6.2.0';
+      var MOD_VERSION = '6.3.0';
       scope.modVersion = MOD_VERSION;
       scope.storageKey = STORAGE_KEY;
 
@@ -493,9 +524,10 @@ angular.module('beamng.apps')
         try {
           if (!key || !src) return;
           logoResolved[key] = src;
-          if (String(src).indexOf('data:image') === 0) { saveLogoArchive(); return; }
+          // v6.3.0: edhe base64 nga Lua zvogëlohet në 160 px para ruajtjes
           shrinkAnyImage(src, 160, function (small) {
             if (small) { logoResolved[key] = small; saveLogoArchive(); try { scope.$applyAsync(); } catch (e) {} }
+            else if (String(src).indexOf('data:image') === 0 && String(src).length < 300000) saveLogoArchive();
           });
         } catch (e) {}
       }
@@ -1191,7 +1223,7 @@ angular.module('beamng.apps')
         var k = 190 / (Number(scope.cfg.itemSize) || 112);
 
         return {
-          backgroundImage: item.image ? ('url(' + item.image + ')') : 'none',
+          backgroundImage: item.image ? cssUrl(displaySrc(item.image)) : 'none',
           backgroundSize: Math.round(scale * 1.55 * 100) + '%',
           backgroundPosition: 'calc(50% + ' + (ox * k) + 'px) calc(50% + ' + (oy * k) + 'px)',
           transform: 'rotate(' + rot + 'deg)'
@@ -1265,8 +1297,20 @@ angular.module('beamng.apps')
       }
       $document.on('click', onDocClickPicker);
 
-      // mbush fushat __raw kur ngarkohet konfigurimi
-      scope.tab = 'kryesore';
+      // v6.3.0: tab-i mbahet në një OBJEKT (ui.tab). Paneli është brenda ng-if dhe
+      // rrathët brenda ng-repeat: me një variabël të thjeshtë "tab", butoni
+      // "Zgjidh foto nga galeria" ndryshonte vetëm një kopje lokale dhe galeria
+      // nuk hapej kurrë. Me ui.tab të gjithë butonat ndryshojnë të njëjtin tab.
+      scope.ui = { tab: 'kryesore' };
+      scope.setTab = function(t) {
+        scope.ui.tab = String(t || 'kryesore');
+        if (scope.ui.tab === 'fotot') { try { scope.scanImages(true); } catch (e) {} }
+      };
+      // Rrethet → "Zgjidh foto nga galeria": zgjedh rrethin dhe hap galerinë.
+      scope.openGalleryFor = function(i) {
+        scope.select(i);
+        scope.setTab('fotot');
+      };
 
       function engineLua(cmd) {
         // Always load the Lua bridge explicitly so manual photos,
@@ -1651,7 +1695,7 @@ angular.module('beamng.apps')
         var active = idx === scope.selected;
         var finalScale = scale * 1.55 * (active ? 1.10 : 1.0);
         return {
-          backgroundImage: item.image ? ('url(' + item.image + ')') : 'none',
+          backgroundImage: item.image ? cssUrl(displaySrc(item.image)) : 'none',
           backgroundSize: Math.round(finalScale * 100) + '%',
           backgroundPosition: 'calc(50% + ' + ox + 'px) calc(50% + ' + oy + 'px)',
           opacity: 1,   // v5.9.7: fotot ne rrumullak duken GJITHMONE, jo vetem kur kalon mbi to
@@ -2125,6 +2169,39 @@ angular.module('beamng.apps')
       // - Fotot e tjera: duken në galeri, klik -> shkon në rrathullak
       // =====================================================
       var IMG_DIR = '/ui/modules/apps/CreatorPack/imazhet/';
+      // v6.3.0: folderi YT në BeamNG user folder — jashtë ZIP-it, prandaj fotot
+      // nuk humbin kur përditëson modin. "Hap folderin" e krijon dhe e hap.
+      var USER_IMG_DIR = '/CreatorPack/imazhet/';
+      var IMAGE_EXT_RE = /\.(png|jpe?g|jpe|jfif|pjpeg|pjp|webp|gif|bmp|avif|svg)$/i;
+      var UNSUPPORTED_EXT_RE = /\.(heic|heif|tiff?|psd)$/i;
+      // v6.3.0: string-u për Lua. Si BeamNG (GE-3042): escape vetëm \ " \n \r \t,
+      // karakteret UTF-8 (ë, ç) mbeten. Më parë emri pastrohej nga hapësirat,
+      // kllapat dhe ë-të, prandaj "foto (2).png" kërkohej si "foto2.png".
+      function luaStr(v) {
+        return '"' + String(v == null ? '' : v)
+          .replace(/\\/g, '\\\\').replace(/"/g, '\\"')
+          .replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t')
+          .replace(/\u0000/g, '') + '"';
+      }
+      // v6.3.0: URL për <img>/CSS — çdo pjesë e rrugës kodohet (hapësira, (1), #, %, ë).
+      function vfsUrl(path) {
+        var p = String(path || '');
+        if (!p || /^(data:|blob:|https?:|local:)/i.test(p)) return p;
+        return p.split('/').map(function (seg) { return encodeURIComponent(seg); }).join('/');
+      }
+      function displaySrc(v) { return vfsUrl(v); }
+      // CSS url("...") me thonjëza — pa to, "toyota-logo (1).png" e prishte background-image.
+      function cssUrl(u) {
+        if (!u) return 'none';
+        return 'url("' + String(u).replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/[\n\r]/g, '') + '")';
+      }
+      function listOf(v) {
+        if (!v) return [];
+        if (Array.isArray(v)) return v;
+        var out = [];
+        angular.forEach(v, function (x) { if (x) out.push(x); });
+        return out;
+      }
       var BRAND_ALIAS = { mercedesbenz: 'mercedes', volkswagen: 'vw', chevrolet: 'chevy', alfaromeo: 'alfa' };
       var BRAND_LABEL = {
         bmw: 'BMW', audi: 'Audi', mercedes: 'Mercedes', vw: 'VW', toyota: 'Toyota', nissan: 'Nissan',
@@ -2224,18 +2301,64 @@ angular.module('beamng.apps')
         })();
       }
 
+      // =====================================================
+      // v6.3.0: FOTOT NGA LUA — rezerva kur CEF-i s'e hap file-in si URL.
+      // Lua e lexon me io.readFileToBuffer (edhe brenda ZIP-it) dhe e dërgon si
+      // base64 në copa ('creatorpack.filedata'), pa kufirin e vjetër 900 KB.
+      // Këtu copat bashkohen; kërkesat për të njëjtin file bashkohen në një.
+      // =====================================================
+      var fileReqs = {};
+      var FILE_REQ_TIMEOUT = 25000;
+
+      function finishFileReq(id, dataUrl, err) {
+        var r = fileReqs[id];
+        if (!r) return;
+        delete fileReqs[id];
+        try { if (r.timer) $timeout.cancel(r.timer); } catch (e) {}
+        (r.cbs || []).forEach(function (cb) { try { cb(dataUrl || null, err || null); } catch (e) {} });
+      }
+      function armFileReqTimer(id, msg) {
+        var r = fileReqs[id];
+        if (!r) return;
+        try { if (r.timer) $timeout.cancel(r.timer); } catch (e) {}
+        r.timer = $timeout(function () { finishFileReq(id, null, msg); }, FILE_REQ_TIMEOUT);
+      }
+      // kind: 'img' (rruga e file-it) ose 'logo' (marka). cb(dataUrl|null, err)
+      function requestLuaFile(kind, arg, cb) {
+        var id = kind + ':' + String(arg);
+        if (fileReqs[id]) { if (cb) fileReqs[id].cbs.push(cb); return id; }
+        fileReqs[id] = { parts: [], got: 0, n: 0, mime: '', cbs: cb ? [cb] : [], timer: null };
+        armFileReqTimer(id, 'Lua nuk u përgjigj');
+        var fn = kind === 'logo' ? 'pfhudLogoData' : 'pfhudImageData';
+        var sent = engineLua('if extensions.creatorpack and extensions.creatorpack.' + fn +
+          ' then extensions.creatorpack.' + fn + '(' + luaStr(arg) + ',' + luaStr(id) + ') end');
+        if (!sent) finishFileReq(id, null, 'Lua nuk është gati');
+        return id;
+      }
+      function onFileData(res) {
+        if (!res || !res.id) return;
+        var r = fileReqs[res.id];
+        if (!r) return;
+        if (res.err) { finishFileReq(res.id, null, String(res.err)); return; }
+        var n = Math.max(1, Number(res.n) || 1), i = Math.max(1, Number(res.i) || 1);
+        r.n = n;
+        r.mime = String(res.mime || r.mime || 'image/png');
+        if (r.parts[i - 1] === undefined) { r.parts[i - 1] = String(res.data || ''); r.got++; }
+        if (r.got >= r.n) {
+          var b64 = r.parts.join('');
+          finishFileReq(res.id, b64.indexOf('data:') === 0 ? b64 : ('data:' + r.mime + ';base64,' + b64), null);
+        } else {
+          armFileReqTimer(res.id, 'Lua nuk e dërgoi foton e plotë');
+        }
+      }
+
       function askLuaLogo(k) {
         if (!k) return;
         if ((logoLuaAsked[k] || 0) >= 3) { logoFailNote[k] = 'lua'; return; }
         logoLuaAsked[k] = (logoLuaAsked[k] || 0) + 1;
-        var safe = String(k).replace(/[^a-z0-9]/g, '');
-        if (!safe) return;
-        var cmd = "if extensions.creatorpack and extensions.creatorpack.pfhudLogoData then extensions.creatorpack.pfhudLogoData('" + safe + "') end";
-        var sent = false;
-        try {
-          if (window.bngApi && typeof window.bngApi.engineLua === 'function') { window.bngApi.engineLua("extensions.load('creatorpack'); " + cmd); sent = true; }
-        } catch (e) {}
-        if (!sent) engineLua(cmd);
+        requestLuaFile('logo', k, function (dataUrl, err) {
+          applyLogoData({ brand: k, data: dataUrl, err: err });
+        });
       }
 
       // Nje prove (ma s'pari URL, pastaj Lua). Deshtimi NUK cache-ohet ma kurrë.
@@ -2264,40 +2387,39 @@ angular.module('beamng.apps')
         });
       }
 
-      // v5.11.3: nje foto e folderit kthehet ne base64 (e ruajtur) — kshtu rri
-      // edhe nese file-i s'lexohet ma (zip i re, folder i ndryshuar).
-      function ensurePhotoData(url, idx) {
-        if (!url) return;
-        try {
-          var it = scope.cfg.items[idx];
-          if (!it) return;
-          if (String(it.image || '').indexOf('data:image') === 0 && it.image.length > 100) return;
-          shrinkAnyImage(url, Number(scope.cfg.photoMaxPx) || 320, function (data) {
-            var t = scope.cfg.items[idx];
-            if (!t) return;
-            if (data) {
-              t.image = data;
-              try { scope.persist(); } catch (e) {}
-              try { scope.$applyAsync(); } catch (e) {}
-            } else {
-              askLuaImage(url);            // rezervë: prej Lua-s si base64
-            }
+      // v6.3.0: fotoja e rrethit kthehet në base64 të zvogëluar (ruhet në HUD),
+      // që të mbetet edhe kur file-i s'lexohet më. Rruga: URL (e shpejtë) →
+      // nëse s'hapet, Lua base64 (e sigurt, edhe për emra me hapësira/ë/(1)).
+      function loadPhotoAsDataUrl(path, maxPx, cb) {
+        shrinkAnyImage(vfsUrl(path), maxPx, function (data) {
+          if (data) { cb(data, null); return; }
+          requestLuaFile('img', path, function (full, err) {
+            if (!full) { cb(null, err || 'nuk u lexua'); return; }
+            shrinkAnyImage(full, maxPx, function (small) {
+              cb(small || null, small ? null : 'formati nuk lexohet nga loja');
+            });
           });
-        } catch (e) { try { askLuaImage(url); } catch (e2) {} }
+        });
       }
 
-      function askLuaImage(path) {
-        if (!path) return '';
-        if ((imgDataAsked[path] || 0) >= 2) return path;
-        imgDataAsked[path] = (imgDataAsked[path] || 0) + 1;
-        var p = String(path).replace(/[^A-Za-z0-9_\/.:-]/g, '');
-        var cmd = "if extensions.creatorpack and extensions.creatorpack.pfhudImageData then extensions.creatorpack.pfhudImageData('" + p + "') end";
-        var sent = false;
-        try {
-          if (window.bngApi && typeof window.bngApi.engineLua === 'function') { window.bngApi.engineLua("extensions.load('creatorpack'); " + cmd); sent = true; }
-        } catch (e) {}
-        if (!sent) engineLua(cmd);
-        return path;
+      function ensurePhotoData(path, idx) {
+        if (!path) return;
+        var it = scope.cfg.items[idx];
+        if (!it) return;
+        if (String(it.image || '').indexOf('data:image') === 0 && it.image.length > 100) return;
+        loadPhotoAsDataUrl(path, Number(scope.cfg.photoMaxPx) || 320, function (data, err) {
+          var t = scope.cfg.items[idx];
+          if (!t || t.imageFile !== path) return;          // ndërkohë u zgjodh një foto tjetër
+          if (data) {
+            t.image = data;
+            fileDataCache[path] = data;
+            archivePhoto(idx);
+            try { scope.persist(); } catch (e) {}
+          } else {
+            notify('✗ Fotoja nuk u lexua (' + String(path).split('/').pop() + '): ' + (err || 'gabim'));
+          }
+          try { scope.$applyAsync(); } catch (e) {}
+        });
       }
 
       // Kontrolli i vazhdueshem: thirret prej watcher-it / focus-it / butonit
@@ -2308,10 +2430,14 @@ angular.module('beamng.apps')
           var k = brandKeyOf(it.brand);
           if (k && !logoResolved[k]) kickLogo(k, false);
         });
-        angular.forEach(scope.cfg.items || [], function (it) {
-          if (it && it.imageFile && !fileDataCache[it.imageFile] && (imgDataAsked[it.imageFile] || 0) < 2) {
-            askLuaImage(it.imageFile);
-          }
+        // v6.3.0: vetëm rrathët që NUK e kanë ende foton si base64
+        angular.forEach(scope.cfg.items || [], function (it, idx) {
+          if (!it || !it.imageFile) return;
+          if (String(it.image || '').indexOf('data:image') === 0) return;
+          if (fileDataCache[it.imageFile]) { it.image = fileDataCache[it.imageFile]; return; }
+          if ((imgDataAsked[it.imageFile] || 0) >= 2) return;
+          imgDataAsked[it.imageFile] = (imgDataAsked[it.imageFile] || 0) + 1;
+          ensurePhotoData(it.imageFile, idx);
         });
       }
 
@@ -2327,22 +2453,6 @@ angular.module('beamng.apps')
           } else {
             logoFailNote[k] = res.err || 'lua';
           }
-          try { scope.$applyAsync(); } catch (e) {}
-        } catch (e) {}
-      }
-
-      function applyImageData(res) {
-        try {
-          if (!res || !res.path) return;
-          if (!res.data) {
-            if (res.err) notify('✗ Fotoja nuk u lexu: ' + res.err);
-            return;
-          }
-          fileDataCache[res.path] = res.data;
-          angular.forEach(scope.cfg.items || [], function (it) {
-            if (it && it.imageFile === res.path) it.image = res.data;
-          });
-          try { scope.persist(); } catch (e) {}
           try { scope.$applyAsync(); } catch (e) {}
         } catch (e) {}
       }
@@ -2408,7 +2518,7 @@ angular.module('beamng.apps')
       scope.logoStyle = function (item) {
         var url = scope.circleLogo(item);
         if (!url) return {};
-        return { backgroundImage: 'url(' + url + ')', backgroundSize: 'contain', backgroundRepeat: 'no-repeat', backgroundPosition: 'center', width: '76%', height: '76%', pointerEvents: 'none' };
+        return { backgroundImage: cssUrl(url), backgroundSize: 'contain', backgroundRepeat: 'no-repeat', backgroundPosition: 'center', width: '76%', height: '76%', pointerEvents: 'none' };
       };
       scope.badgeStyle = function () {
         return {
@@ -2454,64 +2564,114 @@ angular.module('beamng.apps')
         notify('🏷️ Logo ' + t.brandLabel + ' → rrumullaku ' + (scope.selected + 1));
       };
 
-      // ---- Galeria: manifesti i paketës + skedaret e rinj nga Lua ----
+      // =====================================================
+      // v6.3.0: GALERIA — manifesti i paketës + folderi yt + file-t e rinj nga Lua
+      // =====================================================
+      var galleryCache = {};          // path (lowercase) -> entry (ruan miniaturat/gjendjen)
+      var luaGallery = [];            // lista e fundit nga Lua (folderi yt + folderi i modit)
+      var scanPending = false, lastScanAt = 0;
+      scope.gallerySkipped = [];
+      scope.galleryUserCount = 0;
+      scope.galleryLuaOk = false;
+      scope.userFolder = { dir: USER_IMG_DIR, real: '' };
+      scope.folderNote = '';
+      scope.uploadNote = '';
+      scope.uploadBusy = 0;
+
+      function galleryEntry(raw, dir) {
+        var meta = (raw && typeof raw === 'object') ? raw : {};
+        var str = String((raw && typeof raw === 'object') ? (raw.path || raw.name || '') : (raw || ''));
+        if (!str) return null;
+        var path = str.charAt(0) === '/' ? str : ((dir || IMG_DIR) + str);
+        var name = path.split('/').pop();
+        if (!IMAGE_EXT_RE.test(name)) return null;
+        var key = path.toLowerCase();
+        var user = meta.user === true || key.indexOf(USER_IMG_DIR.toLowerCase()) === 0;
+        var g = galleryCache[key];
+        if (!g) {
+          g = galleryCache[key] = {
+            name: name, path: path, url: vfsUrl(path), src: vfsUrl(path),
+            user: user, size: 0, mtime: 0, state: 'idle', err: '', fallbackTried: false
+          };
+        }
+        g.user = user;
+        if (Number(meta.size)) g.size = Number(meta.size);
+        if (Number(meta.mtime)) g.mtime = Number(meta.mtime);
+        return g;
+      }
       function mergeGalleryEntries() {
         var out = [], seen = {};
-        angular.forEach(arguments, function(list) {
-          angular.forEach(list || [], function(g) {
-            if (!g || !g.url) return;
-            var key = String(g.url).toLowerCase();
+        angular.forEach(arguments, function (list) {
+          angular.forEach(list || [], function (g) {
+            if (!g || !g.path) return;
+            var key = String(g.path).toLowerCase();
             if (seen[key]) return;
             seen[key] = true;
             out.push(g);
           });
         });
-        return out;
+        // Fotot e tua lart (më e reja e para), pastaj ato të modit në renditjen e tyre.
+        var indexed = out.map(function (g, i) { return { g: g, i: i }; });
+        indexed.sort(function (a, b) {
+          if (a.g.user !== b.g.user) return a.g.user ? -1 : 1;
+          if (a.g.user && (b.g.mtime || 0) !== (a.g.mtime || 0)) return (b.g.mtime || 0) - (a.g.mtime || 0);
+          return a.i - b.i;
+        });
+        return indexed.map(function (x) { return x.g; });
+      }
+      function rebuildGallery() {
+        scope.gallery = mergeGalleryEntries(luaGallery, bundledGallery);
+        scope.galleryUserCount = scope.gallery.filter(function (g) { return g.user; }).length;
+      }
+      function galleryInfoText() {
+        var n = scope.gallery.length, u = scope.galleryUserCount;
+        return n + ' imazhe' + (u ? (' · ' + u + ' nga folderi yt') : ' · folderi yt është bosh');
       }
 
       function applyImageList(res, fromManifest) {
-        cancelImageScanWatchdog();
-        try { if (imgScanTimer) $timeout.cancel(imgScanTimer); } catch (e) {}
-        imgScanTimer = null;
+        if (!fromManifest) {
+          scanPending = false;
+          cancelImageScanWatchdog();
+          try { if (imgScanTimer) $timeout.cancel(imgScanTimer); } catch (e) {}
+          imgScanTimer = null;
+        }
         try {
           if (typeof res === 'string') { try { res = JSON.parse(res); } catch (e) {} }
-          if (!res || typeof res !== 'object') { scope.galleryState = 'err'; scope.galleryInfo = 's\'u lexu lista e folderit'; return; }
-          if (res.err) {
-            scope.galleryState = 'err';
-            scope.galleryInfo = 'gabim Lua: ' + res.err;
-            scheduleImageScan();
+          if (!res || typeof res !== 'object') {
+            if (!fromManifest) { scope.galleryState = 'err'; scope.galleryInfo = 'lista e folderave nuk u lexua'; }
             return;
           }
-          var dir = res.dir || IMG_DIR;
-          var files = res.files || [];
-          if (files.length && typeof files[0] === 'object') {
-            var tmp = []; angular.forEach(files, function (v) { if (v) tmp.push(String(v)); }); files = tmp;
+          if (res.err && !res.files) {
+            if (!fromManifest) {
+              scope.galleryState = 'err';
+              scope.galleryInfo = 'gabim Lua: ' + res.err;
+              scheduleImageScan();
+            }
+            return;
           }
-          if (typeof files.forEach !== 'function') {
-            var tmp2 = [];
-            angular.forEach(files, function (v) { if (v) tmp2.push(String(v)); });
-            files = tmp2;
-          }
-          var out = [];
-          files.forEach(function (f) {
-            var str = String(f);
-            var url = (str.charAt(0) === '/') ? str : (dir + str);
-            var name = str.split('/').pop();
-            if (!/\.(png|jpe?g|webp)$/i.test(name)) return;
-            out.push({ name: name, url: url });
+          var entries = [];
+          listOf(res.files).forEach(function (f) {
+            var g = galleryEntry(f, fromManifest ? (res.dir || IMG_DIR) : IMG_DIR);
+            if (g) entries.push(g);
           });
           if (fromManifest) {
-            bundledGallery = out;
-            out = mergeGalleryEntries(bundledGallery, scope.gallery);
+            bundledGallery = entries;
           } else {
-            out = mergeGalleryEntries(bundledGallery, out);
+            luaGallery = entries;
+            scope.galleryLuaOk = true;
+            scope.gallerySkipped = listOf(res.skipped).map(function (s) { return String((s && s.name) || s); });
+            if (res.userReal) scope.userFolder.real = String(res.userReal);
+            if (res.userDir) scope.userFolder.dir = String(res.userDir);
           }
-          scope.gallery = out;
-          scope.galleryState = out.length ? 'ok' : 'err';
-          scope.galleryInfo = out.length ? (out.length + ' imazhe në folder · ' + dir)
-                                         : ('pa imazhe — vendosi file-at te ' + dir);
-          if (out.length) { imgScanTries = 0; }
-          else { scheduleImageScan(); }        // v5.11.2: provo prapë (lista s'osht e sigurt)
+          rebuildGallery();
+          if (fromManifest && !scope.galleryLuaOk) {
+            if (scope.galleryState !== 'loading') scope.galleryState = scope.gallery.length ? 'ok' : 'idle';
+            if (!scope.galleryInfo) scope.galleryInfo = scope.gallery.length + ' imazhe të modit';
+          } else if (!fromManifest) {
+            scope.galleryState = 'ok';
+            scope.galleryInfo = galleryInfoText();
+            imgScanTries = 0;
+          }
           // v5.11.1: mos i harro logot e gjetuna — vetem rikontrollo ato qe mungojne
           logoTries = {}; logoLuaAsked = {}; logoBusy = {};
           try { scope.$applyAsync(); } catch (e) {}
@@ -2527,7 +2687,7 @@ angular.module('beamng.apps')
         imgScanWatchdog = null;
       }
       function scheduleImageScan() {
-        if (imgScanTries >= 12) return;               // ~2 minuta provime
+        if (imgScanTries >= 12) return;               // ~1 minutë provime
         imgScanTries++;
         try { if (imgScanTimer) $timeout.cancel(imgScanTimer); } catch (e) {}
         try {
@@ -2538,37 +2698,49 @@ angular.module('beamng.apps')
         } catch (e) {}
       }
       scope.scanImages = function (auto) {
+        if (auto && scanPending) return;               // një lexim në një kohë
         if (!auto) {
           imgScanTries = 0;
           try { if (imgScanTimer) $timeout.cancel(imgScanTimer); } catch (e) {}
           imgScanTimer = null;
           try { scope.refreshLogos(true); } catch (e) {}
+          // rifreskim manual: provo prapë miniaturat që kishin dështuar
+          angular.forEach(scope.gallery || [], function (g) {
+            if (g && g.state === 'err') { g.state = 'idle'; g.err = ''; g.fallbackTried = false; g.src = g.url; }
+          });
         }
         cancelImageScanWatchdog();
-        scope.galleryState = 'loading';
-        scope.galleryInfo = 'duke lexu folderin…';
+        scanPending = true;
+        lastScanAt = new Date().getTime();
+        if (!auto || !scope.galleryLuaOk) {
+          scope.galleryState = 'loading';
+          scope.galleryInfo = 'duke lexuar folderat…';
+        }
         // Never leave the gallery in an endless loading state when the Lua
-        // extension is unavailable or a CEF callback is dropped.
+        // extension is unavailable or an event is dropped.
         imgScanWatchdog = $timeout(function () {
           imgScanWatchdog = null;
-          if (scope.galleryState !== 'loading') return;
+          if (!scanPending) return;
+          scanPending = false;
           scope.galleryState = 'err';
-          scope.galleryInfo = 'leximi nuk u përgjigj — provo Rifresko ose rihap panelin';
+          scope.galleryInfo = 'leximi nuk u përgjigj — provo Rifresko ose rihap panelin (H)';
           scheduleImageScan();
         }, 8000);
-        var sent = false;
-        try {
-          if (window.bngApi && typeof window.bngApi.engineLua === 'function') {
-            window.bngApi.engineLua("extensions.load('creatorpack'); extensions.creatorpack.pfhudListImages()", function (res) {
-              scope.$applyAsync(function () { applyImageList(res); });
-            });
-            sent = true;
-          }
-        } catch (e) {}
-        if (!sent) { engineLua("extensions.creatorpack.pfhudListImages()"); }
+        // v6.3.0: PA callback. bngApi.engineLua(cmd, callback) e fut cmd-në brenda
+        // guihooks.trigger("onBNGAPICallback", id, cmd): komanda e vjetër me
+        // "extensions.load(...); ..." jepte gabim sintakse dhe folderi nuk lexohej
+        // KURRË. Tani Lua e dërgon listën me event-in 'creatorpack.images'.
+        var sent = engineLua('if extensions.creatorpack and extensions.creatorpack.pfhudListImages then ' +
+          'extensions.creatorpack.pfhudListImages(' + luaStr(auto ? 'auto' : 'manual') + ') end');
+        if (!sent) {
+          scanPending = false;
+          cancelImageScanWatchdog();
+          scope.galleryState = scope.gallery.length ? 'ok' : 'err';
+          scope.galleryInfo = 'Lua nuk është gati — shfaqen vetëm imazhet e modit';
+        }
       };
       // Every image shipped in imazhet/ appears immediately, even if the
-      // BeamNG FS bridge is late or unavailable. Lua scans can still add new files.
+      // BeamNG FS bridge is late or unavailable. Lua scans add your own files.
       function loadBundledGallery() {
         try {
           var xhr = new XMLHttpRequest();
@@ -2584,19 +2756,235 @@ angular.module('beamng.apps')
         } catch (e) {}
       }
 
-      scope.useGalleryImage = function (g) {
-        if (!g || !g.url) return;
-        var idx = Number(scope.selected) || 0;
-        imageTargetIndex = idx;                              // shkon ATY ku e ke zgjedh
-        placeCircleImage(g.url, String(g.name || '').replace(/\.[a-z0-9]+$/i, ''));
-        var it = scope.cfg.items[idx];
-        if (it) {
-          it.imageFile = g.url;                             // v5.11.1: rruga e file-it ruahet
-          if (fileDataCache[g.url]) it.image = fileDataCache[g.url];
-          else ensurePhotoData(g.url, idx);                 // v5.11.3: base64 i ruajtur
-          scope.persist();
+      // Miniaturat: nëse CEF-i s'e hap URL-në, merret nga Lua (2 njëherësh).
+      var thumbQueue = [], thumbBusy = 0;
+      function pumpThumbs() {
+        while (thumbBusy < 2 && thumbQueue.length) {
+          (function (g) {
+            thumbBusy++;
+            requestLuaFile('img', g.path, function (full, err) {
+              if (!full) {
+                thumbBusy--;
+                g.state = 'err'; g.err = err || 'nuk u lexua';
+                try { scope.$applyAsync(); } catch (e) {}
+                pumpThumbs();
+                return;
+              }
+              shrinkAnyImage(full, 160, function (small) {
+                thumbBusy--;
+                if (small) { g.src = small; g.state = 'ok'; g.err = ''; }
+                else { g.state = 'err'; g.err = 'formati nuk lexohet nga loja'; }
+                try { scope.$applyAsync(); } catch (e) {}
+                pumpThumbs();
+              });
+            });
+          })(thumbQueue.shift());
         }
+      }
+      scope.galleryImgError = function (g) {
+        if (!g) return;
+        if (g.fallbackTried || String(g.src || '').indexOf('data:') === 0) {
+          g.state = 'err';
+          if (!g.err) g.err = 'formati nuk lexohet';
+          return;
+        }
+        g.fallbackTried = true;
+        g.state = 'loading';
+        thumbQueue.push(g);
+        pumpThumbs();
       };
+      scope.galleryImgLoaded = function (g) {
+        if (g && g.state !== 'err') g.state = 'ok';
+      };
+      scope.galleryTitle = function (g) {
+        if (!g) return '';
+        var t = g.name + (g.user ? ' · folderi yt' : ' · moda');
+        if (g.size) t += ' · ' + (g.size >= 1048576 ? (g.size / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(g.size / 1024)) + ' KB');
+        if (g.state === 'err') t += ' · ✗ ' + (g.err || 'nuk lexohet');
+        return t;
+      };
+
+      scope.useGalleryImage = function (g) {
+        if (!g || !g.path) return;
+        var idx = Number(scope.selected) || 0;
+        var it = scope.cfg.items[idx];
+        if (!it) { notify('✗ S\'ka rreth të zgjedhur'); return; }
+        imageTargetIndex = idx;                              // shkon ATY ku e ke zgjedh
+        placeCircleImage(fileDataCache[g.path] || g.path, String(g.name || '').replace(/\.[a-z0-9]+$/i, ''));
+        it.imageFile = g.path;                              // v5.11.1: rruga e file-it ruhet
+        if (fileDataCache[g.path]) it.image = fileDataCache[g.path];
+        else ensurePhotoData(g.path, idx);                  // base64 i ruajtur (URL → Lua)
+        scope.persist();
+      };
+
+      // =====================================================
+      // v6.3.0: "NGARKO NGA KOMPJUTERI" (Choose File)
+      // Fotoja shkon menjëherë në rreth dhe ruhet edhe në folderin tënd
+      // (CreatorPack/imazhet), që të dalë në galeri edhe herë tjetër.
+      // =====================================================
+      var UPLOAD_CHUNK = 120000;
+      var UPLOAD_MAX_PX = 1024;
+      var uploadWaiters = {}, uploadSeq = 0;
+
+      function readFileAsDataUrl(file, cb) {
+        try {
+          var reader = new FileReader();
+          reader.onload = function (e) { cb(e && e.target ? e.target.result : null); };
+          reader.onerror = function () { cb(null); };
+          reader.readAsDataURL(file);
+        } catch (e) { cb(null); }
+      }
+      function loadImageEl(src, cb) {
+        try {
+          var im = new Image();
+          im.onload = function () { cb((im.naturalWidth || im.width) ? im : null); };
+          im.onerror = function () { cb(null); };
+          im.src = src;
+        } catch (e) { cb(null); }
+      }
+      function drawScaled(im, maxPx, type, quality) {
+        try {
+          var w = im.naturalWidth || im.width, h = im.naturalHeight || im.height;
+          if (!w || !h) return null;
+          var sc = Math.min(1, maxPx / Math.max(w, h));
+          var c = document.createElement('canvas');
+          c.width = Math.max(1, Math.round(w * sc));
+          c.height = Math.max(1, Math.round(h * sc));
+          var cx = c.getContext('2d');
+          if (type === 'image/jpeg') { cx.fillStyle = '#ffffff'; cx.fillRect(0, 0, c.width, c.height); }
+          cx.drawImage(im, 0, 0, c.width, c.height);
+          var out = c.toDataURL(type || 'image/png', quality);
+          return out && out.length > 60 ? out : null;
+        } catch (e) { return null; }
+      }
+      function sendUploadToLua(dataUrl, fileName, cb) {
+        var m = /^data:([^;,]+);base64,(.*)$/.exec(String(dataUrl || ''));
+        if (!m) { cb({ ok: false, err: 'të dhëna të pavlefshme' }); return; }
+        var b64 = m[2];
+        var id = 'up' + (++uploadSeq) + '-' + new Date().getTime().toString(36);
+        var n = Math.max(1, Math.ceil(b64.length / UPLOAD_CHUNK));
+        uploadWaiters[id] = {
+          cb: cb,
+          timer: $timeout(function () {
+            var w = uploadWaiters[id];
+            delete uploadWaiters[id];
+            if (w) w.cb({ ok: false, err: 'Lua nuk u përgjigj' });
+          }, 30000)
+        };
+        for (var i = 0; i < n; i++) {
+          var ok = engineLua('if extensions.creatorpack and extensions.creatorpack.pfhudUploadChunk then ' +
+            'extensions.creatorpack.pfhudUploadChunk(' + luaStr(id) + ',' + luaStr(fileName) + ',' + (i + 1) + ',' + n +
+            ',"' + b64.substr(i * UPLOAD_CHUNK, UPLOAD_CHUNK) + '") end');
+          if (!ok) {
+            var w = uploadWaiters[id];
+            delete uploadWaiters[id];
+            if (w) { try { $timeout.cancel(w.timer); } catch (e) {} w.cb({ ok: false, err: 'Lua nuk është gati' }); }
+            return;
+          }
+        }
+      }
+      function onUploaded(res) {
+        if (!res || !res.id) return;
+        var w = uploadWaiters[res.id];
+        if (!w) return;
+        delete uploadWaiters[res.id];
+        try { $timeout.cancel(w.timer); } catch (e) {}
+        w.cb(res);
+      }
+
+      scope.onPickedFiles = function (files, targetIdx) {
+        files = listOf(files).slice(0, 12);
+        if (!files.length) return;
+        if (targetIdx !== undefined && targetIdx !== null) scope.select(targetIdx);
+        var idx = Number(scope.selected) || 0;
+        var placed = false, placedK = -1, saved = 0, problems = [];
+        scope.uploadBusy += files.length;
+        scope.uploadNote = 'Duke ngarkuar ' + files.length + ' foto…';
+        function finishOne(file, problem) {
+          if (problem) problems.push(String(file && file.name || 'foto') + ': ' + problem);
+          scope.uploadBusy = Math.max(0, scope.uploadBusy - 1);
+          try { scope.$applyAsync(); } catch (e) {}
+        }
+        function summary() {
+          var parts = [];
+          if (placed) parts.push('✓ Fotoja u vendos në rrethin #' + (idx + 1));
+          if (saved) parts.push(saved + (saved === 1 ? ' foto u ruajt' : ' foto u ruajtën') + ' në galeri (CreatorPack/imazhet)');
+          if (problems.length) parts.push('✗ ' + problems.join(' · '));
+          scope.uploadNote = parts.join(' · ') || 'Asnjë foto nuk u ngarkua';
+          notify(scope.uploadNote);
+          try { scope.$applyAsync(); } catch (e) {}
+        }
+        (function next(k) {
+          if (k >= files.length) { summary(); return; }
+          var file = files[k];
+          var name = String((file && file.name) || 'foto.png');
+          var type = String((file && file.type) || '');
+          if (UNSUPPORTED_EXT_RE.test(name) || /heic|heif|tiff/i.test(type)) {
+            finishOne(file, 'HEIC/TIFF nuk lexohet nga loja — ruaje si JPG ose PNG');
+            next(k + 1); return;
+          }
+          readFileAsDataUrl(file, function (dataUrl) {
+            if (!dataUrl) { finishOne(file, 'nuk u lexua'); next(k + 1); return; }
+            loadImageEl(dataUrl, function (im) {
+              if (!im) { finishOne(file, 'formati nuk lexohet'); next(k + 1); return; }
+              var baseName = name.replace(/\.[a-z0-9]+$/i, '') || 'foto';
+              if (!placed) {
+                var circle = drawScaled(im, Number(scope.cfg.photoMaxPx) || 320, 'image/png');
+                if (circle) {
+                  placed = true; placedK = k;
+                  imageTargetIndex = idx;
+                  placeCircleImage(circle, baseName);
+                  var it0 = scope.cfg.items[idx];
+                  if (it0) { it0.imageFile = ''; it0.imageManual = true; }
+                }
+              }
+              var alpha = /png|webp|gif|svg|avif/i.test(type) || /\.(png|webp|gif|svg|avif)$/i.test(name);
+              var outType = alpha ? 'image/png' : 'image/jpeg';
+              var store = drawScaled(im, UPLOAD_MAX_PX, outType, 0.92);
+              if (!store) { finishOne(file, 'nuk u përgatit për ruajtje'); next(k + 1); return; }
+              sendUploadToLua(store, baseName + (alpha ? '.png' : '.jpg'), function (res) {
+                if (res && res.ok) {
+                  saved++;
+                  if (k === placedK && res.path) {
+                    var it1 = scope.cfg.items[idx];
+                    if (it1 && String(it1.image || '').indexOf('data:image') === 0) { it1.imageFile = String(res.path); fileDataCache[res.path] = it1.image; }
+                    try { scope.persist(); } catch (e) {}
+                  }
+                  finishOne(file, null);
+                } else {
+                  finishOne(file, 'nuk u ruajt në folder (' + ((res && res.err) || 'gabim') + ')');
+                }
+                next(k + 1);
+              });
+            });
+          });
+        })(0);
+      };
+
+      // =====================================================
+      // v6.3.0: "HAP FOLDERIN" — <user folder>/CreatorPack/imazhet në Windows
+      // =====================================================
+      scope.userFolderLabel = function () {
+        var real = scope.userFolder && scope.userFolder.real;
+        if (real) return String(real).replace(/\//g, '\\').replace(/\\+$/, '');
+        return 'BeamNG user folder\\CreatorPack\\imazhet';
+      };
+      scope.openImageFolder = function () {
+        scope.folderNote = 'Duke hapur folderin…';
+        var ok = engineLua('if extensions.creatorpack and extensions.creatorpack.pfhudOpenImageFolder then extensions.creatorpack.pfhudOpenImageFolder() end');
+        if (!ok) scope.folderNote = '✗ Lua nuk është gati — rihap panelin (H) dhe provo prapë.';
+      };
+      function onFolder(res) {
+        if (!res || typeof res !== 'object') return;
+        if (res.real) scope.userFolder.real = String(res.real);
+        if (res.dir) scope.userFolder.dir = String(res.dir);
+        if (res.created === undefined) return;               // vetëm info
+        if (res.ok === false || res.err) {
+          scope.folderNote = '✗ Folderi nuk u hap automatikisht (' + (res.err || 'gabim') + '). Hape vetë: ' + scope.userFolderLabel();
+        } else {
+          scope.folderNote = '📂 U hap: ' + scope.userFolderLabel() + ' — kopjo fotot aty dhe kthehu në lojë (Alt+Tab). Galeria rifreskohet vetë.';
+        }
+      }
 
       var unsubVehicle = $rootScope.$on('creatorpack.vehicle', function (e, data) {
         scope.$applyAsync(function () {
@@ -2607,12 +2995,15 @@ angular.module('beamng.apps')
       var unsubImages = $rootScope.$on('creatorpack.images', function (e, data) {
         scope.$applyAsync(function () { applyImageList(data); });
       });
-      // v5.11.1: te dhenat (base64) prej Lua-s — rruga e sigurt
-      var unsubLogoData = $rootScope.$on('creatorpack.logodata', function (e, data) {
-        scope.$applyAsync(function () { applyLogoData(data); });
+      // v6.3.0: fotot/logot nga Lua (në copa), ngarkimet dhe "Hap folderin"
+      var unsubFileData = $rootScope.$on('creatorpack.filedata', function (e, data) {
+        scope.$applyAsync(function () { onFileData(data); });
       });
-      var unsubImageData = $rootScope.$on('creatorpack.imagedata', function (e, data) {
-        scope.$applyAsync(function () { applyImageData(data); });
+      var unsubUploaded = $rootScope.$on('creatorpack.uploaded', function (e, data) {
+        scope.$applyAsync(function () { onUploaded(data); });
+      });
+      var unsubFolder = $rootScope.$on('creatorpack.folder', function (e, data) {
+        scope.$applyAsync(function () { onFolder(data); });
       });
 
       // v5.11.1: KONTROLLUESI — logot rikontrollohen vetë (edhe pas kthimit prej menusë)
@@ -2620,6 +3011,11 @@ angular.module('beamng.apps')
       try {
         logoWatchTimer = setInterval(function () {
           try { kickAllLogos(); } catch (e) {}
+          // v6.3.0: sa është hapur tab-i Fotot, folderat rikontrollohen çdo ~5 s
+          try {
+            if (scope.cfg.showPanel && scope.ui && scope.ui.tab === 'fotot' && !scanPending &&
+                (new Date().getTime() - lastScanAt) > 4500) scope.scanImages(true);
+          } catch (e) {}
           try { if (scope.$root && !scope.$root.$$phase) scope.$applyAsync(); } catch (e) {}
         }, 4000);
       } catch (e) {}
@@ -2627,6 +3023,8 @@ angular.module('beamng.apps')
         $window.addEventListener('focus', function () {
           try { reapplyStoredBrands(); } catch (e) {}
           try { kickAllLogos(); } catch (e) {}
+          // v6.3.0: kthehesh nga Windows Explorer → fotot e reja dalin vetë
+          try { if (scope.ui && scope.ui.tab === 'fotot') scope.scanImages(true); } catch (e) {}
         });
         var docEl = ($document && $document[0]) ? $document[0] : null;
         if (docEl && docEl.addEventListener) {
@@ -2645,7 +3043,7 @@ angular.module('beamng.apps')
       } catch (e) {}
 
       scope.$on('$destroy', function(){
-        try { unsubVehicle(); unsubImages(); unsubLogoData(); unsubImageData(); } catch (e) {}
+        try { unsubVehicle(); unsubImages(); unsubFileData(); unsubUploaded(); unsubFolder(); } catch (e) {}
         try { if (logoWatchTimer) clearInterval(logoWatchTimer); } catch (e) {}
         try { delete $window.__pfHudOwners[INSTANCE_ID]; } catch (e) {}
       });

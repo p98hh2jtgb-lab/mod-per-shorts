@@ -719,6 +719,18 @@
     .cp-gallery button:hover { border-color:rgba(125,231,255,.28); background:rgba(125,231,255,.06); }
     .cp-gallery img { display:block; width:100%; height:62px; object-fit:contain; }
     .cp-gallery span { display:block; overflow:hidden; margin-top:4px; color:rgba(189,208,219,.45); font-size:7px; text-overflow:ellipsis; white-space:nowrap; }
+    .cp-gallery button { position:relative; }
+    .cp-gallery button.cp-user { border-color:rgba(104,239,174,.20); }
+    .cp-gallery button.cp-err { border-color:rgba(255,124,140,.32); background:rgba(255,124,140,.05); }
+    .cp-gallery button.cp-err img { opacity:.22; }
+    .cp-gallery button.cp-loading img { opacity:.45; }
+    .cp-gallery .cp-tag { position:absolute; top:4px; left:4px; padding:1px 4px; border-radius:4px; background:rgba(104,239,174,.88); color:#05261a; font-size:6px; font-style:normal; font-weight:800; letter-spacing:.04em; }
+    .cp-upload { position:relative; display:inline-flex; align-items:center; justify-content:center; gap:6px; overflow:hidden; cursor:pointer; }
+    .cp-upload input[type="file"] { position:absolute; top:0; left:0; width:100%; height:100%; margin:0; padding:0; opacity:0; cursor:pointer; z-index:2; }
+    .cp-steps { margin:11px 0 0; padding-left:16px; color:rgba(180,202,215,.52); font-size:9px; line-height:1.6; }
+    .cp-steps b { color:rgba(225,238,246,.78); }
+    .cp-steps code { color:#bfefff; font-size:8.5px; word-break:break-all; }
+    .cp-note-ok { color:#8ce9bb; } .cp-note-warn { color:#ffd185; } .cp-note-info { color:#aeeeff; } .cp-note-busy { color:#ffe08a; }
     .cp-empty-media { display:flex; flex-direction:column; align-items:center; padding:20px 10px; border:1px dashed rgba(255,255,255,.07); border-radius:10px; text-align:center; }
     .cp-empty-media > b { color:rgba(125,211,236,.28); font-size:25px; font-weight:400; }
     .cp-empty-media > span { margin-top:6px; color:rgba(188,207,219,.48); font-size:10px; }
@@ -907,16 +919,16 @@
       <button class="pf-close cp-close" ng-click="togglePanel()" title="Mbyll panelin (H)" aria-label="Mbyll">×</button>
     </div>
     <div class="cp-nav" role="tablist">
-      <button ng-class="{active:tab==='kryesore'}" ng-click="tab='kryesore'"><span>⌂</span>Kryesore</button>
-      <button ng-class="{active:tab==='shorts'}" ng-click="tab='shorts'"><span>▯</span>Shorts</button>
-      <button ng-class="{active:tab==='series'}" ng-click="tab='series'"><span>↗</span>Series</button>
-      <button ng-class="{active:tab==='makinat'}" ng-click="tab='makinat'"><span>◉</span>Rrethet</button>
-      <button ng-class="{active:tab==='pamja'}" ng-click="tab='pamja'"><span>✦</span>Stili</button>
-      <button ng-class="{active:tab==='fotot'}" ng-click="tab='fotot'"><span>▧</span>Fotot</button>
-      <button ng-class="{active:tab==='tjera'}" ng-click="tab='tjera'"><span>•••</span>Më shumë</button>
+      <button ng-class="{active:ui.tab==='kryesore'}" ng-click="setTab('kryesore')"><span>⌂</span>Kryesore</button>
+      <button ng-class="{active:ui.tab==='shorts'}" ng-click="setTab('shorts')"><span>▯</span>Shorts</button>
+      <button ng-class="{active:ui.tab==='series'}" ng-click="setTab('series')"><span>↗</span>Series</button>
+      <button ng-class="{active:ui.tab==='makinat'}" ng-click="setTab('makinat')"><span>◉</span>Rrethet</button>
+      <button ng-class="{active:ui.tab==='pamja'}" ng-click="setTab('pamja')"><span>✦</span>Stili</button>
+      <button ng-class="{active:ui.tab==='fotot'}" ng-click="setTab('fotot')"><span>▧</span>Fotot</button>
+      <button ng-class="{active:ui.tab==='tjera'}" ng-click="setTab('tjera')"><span>•••</span>Më shumë</button>
     </div>
     <div class="cp-body">
-        <div class="pf-section cp-home" ng-show="tab==='kryesore'">
+        <div class="pf-section cp-home" ng-show="ui.tab==='kryesore'">
       <div class="cp-welcome">
         <div>
           <div class="cp-kicker">WORKSPACE I GATSHËM</div>
@@ -937,14 +949,14 @@
           <h3>Kompozim vertical, pa hamendje.</h3>
           <p>Saktësisht 4 rrethe në rrjetë 2×2, kornizë 9:16 dhe zona të sigurta për ndërfaqen e YouTube.</p>
         </div>
-        <button class="cp-primary" ng-click="setShortsMode(true); tab='shorts'">Hap Shorts Studio <b>→</b></button>
+        <button class="cp-primary" ng-click="setShortsMode(true); setTab('shorts')">Hap Shorts Studio <b>→</b></button>
       </div>
       <div class="cp-section-heading"><span>VEPRIME TË SHPEJTA</span><i></i></div>
       <div class="cp-action-grid">
-        <button ng-click="tab='makinat'"><span class="cp-action-icon">◉</span><b>Menaxho rrethet</b><small>Foto, emra dhe rezultate</small></button>
-        <button ng-click="tab='fotot'; scanImages(false)"><span class="cp-action-icon">▧</span><b>Biblioteka e fotove</b><small>{{photoCount()}} foto të ngarkuara</small></button>
+        <button ng-click="setTab('makinat')"><span class="cp-action-icon">◉</span><b>Menaxho rrethet</b><small>Foto, emra dhe rezultate</small></button>
+        <button ng-click="setTab('fotot'); scanImages(false)"><span class="cp-action-icon">▧</span><b>Biblioteka e fotove</b><small>{{photoCount()}} foto të ngarkuara</small></button>
         <button ng-if="!cfg.shortsMode" ng-click="addItem()"><span class="cp-action-icon">＋</span><b>Shto një rreth</b><small>Zgjero serinë aktuale</small></button>
-        <button ng-click="tab='series'"><span class="cp-action-icon">↗</span><b>Series Studio · 10 preset-e</b><small>Tiny → Giant, 60 variante</small></button>
+        <button ng-click="setTab('series')"><span class="cp-action-icon">↗</span><b>Series Studio · 10 preset-e</b><small>Tiny → Giant, 60 variante</small></button>
         <button ng-click="cleanCapture()"><span class="cp-action-icon">⌁</span><b>Regjistrim i pastër</b><small>Fsheh panelin dhe guidat</small></button>
       </div>
       <div class="cp-selected-card" ng-if="cfg.items[selected]">
@@ -968,7 +980,7 @@
     </div>
 
 
-    <div class="pf-section cp-shorts" ng-show="tab==='shorts'">
+    <div class="pf-section cp-shorts" ng-show="ui.tab==='shorts'">
       <div class="cp-section-title">
         <div><div class="cp-kicker">VERTICAL COMPOSER</div><h2>Shorts Studio</h2><p>Një kompozim i pastër 9:16 për YouTube Shorts.</p></div>
         <span class="cp-status-pill" ng-class="{on:cfg.shortsMode && !cfg.series6Mode}"><i></i>{{cfg.series6Mode ? 'SERIES 6' : (cfg.shortsMode ? 'AKTIV' : 'JO AKTIV')}}</span>
@@ -1017,7 +1029,7 @@
         <div><b>1</b><span>Aktivizo Shorts</span></div><i></i><div><b>2</b><span>Vendos 4 makinat</span></div><i></i><div><b>3</b><span>Regjistro pa guidat</span></div>
       </div>
     </div>
-    <div class="pf-section cp-series" ng-show="tab==='series'">
+    <div class="pf-section cp-series" ng-show="ui.tab==='series'">
       <div class="cp-section-title">
         <div><div class="cp-kicker">SIZE COMPARISON</div><h2>Series Studio</h2><p>10 preset-e. E njëjta makinë në gjashtë madhësi dhe ngjyra fikse.</p></div>
         <span class="cp-status-pill" ng-class="{on:cfg.series6Mode}"><i></i>{{cfg.series6Mode ? 'AKTIV' : '10 PRESET-E'}}</span>
@@ -1131,7 +1143,7 @@
           </div>
         </div>
 
-        <button class="cp-series-standard" ng-click="setShortsMode(true); tab='shorts'">Kthehu te Shorts standard <span>4 rrethe · 2×2</span></button>
+        <button class="cp-series-standard" ng-click="setShortsMode(true); setTab('shorts')">Kthehu te Shorts standard <span>4 rrethe · 2×2</span></button>
       </div>
 
       <div class="cp-empty-guide" ng-if="!cfg.series6Mode">
@@ -1140,7 +1152,7 @@
       <div class="cp-series-note">Shorts standard mbetet veçmas me saktësisht 4 rrethe në 2×2.</div>
     </div>
 
-    <div class="pf-section" ng-show="tab==='pamja'">
+    <div class="pf-section" ng-show="ui.tab==='pamja'">
       <div class="pf-label">Pozicioni &amp; pamja e rretheve</div>
       <div class="pf-grid">
         <div class="pf-card">
@@ -1294,7 +1306,7 @@
     
 
     <!-- ===== SEKSION PREMIUM (v2.0) ===== -->
-    <div class="pf-section" ng-show="tab==='pamja'">
+    <div class="pf-section" ng-show="ui.tab==='pamja'">
       <div class="pf-label">Tema</div>
       <div class="pf-shape-buttons">
         <button class="pf-btn" ng-class="{active: cfg.theme==='default'}" ng-click="cfg.theme='default'; persist()">Default</button>
@@ -1305,7 +1317,7 @@
       </div>
       <div class="pf-note" style="margin-top:7px;">Luxury = Obsidian / Glass, me ndriçim të lehtë gold dhe pamje më clean.</div>
     </div>
-    <div class="pf-section" ng-show="tab==='pamja'">
+    <div class="pf-section" ng-show="ui.tab==='pamja'">
       <div class="pf-label">Densiteti i HUD-it</div>
       <div class="pf-shape-buttons">
         <button class="pf-btn" ng-class="{active: cfg.hudDensity==='compact'}" ng-click="cfg.hudDensity='compact'; persist()">Compact</button>
@@ -1318,7 +1330,7 @@
       </div>
     </div>
 
-    <div class="pf-section" ng-show="tab==='pamja'">
+    <div class="pf-section" ng-show="ui.tab==='pamja'">
       <div class="pf-label">Renditja</div>
       <div ng-if="!cfg.shortsMode">
         <div class="pf-shape-buttons">
@@ -1342,7 +1354,7 @@
 
     
 
-    <div class="pf-section" ng-show="tab==='tjera'">
+    <div class="pf-section" ng-show="ui.tab==='tjera'">
       <div class="pf-label">Sjellja</div>
       <div class="pf-toggle">
         <label><input type="checkbox" ng-model="cfg.autoAdvance" ng-change="persist()"> Kalo vetë te tjetri pas markimit</label>
@@ -1359,7 +1371,7 @@
       </div>
     </div>
 
-    <div class="pf-section" ng-show="tab==='tjera'">
+    <div class="pf-section" ng-show="ui.tab==='tjera'">
       <div class="pf-label">Presets</div>
       <div class="pf-row">
         <input class="pf-input" type="text" ng-model="presetName" placeholder="Emri i preset-it">
@@ -1375,7 +1387,7 @@
       </div>
     </div>
 
-    <div class="pf-section" ng-show="tab==='tjera'">
+    <div class="pf-section" ng-show="ui.tab==='tjera'">
       <div class="pf-label">Export / Import</div>
       <div class="pf-row">
         <button class="pf-btn" ng-click="buildExport()">Eksporto stilin</button>
@@ -1390,19 +1402,34 @@
       <div class="pf-warn" ng-if="storageWarning">{{storageWarning}}</div>
     </div>
 
-    <div class="pf-section cp-photos" ng-show="tab==='fotot'">
-      <div class="cp-section-title"><div><div class="cp-kicker">MEDIA LIBRARY</div><h2>Fotot & logot</h2><p>Të gjitha imazhet gati — zgjidh rrethin dhe kliko foton.</p></div><span class="cp-count-badge">{{gallery.length}} NE GALERI</span></div>
-      <div class="cp-control-card">
-        <div class="cp-control-title"><span>▧</span><div><b>Galeria e mod-it</b><small>Folderi: ui/modules/apps/CreatorPack/imazhet/</small></div></div>
+    <div class="pf-section cp-photos" ng-show="ui.tab==='fotot'">
+      <div class="cp-section-title"><div><div class="cp-kicker">MEDIA LIBRARY</div><h2>Fotot & logot</h2><p>Zgjidh rrethin, pastaj kliko foton — ose ngarko një foto tënden.</p></div><span class="cp-count-badge">{{gallery.length}} NE GALERI</span></div>
+      <div class="cp-control-card cp-add-photos">
+        <div class="cp-control-title"><span>＋</span><div><b>Shto fotot e tua</b><small>Rrethi i zgjedhur: #{{selected + 1}} · {{cfg.items[selected].label || ('Makina ' + (selected + 1))}}</small></div></div>
         <div class="cp-inline-actions">
-          <button class="cp-primary" ng-click="scanImages(false)">↻ Rifresko galerinë</button>
-          <button class="cp-secondary" ng-click="refreshLogos(false)">Rifresko logot</button>
+          <label class="cp-primary cp-upload" title="Zgjidh PNG / JPG / WEBP nga kompjuteri">
+            <input type="file" accept="image/*,.png,.jpg,.jpeg,.jfif,.webp,.gif,.bmp,.avif" multiple cp-file-pick="onPickedFiles($files)">⬆ Ngarko nga kompjuteri
+          </label>
+          <button class="cp-secondary" ng-click="openImageFolder()">📂 Hap folderin</button>
+          <button class="cp-secondary" ng-click="scanImages(false)">↻ Rifresko</button>
         </div>
-        <div class="cp-path-note">{{gallery.length}} imazhe · Një klik e vendos foton në rrethin #{{selected + 1}}.</div>
+        <div class="cp-path-note cp-note-busy" ng-if="uploadBusy">⏳ Duke ngarkuar… ({{uploadBusy}})</div>
+        <div class="cp-path-note cp-note-ok" ng-if="uploadNote && !uploadBusy">{{uploadNote}}</div>
+        <div class="cp-path-note cp-note-info" ng-if="folderNote">{{folderNote}}</div>
+        <ol class="cp-steps">
+          <li><b>Ngarko nga kompjuteri</b>: fotoja shkon në rrethin #{{selected + 1}} dhe ruhet edhe në galeri.</li>
+          <li>Ose <b>Hap folderin</b>, kopjo fotot aty (PNG, JPG, JFIF, WEBP, GIF) dhe kthehu në lojë — galeria i shton vetë.</li>
+          <li>Folderi yt: <code>{{userFolderLabel()}}</code> — është jashtë ZIP-it, prandaj fotot nuk humbin kur e përditëson modin.</li>
+        </ol>
+      </div>
+      <div class="cp-control-card">
+        <div class="cp-control-title"><span>▧</span><div><b>Galeria</b><small>{{galleryInfo || (gallery.length + ' imazhe')}}</small></div></div>
+        <div class="cp-path-note">Një klik e vendos foton në rrethin #{{selected + 1}}.<span ng-if="galleryUserCount"> Fotot e tua janë të parat.</span></div>
+        <div class="cp-path-note cp-note-warn" ng-if="gallerySkipped.length">✗ Këto nuk lexohen nga loja (ruaji si JPG/PNG): {{gallerySkipped.join(', ')}}</div>
         <div class="cp-gallery" ng-if="gallery.length">
-          <button ng-repeat="g in gallery track by g.url" ng-click="useGalleryImage(g)" title="{{g.name}}"><img ng-src="{{g.url}}" alt="{{g.name}}" loading="lazy" decoding="async"><span>{{g.name}}</span></button>
+          <button ng-repeat="g in gallery track by g.path" ng-click="useGalleryImage(g)" title="{{galleryTitle(g)}}" ng-class="{'cp-user': g.user, 'cp-err': g.state==='err', 'cp-loading': g.state==='loading'}"><img ng-src="{{g.src}}" alt="{{g.name}}" loading="lazy" decoding="async" cp-img-events cp-img-error="galleryImgError(g)" cp-img-load="galleryImgLoaded(g)"><i class="cp-tag" ng-if="g.user">E JOTJA</i><span>{{g.name}}</span></button>
         </div>
-        <div class="cp-empty-media" ng-if="!gallery.length"><b>▧</b><span>{{galleryInfo || 'S’ka imazhe të ngarkuara ende.'}}</span><small>Shto PNG në folderin imazhet dhe shtyp “Rifresko galerinë”.</small></div>
+        <div class="cp-empty-media" ng-if="!gallery.length"><b>▧</b><span>{{galleryInfo || 'S’ka imazhe të ngarkuara ende.'}}</span><small>Shtyp “Ngarko nga kompjuteri” ose “Hap folderin”.</small></div>
       </div>
       <div class="cp-control-card">
         <div class="cp-control-title"><span>◆</span><div><b>Logot e markave</b><small>logo_bmw.png ose bmw.png njihet automatikisht.</small></div></div>
@@ -1437,15 +1464,15 @@
         <button ng-class="{armed:clearArmed}" ng-click="clearAllImages()">{{clearArmed ? 'Konfirmo fshirjen' : 'Fshi fotot'}}</button>
       </div>
     </div>
-    <div class="pf-section" ng-show="tab==='makinat'">
+    <div class="pf-section" ng-show="ui.tab==='makinat'">
       <div class="pf-label">{{cfg.series6Mode ? 'Series · ' + seriesPresetName() : 'Makinat'}}</div>
       <div class="cp-series-active-card" ng-if="cfg.series6Mode">
         <div><div class="cp-kicker">PRESET ME 6 SLOT-E FIKS</div><h3>{{seriesActiveTitle()}}</h3></div>
-        <button class="cp-primary" ng-click="tab='series'">Hap Series Studio →</button>
+        <button class="cp-primary" ng-click="setTab('series')">Hap Series Studio →</button>
       </div>
     </div>
 
-    <div class="pf-items" ng-show="tab==='makinat' && !cfg.series6Mode">
+    <div class="pf-items" ng-show="ui.tab==='makinat' && !cfg.series6Mode">
       <div class="pf-editor" ng-repeat="item in cfg.items track by $index" ng-if="circleVisible($index)">
         <div class="pf-thumb-wrap">
           <!-- Preview i madh rrethor: e njejta pamje si ne HUD -->
@@ -1478,8 +1505,13 @@
 
             <div class="pf-card">
               <div class="mini">Foto e rrethit</div>
-              <div class="pf-note">Zgjidhe direkt nga galeria e mod-it me një klik.</div>
-              <div class="pf-row"><button class="pf-btn slim" ng-click="select($index); tab='fotot'">▧ Zgjidh foto nga galeria</button></div>
+              <div class="pf-note">Zgjidhe nga galeria me një klik, ose ngarko një foto nga kompjuteri.</div>
+              <div class="pf-row">
+                <button class="pf-btn slim" ng-click="openGalleryFor($index)">▧ Zgjidh foto nga galeria</button>
+                <label class="pf-btn slim cp-upload" title="Zgjidh një foto nga kompjuteri për rrethin #{{$index + 1}}">
+                  <input type="file" accept="image/*,.png,.jpg,.jpeg,.jfif,.webp,.gif,.bmp,.avif" cp-file-pick="onPickedFiles($files, $index)">⬆ Ngarko nga kompjuteri
+                </label>
+              </div>
               <div class="pf-row">
                 <label class="pf-toggle"><input type="checkbox" ng-model="item.enabled" ng-change="persist()" ng-disabled="cfg.shortsMode"> Aktive <span ng-if="cfg.shortsMode">(fiks në Shorts)</span></label>
                 <button class="pf-btn slim red" ng-click="removeItemPhoto($index)">🗑️ Fshi foton + logon</button>
@@ -1529,7 +1561,7 @@
       </div>
     </div>
 
-        <div class="pf-section" ng-show="tab==='tjera'">
+        <div class="pf-section" ng-show="ui.tab==='tjera'">
       <div class="pf-label">Diagnostika</div>
       <div class="pf-card cp-diagnostics">
         <div><span>Versioni</span><b>CreatorPack Studio v{{modVersion}}</b></div>
@@ -1537,6 +1569,7 @@
         <div><span>Kompozimi aktiv</span><b class="ok">{{cfg.series6Mode ? 'Series 6 · ' + visibleCircleCount() + ' / 6' : (cfg.shortsMode ? 'Shorts · ' + visibleCircleCount() + ' / 4' : 'Shorts jo aktiv')}}</b></div>
         <div><span>Fotot</span><b class="ok">{{photoCount()}} në rrethe · {{photoSavedKB}} KB arkivë</b></div>
         <div><span>Galeria</span><b>{{gallery.length}} imazhe · {{galleryState}}</b></div>
+        <div><span>Folderi yt</span><b>{{userFolderLabel()}} · {{galleryUserCount}} foto</b></div>
         <div><span>Full-screen HUD</span><b class="ok">Aktiv · pa hije të HUD-it</b></div>
         <div><span>Storage key</span><b>{{storageKey}}</b></div>
         <div class="cp-diag-actions"><button class="cp-secondary" ng-click="scanImages(false)">Kontrollo folderin</button><button class="cp-secondary" ng-click="verifyPhotos()">Kontrollo ruajtjen</button></div>
@@ -1544,7 +1577,7 @@
     </div>
 
 
-    <div class="pf-help cp-reset-help" ng-show="tab==='tjera'">
+    <div class="pf-help cp-reset-help" ng-show="ui.tab==='tjera'">
       Rrethet default janë transparentë. PASS shfaq ✓ jeshil, FAIL shfaq ✕ i kuq. Glow dhe outline rregullohen te Stili.
       <div class="pf-row"><button class="pf-btn red" ng-click="clearSavedSettings()">Reset komplet i HUD settings</button></div>
     </div>

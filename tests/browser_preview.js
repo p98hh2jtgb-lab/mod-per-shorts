@@ -83,7 +83,7 @@ async function makeServer(modName) {
       const p = document.querySelector('.cp-panel').getBoundingClientRect();
       const scope = angular.element(document.querySelector('.cp-panel')).scope();
       return {left:p.left,top:p.top,right:p.right,bottom:p.bottom,width:innerWidth,height:innerHeight,
-        tab:scope.tab, galleryCount:scope.gallery.length};
+        tab:scope.ui.tab, galleryCount:scope.gallery.length};
     });
     assert.strictEqual(geometry.tab, 'kryesore');
     assert.strictEqual(geometry.galleryCount, bundledManifest.files.length, 'Bundled gallery must render before Lua responds');
@@ -143,24 +143,27 @@ async function makeServer(modName) {
     await page.waitForSelector('.cp-panel', {state:'visible'});
     console.log('✓ Real H / K / L / Ctrl+Z keyboard events toggle, mark PASS/FAIL and undo');
 
+    const navLabels = {makinat:'Rrethet', pamja:'Stili', fotot:'Fotot', series:'Series', tjera:'Më shumë'};
     for (const tab of ['makinat','pamja','fotot','series','tjera']) {
-      await page.evaluate(tabName => {
-        const scope = angular.element(document.querySelector('.cp-panel')).scope();
-        scope.tab = tabName; scope.$apply();
-      }, tab);
+      await page.click(`.cp-nav button:has-text("${navLabels[tab]}")`);
       await page.waitForTimeout(150);
+      const activeTab = await page.evaluate(() => angular.element(document.querySelector('.cp-panel')).scope().ui.tab);
+      assert.strictEqual(activeTab, tab, 'Real nav click must switch the panel tab');
       await page.screenshot({path:`/tmp/creatorpack-${tab}.png`});
     }
-    console.log('✓ Rrethet, Stili, Fotot, Series 6 and Më shumë render in Chromium');
+    console.log('✓ Real clicks on Rrethet, Stili, Fotot, Series 6 and Më shumë switch and render in Chromium');
 
     await page.evaluate(() => {
       const scope = angular.element(document.querySelector('.cp-panel')).scope();
+      // Like BeamNG: commands without callback; Lua answers with a guihooks event.
+      window.__callbackCommands = [];
       window.bngApi.engineLua = function(command, callback) {
-        if (command.includes('pfhudListImages') && callback) {
-          setTimeout(() => callback({ok:true, dir:'/ui/modules/apps/CreatorPack/imazhet/', files:['volvo.png']}), 0);
+        if (callback) window.__callbackCommands.push(command);
+        if (command.includes('pfhudListImages')) {
+          setTimeout(() => scope.$root.$broadcast('creatorpack.images', {ok:true, dir:'/ui/modules/apps/CreatorPack/imazhet/', files:['volvo.png']}), 0);
         }
       };
-      scope.tab = 'fotot'; scope.scanImages(false);
+      scope.setTab('fotot'); scope.scanImages(false); scope.$apply();
     });
     await page.waitForFunction(expected => {
       const scope = angular.element(document.querySelector('.cp-panel')).scope();
@@ -168,11 +171,13 @@ async function makeServer(modName) {
         document.querySelectorAll('.cp-gallery button').length === expected;
     }, bundledManifest.files.length, {timeout:10000});
     assert.strictEqual(await page.locator('.cp-manual-file').count(), 0);
-    assert.strictEqual(await page.locator('input[type="file"]').count(), 0);
-    const volvoButton = page.locator('.cp-gallery button[title="volvo.png"]');
+    assert(await page.locator('input[type="file"]').count() >= 2, 'Choose File inputs must exist (Fotot + per circle)');
+    assert(await page.locator('.cp-photos label.cp-upload').isVisible(), '"Ngarko nga kompjuteri" must be visible in Fotot');
+    assert.deepStrictEqual(await page.evaluate(() => window.__callbackCommands), [], 'Gallery scan must not use engineLua callbacks');
+    const volvoButton = page.locator('.cp-gallery button[title^="volvo.png"]');
     await volvoButton.scrollIntoViewIfNeeded();
     await page.waitForFunction(() => {
-      const image = document.querySelector('.cp-gallery button[title="volvo.png"] img');
+      const image = document.querySelector('.cp-gallery button[title^="volvo.png"] img');
       return image && image.complete && image.naturalWidth > 0;
     }, null, {timeout:10000});
     await page.evaluate(() => {
@@ -193,16 +198,6 @@ async function makeServer(modName) {
     assert(immediateImage.stored.startsWith('data:image') || immediateImage.stored.endsWith('/volvo.png'), JSON.stringify(immediateImage));
     assert.strictEqual(immediateImage.file, '/ui/modules/apps/CreatorPack/imazhet/volvo.png');
     assert(immediateImage.circleBackground.startsWith('url('));
-    await page.evaluate(() => {
-      const scope = angular.element(document.querySelector('.cp-panel')).scope();
-      const image = document.querySelector('.cp-gallery button[title="volvo.png"] img');
-      const canvas = document.createElement('canvas');
-      canvas.width = image.naturalWidth; canvas.height = image.naturalHeight;
-      canvas.getContext('2d').drawImage(image, 0, 0);
-      scope.$root.$broadcast('creatorpack.imagedata', {
-        path:'/ui/modules/apps/CreatorPack/imazhet/volvo.png', data:canvas.toDataURL('image/png')
-      });
-    });
     await page.waitForFunction(() => {
       const scope = angular.element(document.querySelector('.cp-panel')).scope();
       return String(scope.cfg.items[0].image || '').startsWith('data:image');
@@ -222,11 +217,11 @@ async function makeServer(modName) {
     assert(galleryImage.photoCount >= 1);
     assert(galleryImage.circleBackground.startsWith('url('));
     await page.screenshot({path:'/tmp/creatorpack-gallery-volvo.png'});
-    console.log(`✓ All ${bundledManifest.files.length} images render; one Volvo gallery click fills the circle without file/name inputs`);
+    console.log(`✓ All ${bundledManifest.files.length} images render; one Volvo gallery click fills the circle and is saved as base64`);
 
     await page.evaluate(() => {
       const scope = angular.element(document.querySelector('.cp-panel')).scope();
-      scope.setShortsMode(true); scope.tab='shorts'; scope.$apply();
+      scope.setShortsMode(true); scope.setTab('shorts'); scope.$apply();
     });
     await page.waitForTimeout(350);
     const shorts = await page.evaluate(() => ({
@@ -257,7 +252,7 @@ async function makeServer(modName) {
 
     await page.evaluate(() => {
       const scope = angular.element(document.querySelector('.cp-panel')).scope();
-      scope.setSeries6Mode(true); scope.tab='series'; scope.$apply();
+      scope.setSeries6Mode(true); scope.setTab('series'); scope.$apply();
     });
     await page.waitForTimeout(400);
     const series = await page.evaluate(() => {
@@ -489,7 +484,7 @@ async function makeServer(modName) {
     await page.waitForTimeout(120);
     await page.evaluate(() => {
       const scope = angular.element(document.querySelector('.cp-panel')).scope();
-      scope.setShortsMode(true); scope.tab='shorts'; scope.$apply();
+      scope.setShortsMode(true); scope.setTab('shorts'); scope.$apply();
     });
     await page.waitForTimeout(250);
     assert.strictEqual(await page.locator('.pf-series-car').count(), 0);

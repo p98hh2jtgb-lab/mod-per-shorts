@@ -1,8 +1,8 @@
 {
   "name": "CreatorPack Studio",
   "author": "daimy",
-  "version": "6.2.0",
-  "description": "Series Studio with 10 presets and 60 transparent variants, Shorts 9:16 and Full Size layouts, X/Y placement, non-linear SVG marks, an 87-image gallery and standard four-circle Shorts.",
+  "version": "6.3.0",
+  "description": "Upload your own photos, open your CreatorPack/imazhet folder and pick from an auto-refreshing gallery; Series Studio with 10 presets, Shorts 9:16 and Full Size layouts, X/Y placement, non-linear SVG marks and standard four-circle Shorts.",
   "directive": "creatorpackPanel",
   "domElement": "<creatorpack-panel></creatorpack-panel>",
   "css": {

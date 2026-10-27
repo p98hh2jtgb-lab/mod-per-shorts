@@ -1,8 +1,17 @@
-FOTOT DHE LOGOT — CREATORPACK STUDIO 6.0
+FOTOT DHE LOGOT — CREATORPACK STUDIO 6.3
 ========================================
 
-Shto PNG, JPG, JPEG ose WEBP në këtë folder. Në panel hap:
-Fotot → Galeria e mod-it → Rifresko galerinë.
+KJO ËSHTË GALERIA E MODIT (brenda ZIP-it). Për fotot e TUA s'ke nevojë ta
+hapësh ZIP-in më:
+
+  H → Fotot → "Ngarko nga kompjuteri"   (zgjidh foton nga kompjuteri), ose
+  H → Fotot → "Hap folderin"            (hapet <BeamNG user folder>\CreatorPack\imazhet)
+
+Kopjo fotot në atë folder dhe kthehu në lojë — galeria i shton vetë.
+Ai folder është jashtë ZIP-it, prandaj fotot nuk humbin kur e përditëson modin.
+
+Formatet: PNG, JPG, JPEG, JFIF, WEBP, GIF, BMP, AVIF.
+HEIC (foto iPhone) nuk lexohet nga loja — ruaje si JPG ose PNG.
 
 LOGOT E MARKAVE
 ---------------
@@ -13,21 +22,14 @@ Emri i file-it përcakton markën, p.sh.:
   mercedes-logo.png
   LAMBORGHINI_logo.png
 
-Kur ndryshon makina, CreatorPack kërkon automatikisht logon përkatëse.
-Nëse nuk gjen file, mund të shfaqë badge me shkronjat e markës.
-Nga Fotot mund të çaktivizosh logot automatike ose badge-t.
+Kur ndryshon makina, CreatorPack kërkon automatikisht logon përkatëse
+(së pari në folderin tënd, pastaj këtu). Nëse nuk gjen file, mund të shfaqë
+badge me shkronjat e markës. Nga Fotot mund t'i çaktivizosh.
 
 FOTOT NGA GALERIA
 -----------------
-Zgjidh rrethin në Rrethet, pastaj kliko një foto në galeri për ta vendosur.
-Të 87 imazhet e paketës shfaqen automatikisht; s’duhet të shkruash emra file-ash.
-Fotot/logot e përdorura ruhen lokalisht që të jenë përsëri aty pas rihapjes.
+Zgjidh rrethin (ose Rrethet → "Zgjidh foto nga galeria"), pastaj kliko fotot.
+Fotot e përdorura ruhen lokalisht që të jenë përsëri aty pas rihapjes.
 Asgjë nuk merret automatikisht nga loja dhe nuk ka AutoFoto.
-
-SHTIMI I FILE-AVE
------------------
-1. Kopjo file-t në ui/modules/apps/CreatorPack/imazhet/.
-2. Nëse modi është ZIP, shtoji brenda ZIP-it në të njëjtën rrugë.
-3. Kliko “Rifresko galerinë” në panel.
 
 Për rrethet, PNG transparent rreth 256–512 px zakonisht jep rezultat të pastër.

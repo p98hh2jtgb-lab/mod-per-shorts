@@ -1,21 +1,53 @@
-CREATORPACK STUDIO 6.2.0
+CREATORPACK STUDIO 6.3.0
 ========================
-Panel me H · PASS/FAIL circles · Shorts 2×2 · Series Studio me 10 preset-e
+Panel me H · PASS/FAIL circles · Shorts 2×2 · Series Studio me 10 preset-e ·
+Fotot e tua · Ngarko nga kompjuteri · Hap folderin
 
 
 INSTALIMI
 ---------
 1. Çaktivizo ose hiq versionin e vjetër CreatorPack/HUD PRO që të mos ketë dy kopje aktive.
-2. Kopjo CreatorPack_v6.2.0.zip pa e hapur te:
-   Documents\BeamNG.drive\mods\
+2. Kopjo CreatorPack_v6.3.0.zip pa e hapur në folderin mods të BeamNG
+   (në lojë: Repository/Mod Manager → Open Mod Folder).
 3. Nis lojën. Nëse overlay-i nuk shfaqet vetë:
    Esc → UI Apps → Add App → CreatorPack Studio.
 4. H hap ose mbyll panelin. Paneli mund të zhvendoset duke e tërhequr nga header-i.
 
 
+ÇKA U RREGULLUA NË 6.3.0
+------------------------
+1) FOTOT E REJA NUK DILNIN NË PANEL — U RREGULLUA
+   • Butoni “Rifresko galerinë” i dërgonte lojës një komandë që BeamNG e fut
+     brenda guihooks.trigger(..., komanda). Komanda kishte dy pjesë me “;”,
+     prandaj në lojë jepte gabim sintakse dhe folderi nuk lexohej KURRË
+     (që nga 6.0.0). Dilnin vetëm 87 imazhet e listës gallery.json.
+   • Rruga rezervë base64 përdorte FS:readFile, që nuk ekziston në BeamNG —
+     tash përdoret io.readFileToBuffer (si vetë loja), pa kufirin 900 KB.
+   • Emrat si “foto (2).png”, “IMG 2024.JPG” ose me ë/ç prisheshin para se të
+     shkonin te Lua (hapësirat, kllapat dhe ë-të fshiheshin). Tash shkojnë saktë.
+   • Pranohen edhe .jfif, .gif, .bmp, .avif dhe zgjatimet me shkronja të mëdha
+     (.JPG, .PNG). HEIC (iPhone) nuk lexohet nga loja — paneli ta tregon emrin.
+2) “ZGJIDH FOTO NGA GALERIA” NUK HAPEJ — U RREGULLUA
+   • Butoni ndryshonte vetëm një kopje lokale të tab-it. Tash e zgjedh rrethin
+     dhe e hap galerinë menjëherë.
+3) E RE: NGARKO NGA KOMPJUTERI (Choose File)
+   • Fotot → “Ngarko nga kompjuteri” (ose te Rrethet, për secilin rreth).
+   • Fotoja e parë shkon menjëherë në rrethin e zgjedhur; të gjitha ruhen edhe
+     në folderin tënd (max 1024 px), që t’i kesh në galeri edhe herë tjetër.
+   • Nëse në kompjuterin tënd dritarja e Windows nuk hapet (p.sh. fullscreen),
+     përdor “Hap folderin” — punon gjithmonë.
+4) E RE: FOLDERI YT + “HAP FOLDERIN”
+   • <BeamNG user folder>\CreatorPack\imazhet — jashtë ZIP-it, prandaj fotot
+     NUK humbin kur e përditëson modin. S’ka më nevojë ta hapësh ZIP-in.
+   • “Hap folderin” e krijon dhe e hap në Windows Explorer. Kopjo fotot aty
+     dhe kthehu në lojë: galeria i shton vetë (fotot e tua dalin të parat).
+   • Nëse i kishe shtuar fotot brenda ZIP-it të vjetër, kopjoji në këtë folder.
+
+
 ÇKA KA KËTU
 -----------
 • Panel i ridizajnuar: Kryesore, Shorts, Series, Rrethet, Stili, Fotot dhe Më shumë.
+• Fotot e tua: Ngarko nga kompjuteri, Hap folderin, galeria rifreskohet vetë.
 • Series Studio me 10 preset-e dhe 60 PNG transparente: 6 variante për secilin model.
 • Shorts 9:16 dhe Full Size për Series, pozicion Lart/Mes/Poshtë dhe X/Y manual.
 • Shenja ✓/✕ si SVG: shfaqen pa u varur nga glifet e fontit të sistemit.
@@ -117,15 +149,22 @@ me tastet e tua; mund ta caktosh Shorts vetë.
 
 FOTOT DHE LOGOT — GALERI ME 1 KLIK
 ----------------------------------
-• Të 87 imazhet e galerisë shfaqen automatikisht në Fotot → Galeria e mod-it.
-• Zgjidh rrethin standard, kliko imazhin dhe fotoja vendoset menjëherë në atë rreth.
-• Nuk ka Choose File dhe nuk duhet të shkruash emrin e file-it.
-• “Rifresko galerinë” lexon edhe PNG/JPG/JPEG/WEBP të rinj në imazhet/ përmes Lua-s.
-• Për folder-in brenda ZIP-it: hap ZIP-in, shto file-t dhe ripaketo, ose përdor unpacked.
-• Fotot/logot e përdorura ruhen në storage-in e UI-së; nuk merren screenshots vetë.
-• gallery.json garanton që imazhet e paketës të dalin edhe kur FS/Lua vonohet.
-• Lua bridge ka lifecycle të plotë dhe fotot kanë URL + base64 fallback.
-• 60 render-et e Series janë asset-e veçmas dhe nuk përzien galerinë 87-imazhëshe.
+• H → Fotot: zgjidh rrethin, pastaj kliko një foto në galeri.
+• Rrethet → “Zgjidh foto nga galeria” e zgjedh rrethin dhe hap galerinë.
+• “Ngarko nga kompjuteri” (Fotot ose Rrethet): fotoja shkon në rreth dhe ruhet
+  në folderin tënd. Mund të zgjedhësh disa foto njëherësh.
+• “Hap folderin”: <BeamNG user folder>\CreatorPack\imazhet. Kopjo PNG, JPG,
+  JFIF, WEBP, GIF, BMP ose AVIF aty; galeria i shton vetë kur kthehesh në lojë.
+  “Rifresko” i lexon menjëherë.
+• Fotot e tua dalin të parat (më e reja lart) me shenjën “E JOTJA”.
+• 87 imazhet e paketës (ui/modules/apps/CreatorPack/imazhet/) dalin gjithmonë,
+  edhe para se të përgjigjet Lua (gallery.json).
+• Logot automatike njihen nga emri i file-it (bmw.png, logo_audi.png …), edhe
+  në folderin tënd — ai kontrollohet i pari.
+• Fotot në rrathë ruhen si PNG të vogël (320 px) në storage-in e UI-së, prandaj
+  mbeten edhe nëse file-i fshihet më vonë. Nuk merren screenshots vetë.
+• Nëse CEF-i nuk e hap një file si URL, Lua e lexon dhe e dërgon në copa
+  (base64), edhe për foto të mëdha (deri 24 MB).
 
 
 PASTRIMI I KONFIGURIMIT
@@ -137,15 +176,22 @@ Nuk ka kontroll të errësimit jashtë kornizës: Shorts/Series nuk zbeh lojën 
 
 VERIFIKIMI
 ----------
-• JavaScript syntax dhe Lua 5.1 runtime me BeamNG API të simuluar.
-• 13 runtime smoke checks me Angular/CEF të simuluar; 507 Angular expressions.
-• Shorts/restore, 10 preset-e/60 asset-e, Full Size, X/Y, non-linear marks,
-  PASS/FAIL, auto-advance, undo/reset, glow/outline, audio dhe 87 imazhe galerie.
-• Render real në Chromium: 87/87 imazhe galerie dhe 60/60 variante Series,
-  përfshirë McQueen; Full Size edge-to-edge; SVG marks; manual/fixed-size;
-  H/K/L/Ctrl+Z; clean capture dhe kthim në 4 rrethe 2×2.
-• Lua lifecycle + FS/base64/path security me BeamNG API të simuluar.
-• Pa JavaScript errors në render-in final.
+• Lua në LuaJIT 2.1 të vërtetë (si loja) dhe në Lua 5.3, me API-në reale të
+  BeamNG: FS:findFiles/stat/directoryCreate, io.readFileToBuffer, io.open i
+  izoluar, Engine.Platform.exploreFolder, onFilesChanged. 11 kontrolle: lista,
+  base64 me çdo madhësi, foto 2.4 MB në copa, emra me ë/(2)/#/%, siguria e
+  rrugëve, ngarkimi, “Hap folderin” dhe rifreskimi automatik.
+• Çdo komandë që paneli i dërgon Lua-s kompilohet saktësisht si në lojë
+  (me callback: guihooks.trigger("onBNGAPICallback", id, komanda)).
+• 20 runtime smoke checks me Angular/CEF të simuluar; 525 Angular expressions.
+• End-to-end në Chromium + Lua e vërtetë e modit: klikime reale në Fotot,
+  Rrethet → “Zgjidh foto nga galeria”, foto me ë/(2), “Hap folderin”,
+  “Ngarko nga kompjuteri” me file chooser real, ruajtja në folder (1024 px),
+  rifreskimi vetë kur kopjohet një foto, dhe një CEF “strict” që s’i hap URL-të
+  e user folder-it (të gjitha fotot vijnë përmes Lua base64).
+• Testet ekzistuese: Shorts/restore, 10 preset-e/60 asset-e, Full Size, X/Y,
+  PASS/FAIL, auto-advance, undo/reset, glow/outline, audio dhe 87 imazhe.
+• Pa JavaScript errors.
 
 Testimi është bërë me Lua mocks dhe Chromium/Angular. Verifikimi final në instalimin
-real të BeamNG bëhet nga përdoruesi. Ky dokument përshkruan CreatorPack Studio 6.2.0.
+real të BeamNG bëhet nga përdoruesi. Ky dokument përshkruan CreatorPack Studio 6.3.0.

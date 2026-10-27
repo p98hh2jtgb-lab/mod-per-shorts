@@ -1,4 +1,10 @@
-/* Node-only Angular/CEF smoke harness. No BeamNG or third-party packages required. */
+/* Node-only Angular/CEF smoke harness. No BeamNG required.
+ * Optional: set FENGARI_PATH (or install fengari) and every engineLua command the panel
+ * sends is compiled exactly the way BeamNG runs it. With a callback, BeamNG's bngApi
+ * embeds the command as an expression: guihooks.trigger("onBNGAPICallback", id, <cmd>).
+ * The 6.0.0–6.2.0 gallery scan sent "extensions.load(...); ..." with a callback, which is
+ * a Lua syntax error in the game; this harness now fails on that.
+ */
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -9,6 +15,47 @@ const directives = Object.create(null);
 const listeners = Object.create(null);
 const documentHandlers = Object.create(null);
 const luaCommands = [];
+const luaCallbackCommands = [];
+const luaSyntaxErrors = [];
+let fengari = null;
+try { fengari = require(process.env.FENGARI_PATH || 'fengari'); } catch (e) { fengari = null; }
+function luaCompiles(src) {
+  if (!fengari) return null;
+  const { lua, lauxlib, to_luastring } = fengari;
+  const L = lauxlib.luaL_newstate();
+  const status = lauxlib.luaL_loadstring(L, to_luastring(src));
+  return status === lua.LUA_OK ? true : lua.lua_tojsstring(L, -1);
+}
+function recordLua(command, callback) {
+  luaCommands.push(command);
+  if (callback) luaCallbackCommands.push(command);
+  const wrapped = callback ? 'guihooks.trigger("onBNGAPICallback",1,' + command + ')' : command;
+  const result = luaCompiles(wrapped);
+  if (result === null) {
+    if (callback && command.includes(';')) luaSyntaxErrors.push('callback command contains ";": ' + command);
+  } else if (result !== true) {
+    luaSyntaxErrors.push(result + '  <-  ' + command.slice(0, 160));
+  }
+}
+// Runs one UI command in Lua with a stub extension and returns {fn, args} as Lua saw them.
+function luaCall(command) {
+  if (!fengari) return null;
+  const { lua, lauxlib, lualib, to_luastring } = fengari;
+  const L = lauxlib.luaL_newstate();
+  lualib.luaL_openlibs(L);
+  const prelude = `captured = nil
+extensions = { load = function() end, creatorpack = setmetatable({}, { __index = function(t, k)
+  return function(...) captured = { fn = k, args = { ... } } end end }) }
+`;
+  const after = `
+local out = { captured and captured.fn or '' }
+for i, v in ipairs(captured and captured.args or {}) do out[#out + 1] = tostring(v) end
+return table.concat(out, string.char(31))`;
+  const status = lauxlib.luaL_dostring(L, to_luastring(prelude + command + after));
+  if (status !== lua.LUA_OK) throw new Error('Lua failed: ' + lua.lua_tojsstring(L, -1) + ' <- ' + command);
+  const parts = lua.lua_tojsstring(L, -1).split('\x1f');
+  return { fn: parts[0], args: parts.slice(1) };
+}
 let timeoutId = 0;
 const timers = new Map();
 
@@ -63,10 +110,39 @@ class FakeXHR {
 }
 global.XMLHttpRequest = FakeXHR;
 
+// Minimal synchronous image/canvas/FileReader fakes so photo flows run in Node.
+const brokenSources = new Set();
+class FakeImage {
+  constructor() { this.naturalWidth = 0; this.naturalHeight = 0; this.onload = null; this.onerror = null; this._src = ''; }
+  set src(value) {
+    this._src = String(value);
+    if (brokenSources.has(this._src) || this._src.includes('BROKEN')) { if (this.onerror) this.onerror(); return; }
+    this.naturalWidth = this.width = 640; this.naturalHeight = this.height = 480;
+    if (this.onload) this.onload();
+  }
+  get src() { return this._src; }
+}
+const canvasCalls = [];
+function fakeCanvas() {
+  const canvas = {
+    width: 0, height: 0, style: {},
+    getContext: () => ({ clearRect() {}, fillRect() {}, drawImage(im, x, y, w, h) { canvasCalls.push({ w, h }); }, set fillStyle(v) {} }),
+    toDataURL: type => 'data:' + (type || 'image/png') + ';base64,' + Buffer.from('canvas:' + canvas.width + 'x' + canvas.height + ':' + (type || 'image/png') + '|' + 'p'.repeat(64)).toString('base64')
+  };
+  return canvas;
+}
+class FakeFileReader {
+  readAsDataURL(file) {
+    this.result = file.dataUrl || ('data:' + (file.type || 'image/png') + ';base64,' + Buffer.from(file.name).toString('base64'));
+    if (this.onload) this.onload({ target: this });
+  }
+}
+global.Image = FakeImage;
+global.FileReader = FakeFileReader;
 const fakeDocumentNode = {
   fonts: { check: () => true },
   querySelector: () => null,
-  createElement: () => ({ style: {}, getContext: () => null })
+  createElement: tag => (tag === 'canvas' ? fakeCanvas() : { style: {}, getContext: () => null })
 };
 const windowObject = {
   innerWidth: 1920,
@@ -79,8 +155,8 @@ const windowObject = {
   removeEventListener() {},
   getComputedStyle: () => ({ fontFamily: 'Bebas Neue HUD' }),
   bngApi: {
-    engineLua(command) { luaCommands.push(command); },
-    engineLuaAsync(command) { luaCommands.push(command); }
+    engineLua(command, callback) { recordLua(command, callback); },
+    engineLuaAsync(command) { recordLua(command); }
   }
 };
 global.window = windowObject;
@@ -177,7 +253,7 @@ const mainBindingCount = checkHtmlBindings(
 ok('CreatorPack Angular bindings resolved (' + mainBindingCount + ' expressions)');
 // CreatorPack runtime logic.
 const main = instantiate('CreatorPack/ui/modules/apps/CreatorPack/app.js', 'creatorpackPanel');
-assert.strictEqual(main.modVersion, '6.2.0');
+assert.strictEqual(main.modVersion, '6.3.0');
 assert.strictEqual(main.cfg.items.length, 8);
 assert.strictEqual(main.toggleCost, undefined);
 ok('CreatorPack boots with clean vehicle-only configuration');
@@ -186,10 +262,15 @@ assert.strictEqual(main.gallery.length, bundledManifest.files.length);
 assert.strictEqual(main.addImageByName, undefined);
 assert.strictEqual(main.onManualImage, undefined);
 assert.strictEqual(directives.pfFileRead, undefined);
+assert(directives.cpFilePick, 'Choose File directive must be registered');
+assert(directives.cpImgEvents, 'Gallery image fallback directive must be registered');
+assert.strictEqual(typeof main.onPickedFiles, 'function');
+assert.strictEqual(typeof main.openImageFolder, 'function');
+assert.strictEqual(main.ui.tab, 'kryesore');
 for (const name of bundledManifest.files) {
   assert(fs.existsSync(path.join(ROOT, 'CreatorPack/ui/modules/apps/CreatorPack/imazhet', name)), 'Missing gallery image: ' + name);
 }
-ok('All ' + bundledManifest.files.length + ' bundled images load without Lua, Choose File or manual filenames');
+ok('All ' + bundledManifest.files.length + ' bundled images appear before Lua answers; Choose File and open-folder exist');
 
 const originalLayout = main.cfg.layout;
 const originalX = main.cfg.positionX;
@@ -432,14 +513,19 @@ assert.strictEqual(main.selected, 0);
 assert(main.cfg.items.every(item => item.state === 'pending'));
 ok('PASS marking, auto-advance, undo and reset execute without runtime errors');
 
+const scanStart = luaCommands.length;
 main.scanImages();
-assert(luaCommands.some(command => command.includes('pfhudListImages')));
+const scanCommand = luaCommands.slice(scanStart).find(command => command.includes('pfhudListImages'));
+assert(scanCommand, 'Rifresko must ask Lua for the folder list');
+assert(!luaCallbackCommands.includes(scanCommand), 'The scan must not use a callback (BeamNG wraps callback commands as one expression)');
+const scanCall = luaCall(scanCommand);
+if (scanCall) assert.deepStrictEqual(scanCall, { fn: 'pfhudListImages', args: ['manual'] });
 assert(audioInstances.some(audio => audio.src.endsWith('/sounds/pass.mp3')), 'PASS audio was not initialized');
 assert(audioInstances.some(audio => audio.src.endsWith('/sounds/fail.mp3')), 'FAIL audio was not initialized');
 assert.strictEqual(main.testSound('pass'), true);
 assert.strictEqual(main.testSound('fail'), true);
 assert(audioInstances.some(audio => audio.src.endsWith('/sounds/fail.mp3') && audio.played > 0), 'FAIL audio did not play');
-ok('Manual image scan and independent PASS/FAIL audio paths execute');
+ok('Rifresko sends a valid, callback-free pfhudListImages command; PASS/FAIL audio paths execute');
 
 assert.strictEqual(main.galleryState, 'loading');
 const watchdogEntry = [...timers.entries()].find(([, timer]) => timer.delay === 8000);
@@ -457,16 +543,141 @@ ok('Gallery timeout recovers and Lua adds new files without hiding bundled image
 main.selected = 0;
 const volvo = main.gallery.find(image => image.name === 'volvo.png');
 assert(volvo, 'Bundled Volvo image must be clickable');
-main.useGalleryImage(volvo);
 const manualPath = '/ui/modules/apps/CreatorPack/imazhet/volvo.png';
+brokenSources.add(manualPath);                       // CEF cannot open it as URL → Lua fallback
+const beforeVolvo = luaCommands.length;
+main.useGalleryImage(volvo);
 assert.strictEqual(main.cfg.items[0].imageFile, manualPath);
 assert.strictEqual(main.cfg.items[0].image, manualPath, 'Gallery URL must appear immediately');
-assert(main.imageBgStyle(main.cfg.items[0]).backgroundImage.includes('volvo.png'));
-assert(luaCommands.some(command => command.includes('pfhudImageData')));
-emit('creatorpack.imagedata', {path:manualPath, data:'data:image/png;base64,YWJj'});
-assert.strictEqual(main.cfg.items[0].image, 'data:image/png;base64,YWJj');
+assert.strictEqual(main.imageBgStyle(main.cfg.items[0]).backgroundImage, 'url("' + manualPath + '")');
+const volvoCommand = luaCommands.slice(beforeVolvo).find(command => command.includes('pfhudImageData'));
+assert(volvoCommand, 'Fallback must ask Lua for the photo');
+const volvoCall = luaCall(volvoCommand);
+if (volvoCall) assert.deepStrictEqual(volvoCall, { fn: 'pfhudImageData', args: [manualPath, 'img:' + manualPath] });
+emit('creatorpack.filedata', {id:'img:' + manualPath, path:manualPath, i:2, n:2, mime:'image/png', data:'Jj'});
+assert.strictEqual(main.cfg.items[0].image, manualPath, 'Image must wait for every chunk');
+emit('creatorpack.filedata', {id:'img:' + manualPath, path:manualPath, i:1, n:2, mime:'image/png', data:'YW'});
+assert(main.cfg.items[0].image.startsWith('data:image/png;base64,'), 'Lua chunks must become a saved base64 photo');
+assert(Buffer.from(main.cfg.items[0].image.split(',')[1], 'base64').toString().startsWith('canvas:320x240:image/png'));
 assert.strictEqual(main.photoCount(), 1);
-ok('One gallery click places Volvo and Lua base64 refreshes the same circle');
+ok('One gallery click places Volvo; Lua chunks (out of order) become a 320 px base64 photo in the same circle');
+
+emit('creatorpack.images', {ok:true, dir:'/CreatorPack/imazhet/', userDir:'/CreatorPack/imazhet/',
+  userReal:'C:/Users/Test/AppData/Local/BeamNG/BeamNG.drive/current/CreatorPack/imazhet/',
+  files:[
+    {path:'/CreatorPack/imazhet/old.png', name:'old.png', user:true, mtime:100, size:2048},
+    {path:'/CreatorPack/imazhet/foto (2).png', name:'foto (2).png', user:true, mtime:200, size:5 * 1048576},
+    {path:manualPath, name:'volvo.png', user:false}
+  ],
+  skipped:[{name:'iphone.HEIC', ext:'heic'}], userCount:2, modCount:1});
+assert.strictEqual(main.gallery[0].name, 'foto (2).png', 'Newest photo from your folder comes first');
+assert.strictEqual(main.gallery[1].name, 'old.png');
+assert.strictEqual(main.gallery[0].url, '/CreatorPack/imazhet/foto%20(2).png');
+assert.strictEqual(main.gallery.length, bundledManifest.files.length + 2);
+assert.strictEqual(main.galleryUserCount, 2);
+assert.deepStrictEqual(main.gallerySkipped, ['iphone.HEIC']);
+assert(main.galleryInfo.includes('2 nga folderi yt'));
+assert(main.galleryTitle(main.gallery[0]).includes('5.0 MB'));
+assert.strictEqual(main.userFolderLabel(), 'C:\\Users\\Test\\AppData\\Local\\BeamNG\\BeamNG.drive\\current\\CreatorPack\\imazhet');
+ok('Your CreatorPack/imazhet photos are listed first (newest first), URL-encoded, with HEIC reported');
+
+const fancy = main.gallery[0];
+main.galleryImgError(fancy);
+assert.strictEqual(fancy.state, 'loading');
+const thumbCall = luaCall(luaCommands[luaCommands.length - 1]);
+if (thumbCall) assert.deepStrictEqual(thumbCall.args, ['/CreatorPack/imazhet/foto (2).png', 'img:/CreatorPack/imazhet/foto (2).png']);
+emit('creatorpack.filedata', {id:'img:/CreatorPack/imazhet/foto (2).png', i:1, n:1, mime:'image/png', data:'iVBORw0KGgo='});
+assert.strictEqual(fancy.state, 'ok');
+assert(fancy.src.startsWith('data:image/png;base64,'));
+const oldEntry = main.gallery[1];
+main.galleryImgError(oldEntry);
+emit('creatorpack.filedata', {id:'img:/CreatorPack/imazhet/old.png', err:'nuk u lexu file-i'});
+assert.strictEqual(oldEntry.state, 'err');
+const commandsBeforeRetry = luaCommands.length;
+main.galleryImgError(oldEntry);
+assert.strictEqual(luaCommands.length, commandsBeforeRetry, 'An unreadable image must not be requested again and again');
+ok('Thumbnails CEF cannot open are fetched once from Lua; unreadable ones are marked instead of looping');
+
+for (const tricky of [
+  '/CreatorPack/imazhet/Makina ë ç (1).jpg',
+  "/CreatorPack/imazhet/it's #1 50%.png",
+  '/CreatorPack/imazhet/a "quoted" back\\slash.png'
+]) {
+  emit('creatorpack.images', {ok:true, files:[{path:tricky, name:tricky.split('/').pop(), user:true}]});
+  const entry = main.gallery.find(image => image.path === tricky);
+  assert(entry, 'Tricky name must be listed: ' + tricky);
+  assert(!/[ "#%\\]/.test(entry.url.replace(/%[0-9A-F]{2}/g, '')), 'URL must encode space, quote, #, % and backslash: ' + entry.url);
+  assert.strictEqual(decodeURIComponent(entry.url), tricky, 'URL must decode back to the exact path');
+  main.galleryImgError(entry);
+  const trickyCall = luaCall(luaCommands[luaCommands.length - 1]);
+  if (trickyCall) assert.strictEqual(trickyCall.args[0], tricky, 'Lua must receive the exact file name');
+  emit('creatorpack.filedata', {id:'img:' + tricky, err:'test'});
+}
+ok('File names with spaces, ë/ç, (1), #, %, quotes and backslashes reach Lua byte-for-byte');
+
+main.setTab('makinat');
+main.openGalleryFor(2);
+assert.strictEqual(main.selected, 2);
+assert.strictEqual(main.ui.tab, 'fotot');
+ok('"Zgjidh foto nga galeria" selects the circle and opens the Fotot tab (shared ui.tab)');
+
+main.openImageFolder();
+const folderCall = luaCall(luaCommands[luaCommands.length - 1]);
+if (folderCall) assert.deepStrictEqual(folderCall, { fn: 'pfhudOpenImageFolder', args: [] });
+emit('creatorpack.folder', {ok:true, created:true, dir:'/CreatorPack/imazhet/', real:'C:/Users/Test/AppData/Local/BeamNG/BeamNG.drive/current/CreatorPack/imazhet/'});
+assert(main.folderNote.includes('C:\\Users\\Test\\AppData\\Local\\BeamNG\\BeamNG.drive\\current\\CreatorPack\\imazhet'));
+emit('creatorpack.folder', {ok:false, created:true, err:'exploreFolder mungon'});
+assert(main.folderNote.startsWith('✗') && main.folderNote.includes('CreatorPack\\imazhet'));
+ok('"Hap folderin" asks Lua to open CreatorPack/imazhet and shows the real Windows path (or how to open it)');
+
+const uploadStart = luaCommands.length;
+main.selected = 1;
+main.onPickedFiles([
+  { name: 'Fotoja ime.png', type: 'image/png' },
+  { name: 'iphone.HEIC', type: 'image/heic' },
+  { name: 'tjeter.jpg', type: 'image/jpeg' }
+]);
+let uploadCommands = luaCommands.slice(uploadStart).filter(command => command.includes('pfhudUploadChunk'));
+assert.strictEqual(uploadCommands.length, 1, 'Files are uploaded one after another');
+assert(main.cfg.items[1].image.startsWith('data:image/png;base64,'), 'First photo goes into the selected circle at once');
+assert(Buffer.from(main.cfg.items[1].image.split(',')[1], 'base64').toString().startsWith('canvas:320x240:image/png'));
+assert.strictEqual(main.uploadBusy, 3);
+const firstUpload = luaCall(uploadCommands[0]);
+const firstId = firstUpload ? firstUpload.args[0] : /pfhudUploadChunk\("([^"]+)"/.exec(uploadCommands[0])[1];
+if (firstUpload) {
+  assert.strictEqual(firstUpload.fn, 'pfhudUploadChunk');
+  assert.deepStrictEqual(firstUpload.args.slice(1, 4), ['Fotoja ime.png', '1', '1']);
+  assert(Buffer.from(firstUpload.args[4], 'base64').toString().startsWith('canvas:640x480:image/png'));
+}
+emit('creatorpack.uploaded', {id:firstId, ok:true, path:'/CreatorPack/imazhet/Fotoja ime.png', name:'Fotoja ime.png'});
+uploadCommands = luaCommands.slice(uploadStart).filter(command => command.includes('pfhudUploadChunk'));
+assert.strictEqual(uploadCommands.length, 2, 'HEIC is skipped, the JPG is uploaded next');
+const secondUpload = luaCall(uploadCommands[1]);
+const secondId = secondUpload ? secondUpload.args[0] : /pfhudUploadChunk\("([^"]+)"/.exec(uploadCommands[1])[1];
+if (secondUpload) {
+  assert.strictEqual(secondUpload.args[1], 'tjeter.jpg');
+  assert(Buffer.from(secondUpload.args[4], 'base64').toString().startsWith('canvas:640x480:image/jpeg'));
+}
+emit('creatorpack.uploaded', {id:secondId, ok:false, err:'disk full'});
+assert.strictEqual(main.uploadBusy, 0);
+assert(main.uploadNote.includes('rrethin #2'), main.uploadNote);
+assert(main.uploadNote.includes('1 foto u ruajt'), main.uploadNote);
+assert(main.uploadNote.includes('iphone.HEIC'), main.uploadNote);
+assert(main.uploadNote.includes('disk full'), main.uploadNote);
+assert.strictEqual(main.cfg.items[1].imageFile, '/CreatorPack/imazhet/Fotoja ime.png');
+main.onPickedFiles([{ name: 'rrethi katër.webp', type: 'image/webp' }], 3);
+assert.strictEqual(main.selected, 3);
+assert(main.cfg.items[3].image.startsWith('data:image/png;base64,'));
+const lastUpload = luaCommands.filter(command => command.includes('pfhudUploadChunk')).pop();
+const lastCall = luaCall(lastUpload);
+if (lastCall) assert.strictEqual(lastCall.args[1], 'rrethi katër.png', 'Transparent formats are stored as PNG');
+emit('creatorpack.uploaded', {id:lastCall ? lastCall.args[0] : /pfhudUploadChunk\("([^"]+)"/.exec(lastUpload)[1], ok:true, path:'/CreatorPack/imazhet/rrethi katër.png'});
+assert.strictEqual(main.uploadBusy, 0);
+ok('Choose File: first photo → selected circle, every photo saved via Lua (chunked), HEIC/errors reported, per-circle upload works');
+
+assert.deepStrictEqual(luaSyntaxErrors, [], 'Every engineLua command must be valid Lua exactly as BeamNG runs it');
+assert(!luaCallbackCommands.some(command => /;/.test(command)), 'No callback command may contain statements');
+ok('All ' + luaCommands.length + ' engineLua commands compile as BeamNG runs them' + (fengari ? ' (Fengari Lua parser)' : ' (heuristic; install fengari for a real parse)'));
 
 // Ensure every static asset referenced by the HTML exists.
 for (const app of ['CreatorPack']) {
