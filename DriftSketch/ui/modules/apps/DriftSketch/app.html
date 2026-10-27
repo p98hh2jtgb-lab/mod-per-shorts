@@ -6,8 +6,8 @@
     .ds-panel::-webkit-scrollbar{width:7px}.ds-panel::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:10px}
     .ds-head{display:flex;align-items:center;gap:12px;padding:16px 16px 14px;border-bottom:1px solid rgba(255,255,255,.055)}
     .ds-logo{position:relative;width:38px;height:42px;flex:none;border:1px solid rgba(255,137,63,.18);border-radius:11px;background:rgba(255,111,36,.06)}
-    .ds-logo:before{content:'';position:absolute;left:11px;top:7px;width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-bottom:23px solid #ff7433;filter:drop-shadow(0 0 5px rgba(255,104,40,.25))}
-    .ds-logo:after{content:'';position:absolute;left:7px;bottom:6px;width:24px;height:5px;border-radius:2px;background:#ff9b62}
+    .ds-logo:before{content:'';position:absolute;left:11px;top:7px;width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-bottom:23px solid #ff6a1f;filter:drop-shadow(0 0 5px rgba(255,104,40,.25))}
+    .ds-logo:after{content:'';position:absolute;left:7px;bottom:6px;width:24px;height:5px;border-radius:2px;background:#ff7a32;box-shadow:0 -10px 0 -1px #f4f4f2}
     .ds-head-copy{flex:1;min-width:0}.ds-eyebrow{color:rgba(255,158,99,.58);font-size:8px;font-weight:800;letter-spacing:.18em}
     .ds-title{margin-top:3px;font-size:22px;font-weight:800;letter-spacing:-.045em}.ds-title span{color:#ff8242}
     .ds-version{padding:4px 7px;border:1px solid rgba(255,255,255,.07);border-radius:7px;color:rgba(208,225,229,.42);font-size:8px}
@@ -31,11 +31,26 @@
     .ds-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px}.ds-field{display:block;min-width:0;color:rgba(190,211,216,.48);font-size:9px}
     .ds-field.full{grid-column:1/3}.ds-field>b{float:right;color:rgba(255,185,143,.68);font-weight:600}
     .ds-mesh-head{display:flex;align-items:center;justify-content:space-between;gap:8px}.ds-mesh-head small{margin-left:5px;color:rgba(255,155,98,.62);font-size:7px;letter-spacing:.08em}.ds-mesh-layout{color:#91cbd0;font-size:8px;white-space:nowrap}
-    .ds-mesh-options{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:7px}.ds-mesh-option{min-width:0;min-height:30px;padding:6px 7px;box-sizing:border-box;border:1px solid rgba(255,255,255,.075);border-radius:8px;outline:none;background:#141d22;color:rgba(220,233,235,.72);font-family:inherit;font-size:9px;text-align:left;white-space:nowrap;cursor:pointer;pointer-events:auto}
-    .ds-mesh-option:hover{border-color:rgba(255,137,65,.32);color:#fff}.ds-mesh-option:active{transform:translateY(1px)}.ds-mesh-option.is-active{border-color:rgba(255,132,55,.55);background:rgba(255,112,42,.13);color:#ffd4ba;font-weight:700;box-shadow:inset 0 0 0 1px rgba(255,132,55,.06)}.ds-mesh-option.is-active:before{content:'✓ ';color:#ff9b62}
+    .ds-mesh-options,.ds-color-options{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:7px}
+    .ds-mesh-option,.ds-color-option{display:flex;align-items:center;gap:7px;min-width:0;min-height:34px;padding:6px 8px;box-sizing:border-box;border:1px solid rgba(255,255,255,.075);border-radius:8px;outline:none;background:#141d22;color:rgba(220,233,235,.72);font-family:inherit;font-size:9px;text-align:left;white-space:nowrap;cursor:pointer;pointer-events:auto}
+    .ds-color-option{min-height:28px;font-size:8px}
+    .ds-mesh-option:hover,.ds-color-option:hover{border-color:rgba(255,137,65,.32);color:#fff}.ds-mesh-option:active,.ds-color-option:active{transform:translateY(1px)}
+    .ds-mesh-option.is-active,.ds-color-option.is-active{border-color:rgba(255,132,55,.55);background:rgba(255,112,42,.13);color:#ffd4ba;font-weight:700;box-shadow:inset 0 0 0 1px rgba(255,132,55,.06)}
+    .ds-mesh-option.is-active:after,.ds-color-option.is-active:after{content:'✓';margin-left:auto;color:#ff9b62}
+    .ds-ico{position:relative;flex:none;width:16px;height:18px}
+    .ds-ico.cone:before{content:'';position:absolute;left:3px;top:1px;border-left:5px solid transparent;border-right:5px solid transparent;border-bottom:13px solid #ff6a1f}
+    .ds-ico.cone:after{content:'';position:absolute;left:1px;bottom:1px;width:14px;height:3px;border-radius:1px;background:#ff7a32;box-shadow:0 -6px 0 -1px #f2f2f0}
+    .ds-ico.tires:before{content:'';position:absolute;left:1px;top:1px;width:14px;height:4px;border-radius:3px;background:#d3382d;box-shadow:0 4px 0 #ededeb,0 8px 0 #d3382d,0 12px 0 #ededeb}
+    .ds-swatch{display:inline-flex;gap:2px}.ds-swatch i{width:8px;height:8px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(0,0,0,.25)}
+    .ds-swatch .r{background:#d3382d}.ds-swatch .w{background:#ededeb}.ds-swatch .b{background:#2457d6}
     .ds-field input[type=range]{width:100%;height:3px;margin-top:11px;accent-color:#ff7a38}
     .ds-checks{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:12px}.ds-check{display:flex;align-items:center;gap:7px;min-height:31px;padding:7px 8px;border:1px solid rgba(255,255,255,.05);border-radius:8px;color:rgba(197,215,219,.55);font-size:8px;cursor:pointer}
-    .ds-check input{accent-color:#ff7a38}.ds-check.drift,.ds-check.gates,.ds-check.solid{grid-column:1/3}.ds-check.drift{border-color:rgba(105,214,221,.15);background:rgba(105,214,221,.035);color:#a5e4e8}.ds-check.gates{border-color:rgba(171,137,255,.16);background:rgba(171,137,255,.04);color:#d0bcff}.ds-check.solid{border-color:rgba(255,112,42,.18);background:rgba(255,112,42,.045);color:#ffb18a}.ds-check.drift small,.ds-check.gates small,.ds-check.solid small{margin-left:auto;color:rgba(190,220,225,.42);font-size:7px}
+    .ds-check input{accent-color:#ff7a38}.ds-check.drift,.ds-check.gates,.ds-check.solid,.ds-check.rings{grid-column:1/3}.ds-check.drift{border-color:rgba(105,214,221,.15);background:rgba(105,214,221,.035);color:#a5e4e8}.ds-check.gates{border-color:rgba(171,137,255,.16);background:rgba(171,137,255,.04);color:#d0bcff}.ds-check.solid{border-color:rgba(255,112,42,.18);background:rgba(255,112,42,.045);color:#ffb18a}.ds-check.rings{margin-bottom:11px;border-color:rgba(255,92,92,.20);background:rgba(255,70,70,.045);color:#ffb3ad}.ds-check small{margin-left:auto;color:rgba(190,220,225,.42);font-size:7px}
+    .ds-form.rings-form{border-color:rgba(255,92,92,.12);background:linear-gradient(145deg,rgba(255,70,70,.035),rgba(255,255,255,.012))}
+    .ds-ring-actions{display:grid;grid-template-columns:1.35fr 1fr;gap:7px;margin-top:12px}
+    .ds-btn.ring{border-color:rgba(255,92,92,.30);background:linear-gradient(135deg,rgba(226,52,45,.30),rgba(255,255,255,.06));color:#ffd9d5}
+    .ds-btn.ring-clear{color:rgba(255,170,160,.62)}
+    .ds-ring-note{margin-top:9px;color:rgba(255,190,182,.45);font-size:8px;line-height:1.45}
     .ds-help{margin-top:10px;border:1px solid rgba(255,255,255,.05);border-radius:9px;background:rgba(255,255,255,.015)}.ds-help summary{padding:9px 10px;outline:none;color:rgba(255,174,126,.58);font-size:8px;font-weight:800;letter-spacing:.09em;cursor:pointer}.ds-help-body{padding:0 10px 9px;color:rgba(190,211,216,.50);font-size:8px;line-height:1.5}.ds-help-body p{margin:6px 0}.ds-help-body b{color:rgba(223,235,238,.72)}
     .ds-foot{display:flex;justify-content:space-between;gap:10px;margin-top:12px;color:rgba(174,195,201,.30);font-size:8px}.ds-foot b{color:rgba(255,150,98,.42);font-weight:600}
     @media(max-width:520px){.ds-root{padding:7px}.ds-panel{width:calc(100vw - 14px);max-height:calc(100vh - 14px)}}
@@ -56,7 +71,7 @@
       <div class="ds-metrics">
         <div class="ds-metric"><b>{{integer(state.pointCount)}}</b><span>PATH POINTS</span></div>
         <div class="ds-metric"><b>{{meters(state.pathLength)}}</b><span>DRIVE LENGTH</span></div>
-        <div class="ds-metric"><b>{{integer(state.coneCount)}}</b><span>REAL MESHES</span></div>
+        <div class="ds-metric"><b>{{meshTotal()}}</b><span>REAL MESHES</span></div>
       </div>
       <div class="ds-actions">
         <button class="ds-btn start" ng-click="start()" ng-disabled="state.recording">● START</button>
@@ -70,48 +85,69 @@
           <div class="ds-field full">
             <div class="ds-mesh-head"><span>Mesh <small>1 CLICK · NO DROPDOWN</small></span><span class="ds-mesh-layout">↔ Both sides</span></div>
             <div class="ds-mesh-options" role="group" aria-label="Mesh — one click selection">
-              <button type="button" class="ds-mesh-option" data-mesh="cone" ng-class="{'is-active':settings.mesh === 'cone'}" ng-click="selectMesh('cone')">Traffic Cone</button>
-              <button type="button" class="ds-mesh-option" data-mesh="pylon" ng-class="{'is-active':settings.mesh === 'pylon'}" ng-click="selectMesh('pylon')">Tall Pylon</button>
-              <button type="button" class="ds-mesh-option" data-mesh="tire" ng-class="{'is-active':settings.mesh === 'tire'}" ng-click="selectMesh('tire')">Single Tire</button>
-              <button type="button" class="ds-mesh-option" data-mesh="tireStack" ng-class="{'is-active':settings.mesh === 'tireStack'}" ng-click="selectMesh('tireStack')">Tire Stack</button>
+              <button type="button" class="ds-mesh-option" data-mesh="cone" ng-class="{'is-active':settings.mesh === 'cone'}" ng-click="selectMesh('cone')"><i class="ds-ico cone"></i>Traffic Cone</button>
+              <button type="button" class="ds-mesh-option" data-mesh="tireStack" ng-class="{'is-active':settings.mesh === 'tireStack'}" ng-click="selectMesh('tireStack')"><i class="ds-ico tires"></i>Tire Stack</button>
+            </div>
+            <div class="ds-color-options" role="group" aria-label="Tire stack colours" ng-if="settings.mesh === 'tireStack'">
+              <button type="button" class="ds-color-option" data-colors="rw" ng-class="{'is-active':settings.tireColors !== 'rwb'}" ng-click="selectTireColors('rw')"><span class="ds-swatch"><i class="r"></i><i class="w"></i></span>Red · White</button>
+              <button type="button" class="ds-color-option" data-colors="rwb" ng-class="{'is-active':settings.tireColors === 'rwb'}" ng-click="selectTireColors('rwb')"><span class="ds-swatch"><i class="r"></i><i class="w"></i><i class="b"></i></span>Red · White · Blue</button>
             </div>
           </div>
-          <label class="ds-field">Spacing <b>{{settings.spacing}} m</b><input type="range" min="1" max="10" step="0.1" ng-model="settings.spacing" ng-change="pushSetting('spacing')"></label>
+          <label class="ds-field">Spacing <b>{{settings.spacing}} m</b><input type="range" min="0.5" max="10" step="0.1" ng-model="settings.spacing" ng-change="pushSetting('spacing')"></label>
           <label class="ds-field">Base width <b>{{settings.width}} m</b><input type="range" min="1.5" max="12" step="0.1" ng-model="settings.width" ng-change="pushSetting('width')"></label>
           <label class="ds-field">Mesh scale <b>{{settings.scale}}×</b><input type="range" min="0.5" max="2" step="0.05" ng-model="settings.scale" ng-change="pushSetting('scale')"></label>
           <label class="ds-field">Ground fallback <b>{{settings.groundOffset}} m</b><input type="range" min="-2" max="1" step="0.05" ng-model="settings.groundOffset" ng-change="pushSetting('groundOffset')"></label>
-          <label class="ds-field full">Performance cap <b>{{settings.maxCones}} objects</b><input type="range" min="100" max="3000" step="100" ng-model="settings.maxCones" ng-change="pushSetting('maxCones')"></label>
+          <label class="ds-field full">Performance cap <b>{{settings.maxCones}} objects / drive</b><input type="range" min="100" max="4000" step="100" ng-model="settings.maxCones" ng-change="pushSetting('maxCones')"></label>
         </div>
         <div class="ds-checks">
           <label class="ds-check"><input type="checkbox" ng-model="settings.smooth" ng-change="pushSetting('smooth')">Smooth path</label>
           <label class="ds-check"><input type="checkbox" ng-model="settings.keepBuilds" ng-change="pushSetting('keepBuilds')">Keep builds</label>
           <label class="ds-check drift" title="ON: manual width is the minimum; sideways driving and neighboring turn poses get swept clearance. OFF: exact fixed manual width."><input type="checkbox" ng-model="settings.driftWidth" ng-change="pushSetting('driftWidth')">Drift widen <small>AUTO + TURN CLEARANCE</small></label>
-          <label class="ds-check gates" title="Build a real oriented START gate at the first path point and a FINISH gate at the last."><input type="checkbox" ng-model="settings.gates" ng-change="pushSetting('gates')">Start / Finish gates <small>2 MESHES</small></label>
+          <label class="ds-check gates" title="Blue START truss gate at the first path point, steel FINISH gate with checkered banner at the last. Scaled uniformly to the track width."><input type="checkbox" ng-model="settings.gates" ng-change="pushSetting('gates')">Start / Finish gates <small>TRUSS · CHECKERED</small></label>
           <label class="ds-check solid" title="Real static collision. Impacts can stop or damage the car. Existing paths rebuild automatically."><input type="checkbox" ng-model="settings.collision" ng-change="pushSetting('collision')">Solid / car damage <small>REBUILDS</small></label>
         </div>
-        <button class="ds-btn rebuild wide" ng-click="rebuild()" ng-disabled="state.recording || state.buildCount === 0">↻ REBUILD WITH CURRENT SETTINGS</button>
+        <button class="ds-btn rebuild wide" ng-click="rebuild()" ng-disabled="!canRebuild()">↻ REBUILD WITH CURRENT SETTINGS</button>
         <button class="ds-btn clear wide" ng-click="clear()">× CLEAR GENERATED OBJECTS &amp; SAVED DRIVES</button>
       </div>
+
+      <div class="ds-section-label">RINGS · RRATHË</div>
+      <div class="ds-form rings-form">
+        <label class="ds-check rings" title="Place red/white rings on every recorded drive, centred on the line."><input type="checkbox" ng-model="settings.rings" ng-change="pushSetting('rings')">Rings on drive <small>FOLLOWS THE LINE</small></label>
+        <div class="ds-grid">
+          <label class="ds-field">Count <b>{{settings.ringCount}}</b><input type="range" min="1" max="50" step="1" ng-model="settings.ringCount" ng-change="pushSetting('ringCount')"></label>
+          <label class="ds-field">Size <b>{{settings.ringSize}} m</b><input type="range" min="3" max="30" step="0.5" ng-model="settings.ringSize" ng-change="pushSetting('ringSize')"></label>
+          <label class="ds-field">Gap <b>{{settings.ringGap}} m</b><input type="range" min="2" max="100" step="1" ng-model="settings.ringGap" ng-change="pushSetting('ringGap')"></label>
+          <label class="ds-field">Lift <b>{{settings.ringLift}} m</b><input type="range" min="0" max="10" step="0.25" ng-model="settings.ringLift" ng-change="pushSetting('ringLift')"></label>
+        </div>
+        <div class="ds-ring-actions">
+          <button class="ds-btn ring" ng-click="placeRings()">◎ PLACE RINGS AHEAD</button>
+          <button class="ds-btn ring-clear" ng-click="clearRings()" ng-disabled="!hasRings()">× CLEAR RINGS</button>
+        </div>
+        <div class="ds-ring-note">Size = clear opening · Gap = distance between rings · {{integer(state.ringsBuilt)}} ring(s) in the scene</div>
+      </div>
+
       <details class="ds-help">
         <summary>? SI PUNON PANELI — SHPJEGIMET</summary>
         <div class="ds-help-body">
-          <p><b>Start / Stop &amp; Build:</b> Start regjistron vijën e makinës; Stop e ndërton pistën me kone.</p>
-          <p><b>Mesh:</b> kliko direkt Traffic Cone, Tall Pylon, Single Tire ose Tire Stack — pa dropdown. Zgjedhja përdoret në Build; për saved drive shtyp Rebuild.</p>
-          <p><b>Layout:</b> Both sides — kone në të dyja anët, gjithmonë.</p>
-          <p><b>Spacing:</b> distanca mes koneve në të njëjtën vijë. Më vogël = më shumë kone.</p>
-          <p><b>Base width:</b> hapsira bazë mes dy vijave. Me Drift widen ON është gjerësia minimale.</p>
-          <p><b>Drift widen:</b> ON zgjeron kur makina është anësor, mbron mbrapa dhe kontrollon edhe kone-t e pozicioneve fqinje gjatë kthesave; OFF mban width fiks. Në kthesa ekstreme hiqet kone që nuk ka vend të sigurt.</p>
-          <p><b>Start / Finish gates:</b> dy mesh-e reale në skajet e path-it, të orientuara me drejtimin e makinës dhe më gjera se kone-t/gomat. Fikje i heq të dyja.</p>
-          <p><b>Mesh scale:</b> madhësia e objektit anësor, pa ndryshuar spacing/width.</p>
-          <p><b>Ground fallback:</b> lartësia rezervë nëse toka nuk gjendet me raycast. Zakonisht lere -0.55 m.</p>
-          <p><b>Performance cap:</b> numri maksimal i objekteve, duke përfshirë portat, për FPS.</p>
+          <p><b>Start / Stop &amp; Build:</b> Start regjistron vijën e makinës; Stop e ndërton pistën në të dy anët.</p>
+          <p><b>Mesh:</b> kliko direkt <b>Traffic Cone</b> (kon portokalli me dy shirita të bardhë) ose <b>Tire Stack</b> (4 goma të stivuara) — pa dropdown. Nëse ke drive të ruajtur, pista ndërrohet menjëherë.</p>
+          <p><b>Ngjyrat e gomave:</b> Red · White = çifte të kuqe dhe të bardha; Red · White · Blue = si pista e kartingut.</p>
+          <p><b>Layout:</b> Both sides — objekte në të dyja anët, gjithmonë.</p>
+          <p><b>Spacing:</b> distanca mes objekteve në të njëjtën vijë, nga 0.5 m. Më vogël = më afër njëri-tjetrit.</p>
+          <p><b>Base width:</b> hapësira bazë mes dy vijave. Me Drift widen ON është gjerësia minimale.</p>
+          <p><b>Drift widen:</b> ON zgjeron kur makina është anësor, mbron mbrapa dhe kontrollon edhe pozicionet fqinje gjatë kthesave; OFF mban width fiks. Në kthesa ekstreme hiqet objekti që nuk ka vend të sigurt.</p>
+          <p><b>Start / Finish gates:</b> START me kulla truss blu dhe FINISH me kulla çeliku e flamur me kuadrate. Madhësia rritet njëtrajtësisht sipas pistës, pa u shtrembëruar; kullat qëndrojnë jashtë vijave.</p>
+          <p><b>Rings:</b> <b>Rings on drive</b> vendos rrathë mbi vijën e regjistruar. <b>PLACE RINGS AHEAD</b> i vendos drejt përpara makinës. <b>Count</b> = sa rrathë, <b>Size</b> = hapja e brendshme në metra, <b>Gap</b> = sa larg njëri nga tjetri, <b>Lift</b> = sa lart nga toka. Ndryshimet aplikohen vetë pas pak çastesh. <b>Clear rings</b> fshin vetëm rrathët.</p>
+          <p><b>Mesh scale:</b> madhësia e konit/gomave, pa ndryshuar spacing/width.</p>
+          <p><b>Ground fallback:</b> lartësia rezervë nëse toka nuk gjendet me raycast. Zakonisht lëre -0.55 m.</p>
+          <p><b>Performance cap:</b> numri maksimal i objekteve për një drive, duke përfshirë portat, për FPS.</p>
           <p><b>Smooth path:</b> butëson dridhjet/kthesat e vogla të vijës së regjistruar.</p>
           <p><b>Keep builds:</b> ruan pistat e vjetra kur regjistron run të ri.</p>
-          <p><b>Solid / car damage:</b> ON jep collision real dhe goditja mund të dëmtojë makinën. OFF = vetëm vizual.</p>
-          <p><b>Rebuild:</b> rikrijon pistën me settings të reja pa e përsëritur run-in. <b>Clear:</b> fshin vetëm objektet dhe paths të DriftSketch.</p>
+          <p><b>Solid / car damage:</b> ON jep collision real dhe goditja mund të dëmtojë makinën. OFF = vetëm vizual. Rrathët me Lift 0 kanë pjesën e poshtme nën tokë, kështu kalon pa u përplasur.</p>
+          <p><b>Rebuild:</b> rikrijon pistën me settings të reja pa e përsëritur run-in. <b>Clear:</b> fshin vetëm objektet, rrathët dhe paths të DriftSketch.</p>
         </div>
       </details>
-      <div class="ds-foot"><span>Real low-poly meshes · no JBeam prop vehicles</span><b>Prototype</b></div>
+      <div class="ds-foot"><span>Original low-poly meshes · no textures · no JBeam props</span><b>v{{modVersion}}</b></div>
     </div>
   </div>
 </div>

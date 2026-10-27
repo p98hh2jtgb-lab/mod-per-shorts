@@ -1,0 +1,578 @@
+{
+  "driftsketch09_cone_orange": {
+    "name": "driftsketch09_cone_orange",
+    "mapTo": "driftsketch09_cone_orange",
+    "class": "Material",
+    "persistentId": "474be857-554e-5254-85e5-8e4eae76197c",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          1.0,
+          0.2,
+          0.016,
+          1
+        ],
+        "metallicFactor": 0.0,
+        "roughnessFactor": 0.36
+      },
+      {},
+      {},
+      {}
+    ],
+    "translucentBlendOp": "None",
+    "doubleSided": false
+  },
+  "driftsketch09_cone_white": {
+    "name": "driftsketch09_cone_white",
+    "mapTo": "driftsketch09_cone_white",
+    "class": "Material",
+    "persistentId": "1dbc3ecc-1d68-521c-a9f5-a82af6f4f37c",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.88,
+          0.885,
+          0.88,
+          1
+        ],
+        "metallicFactor": 0.0,
+        "roughnessFactor": 0.28
+      },
+      {},
+      {},
+      {}
+    ],
+    "translucentBlendOp": "None",
+    "doubleSided": false
+  },
+  "driftsketch09_cone_inner": {
+    "name": "driftsketch09_cone_inner",
+    "mapTo": "driftsketch09_cone_inner",
+    "class": "Material",
+    "persistentId": "bcfa9842-a7d0-5d98-a814-6fcf632ba08f",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.05,
+          0.022,
+          0.01,
+          1
+        ],
+        "metallicFactor": 0.0,
+        "roughnessFactor": 0.8
+      },
+      {},
+      {},
+      {}
+    ],
+    "translucentBlendOp": "None",
+    "doubleSided": false
+  },
+  "driftsketch09_tire_red": {
+    "name": "driftsketch09_tire_red",
+    "mapTo": "driftsketch09_tire_red",
+    "class": "Material",
+    "persistentId": "8f512efb-6cf4-5e8b-9e4d-f93ba789a209",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.7,
+          0.036,
+          0.03,
+          1
+        ],
+        "metallicFactor": 0.0,
+        "roughnessFactor": 0.7
+      },
+      {},
+      {},
+      {}
+    ],
+    "translucentBlendOp": "None",
+    "doubleSided": false
+  },
+  "driftsketch09_tire_red_groove": {
+    "name": "driftsketch09_tire_red_groove",
+    "mapTo": "driftsketch09_tire_red_groove",
+    "class": "Material",
+    "persistentId": "7e0acf36-62a4-5d13-a46a-1fb9d5711ac5",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.25,
+          0.014,
+          0.012,
+          1
+        ],
+        "metallicFactor": 0.0,
+        "roughnessFactor": 0.86
+      },
+      {},
+      {},
+      {}
+    ],
+    "translucentBlendOp": "None",
+    "doubleSided": false
+  },
+  "driftsketch09_tire_white": {
+    "name": "driftsketch09_tire_white",
+    "mapTo": "driftsketch09_tire_white",
+    "class": "Material",
+    "persistentId": "9c1dacb4-90cd-5bfe-8adb-125302ee14fa",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.8,
+          0.8,
+          0.78,
+          1
+        ],
+        "metallicFactor": 0.0,
+        "roughnessFactor": 0.7
+      },
+      {},
+      {},
+      {}
+    ],
+    "translucentBlendOp": "None",
+    "doubleSided": false
+  },
+  "driftsketch09_tire_white_groove": {
+    "name": "driftsketch09_tire_white_groove",
+    "mapTo": "driftsketch09_tire_white_groove",
+    "class": "Material",
+    "persistentId": "b200963b-ee61-5c7b-af58-e2724e3c5d88",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.3,
+          0.3,
+          0.292,
+          1
+        ],
+        "metallicFactor": 0.0,
+        "roughnessFactor": 0.86
+      },
+      {},
+      {},
+      {}
+    ],
+    "translucentBlendOp": "None",
+    "doubleSided": false
+  },
+  "driftsketch09_tire_blue": {
+    "name": "driftsketch09_tire_blue",
+    "mapTo": "driftsketch09_tire_blue",
+    "class": "Material",
+    "persistentId": "052d4f84-08de-519e-9d55-ac260471b0ed",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.024,
+          0.11,
+          0.62,
+          1
+        ],
+        "metallicFactor": 0.0,
+        "roughnessFactor": 0.7
+      },
+      {},
+      {},
+      {}
+    ],
+    "translucentBlendOp": "None",
+    "doubleSided": false
+  },
+  "driftsketch09_tire_blue_groove": {
+    "name": "driftsketch09_tire_blue_groove",
+    "mapTo": "driftsketch09_tire_blue_groove",
+    "class": "Material",
+    "persistentId": "b9cd8fb6-43fa-53e8-b0a9-996e88677ad6",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.01,
+          0.04,
+          0.22,
+          1
+        ],
+        "metallicFactor": 0.0,
+        "roughnessFactor": 0.86
+      },
+      {},
+      {},
+      {}
+    ],
+    "translucentBlendOp": "None",
+    "doubleSided": false
+  },
+  "driftsketch09_tire_inner": {
+    "name": "driftsketch09_tire_inner",
+    "mapTo": "driftsketch09_tire_inner",
+    "class": "Material",
+    "persistentId": "41440bc2-1491-52a6-a919-ceada3dd5986",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.03,
+          0.03,
+          0.03,
+          1
+        ],
+        "metallicFactor": 0.0,
+        "roughnessFactor": 0.92
+      },
+      {},
+      {},
+      {}
+    ],
+    "translucentBlendOp": "None",
+    "doubleSided": false
+  },
+  "driftsketch09_truss_blue": {
+    "name": "driftsketch09_truss_blue",
+    "mapTo": "driftsketch09_truss_blue",
+    "class": "Material",
+    "persistentId": "6f4bfca8-753e-5cef-bc1b-0546996ffe96",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.02,
+          0.09,
+          0.72,
+          1
+        ],
+        "metallicFactor": 0.15,
+        "roughnessFactor": 0.34
+      },
+      {},
+      {},
+      {}
+    ],
+    "translucentBlendOp": "None",
+    "doubleSided": false
+  },
+  "driftsketch09_truss_steel": {
+    "name": "driftsketch09_truss_steel",
+    "mapTo": "driftsketch09_truss_steel",
+    "class": "Material",
+    "persistentId": "5b7b4575-17b0-5404-b0e7-7edf4e95617b",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.56,
+          0.575,
+          0.59,
+          1
+        ],
+        "metallicFactor": 0.65,
+        "roughnessFactor": 0.38
+      },
+      {},
+      {},
+      {}
+    ],
+    "translucentBlendOp": "None",
+    "doubleSided": false
+  },
+  "driftsketch09_plate_dark": {
+    "name": "driftsketch09_plate_dark",
+    "mapTo": "driftsketch09_plate_dark",
+    "class": "Material",
+    "persistentId": "0113bff7-98d4-5163-8c82-f8f37d9b914c",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.06,
+          0.062,
+          0.066,
+          1
+        ],
+        "metallicFactor": 0.3,
+        "roughnessFactor": 0.62
+      },
+      {},
+      {},
+      {}
+    ],
+    "translucentBlendOp": "None",
+    "doubleSided": false
+  },
+  "driftsketch09_banner_frame": {
+    "name": "driftsketch09_banner_frame",
+    "mapTo": "driftsketch09_banner_frame",
+    "class": "Material",
+    "persistentId": "911529f8-ea3a-54b6-8218-55b9ce0c6d49",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.14,
+          0.145,
+          0.155,
+          1
+        ],
+        "metallicFactor": 0.35,
+        "roughnessFactor": 0.48
+      },
+      {},
+      {},
+      {}
+    ],
+    "translucentBlendOp": "None",
+    "doubleSided": false
+  },
+  "driftsketch09_banner_red": {
+    "name": "driftsketch09_banner_red",
+    "mapTo": "driftsketch09_banner_red",
+    "class": "Material",
+    "persistentId": "d1e871f7-41f2-5c13-a0f4-1aceda9e0e3e",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.7,
+          0.025,
+          0.02,
+          1
+        ],
+        "metallicFactor": 0.0,
+        "roughnessFactor": 0.45
+      },
+      {},
+      {},
+      {}
+    ],
+    "translucentBlendOp": "None",
+    "doubleSided": false
+  },
+  "driftsketch09_finish_red": {
+    "name": "driftsketch09_finish_red",
+    "mapTo": "driftsketch09_finish_red",
+    "class": "Material",
+    "persistentId": "6eac9183-f494-5595-8569-0c2978fbf50a",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.36,
+          0.022,
+          0.018,
+          1
+        ],
+        "metallicFactor": 0.0,
+        "roughnessFactor": 0.5
+      },
+      {},
+      {},
+      {}
+    ],
+    "translucentBlendOp": "None",
+    "doubleSided": false
+  },
+  "driftsketch09_check_black": {
+    "name": "driftsketch09_check_black",
+    "mapTo": "driftsketch09_check_black",
+    "class": "Material",
+    "persistentId": "6edb6b2c-bdec-5dee-8949-17867e9154f2",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.016,
+          0.016,
+          0.017,
+          1
+        ],
+        "metallicFactor": 0.0,
+        "roughnessFactor": 0.55
+      },
+      {},
+      {},
+      {}
+    ],
+    "translucentBlendOp": "None",
+    "doubleSided": false
+  },
+  "driftsketch09_check_white": {
+    "name": "driftsketch09_check_white",
+    "mapTo": "driftsketch09_check_white",
+    "class": "Material",
+    "persistentId": "e4013fe4-60f4-5456-a9e5-b1fd27dcbf9b",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.86,
+          0.86,
+          0.85,
+          1
+        ],
+        "metallicFactor": 0.0,
+        "roughnessFactor": 0.55
+      },
+      {},
+      {},
+      {}
+    ],
+    "translucentBlendOp": "None",
+    "doubleSided": false
+  },
+  "driftsketch09_text_dark": {
+    "name": "driftsketch09_text_dark",
+    "mapTo": "driftsketch09_text_dark",
+    "class": "Material",
+    "persistentId": "fecd09ff-7ab7-516c-a201-ae4fdb27b10a",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.05,
+          0.052,
+          0.058,
+          1
+        ],
+        "metallicFactor": 0.0,
+        "roughnessFactor": 0.5
+      },
+      {},
+      {},
+      {}
+    ],
+    "translucentBlendOp": "None",
+    "doubleSided": false
+  },
+  "driftsketch09_sponsor_blue": {
+    "name": "driftsketch09_sponsor_blue",
+    "mapTo": "driftsketch09_sponsor_blue",
+    "class": "Material",
+    "persistentId": "b40387a1-064a-5c84-b195-6681812d0b7a",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.018,
+          0.12,
+          0.62,
+          1
+        ],
+        "metallicFactor": 0.0,
+        "roughnessFactor": 0.45
+      },
+      {},
+      {},
+      {}
+    ],
+    "translucentBlendOp": "None",
+    "doubleSided": false
+  },
+  "driftsketch09_sponsor_teal": {
+    "name": "driftsketch09_sponsor_teal",
+    "mapTo": "driftsketch09_sponsor_teal",
+    "class": "Material",
+    "persistentId": "e53cfb86-bf16-5b0d-ac43-8bcadbab26d0",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.0,
+          0.33,
+          0.38,
+          1
+        ],
+        "metallicFactor": 0.0,
+        "roughnessFactor": 0.45
+      },
+      {},
+      {},
+      {}
+    ],
+    "translucentBlendOp": "None",
+    "doubleSided": false
+  },
+  "driftsketch09_sponsor_green": {
+    "name": "driftsketch09_sponsor_green",
+    "mapTo": "driftsketch09_sponsor_green",
+    "class": "Material",
+    "persistentId": "cf2bce6a-f92a-5840-a6ed-94c0e09c2a65",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.03,
+          0.43,
+          0.1,
+          1
+        ],
+        "metallicFactor": 0.0,
+        "roughnessFactor": 0.45
+      },
+      {},
+      {},
+      {}
+    ],
+    "translucentBlendOp": "None",
+    "doubleSided": false
+  },
+  "driftsketch09_ring_red": {
+    "name": "driftsketch09_ring_red",
+    "mapTo": "driftsketch09_ring_red",
+    "class": "Material",
+    "persistentId": "d6ed473b-d46b-5f2b-b165-6f2136a26210",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.8,
+          0.03,
+          0.025,
+          1
+        ],
+        "metallicFactor": 0.0,
+        "roughnessFactor": 0.3
+      },
+      {},
+      {},
+      {}
+    ],
+    "translucentBlendOp": "None",
+    "doubleSided": false
+  },
+  "driftsketch09_ring_white": {
+    "name": "driftsketch09_ring_white",
+    "mapTo": "driftsketch09_ring_white",
+    "class": "Material",
+    "persistentId": "b80d66ca-1389-5d1c-80ed-87e993a67d0e",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.88,
+          0.88,
+          0.88,
+          1
+        ],
+        "metallicFactor": 0.0,
+        "roughnessFactor": 0.3
+      },
+      {},
+      {},
+      {}
+    ],
+    "translucentBlendOp": "None",
+    "doubleSided": false
+  }
+}

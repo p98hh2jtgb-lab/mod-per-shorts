@@ -1,18 +1,48 @@
--- DriftSketch 0.8.1 — record a drive, build real low-poly mesh objects, keep them for replay.
+-- DriftSketch 0.9.0 — record a drive, build real low-poly meshes on both sides, keep them for replay.
+-- Markers: orange traffic cones or red/white(/blue) four-tyre stacks. Optional START/FINISH truss
+-- gates and red/white stunt rings. Every shape is an original COLLADA file with flat PBR materials
+-- (no texture files), loaded explicitly from this mod before the first TSStatic is created.
 local M = {}
+M.version = '0.9.0'
+
+local ASSET_DIR = '/art/shapes/driftsketch_v09/'
+local MATERIAL_FILE = ASSET_DIR .. 'main.materials.json'
+local GROUP_NAME = 'DriftSketch_Objects'
+
+-- Shape dimensions at scale 1 (see tests/make_driftsketch_assets.py).
+local CONE_RADIUS, CONE_HEIGHT = 0.24, 0.66
+local TIRE_RADIUS, TIRE_HEIGHT = 0.34, 0.85
+local GATE_CLEAR_HALF = 4.35      -- inner edge of both tower base plates
+local GATE_FOOT_OUTER = 5.25      -- outer edge of the base plates
+local GATE_FOOT_ALONG = 0.45      -- base plate half depth along the path
+local GATE_TOWER_CENTER = 4.8
+local GATE_MIN_SCALE, GATE_MAX_SCALE = 0.8, 2.6
+local RING_OPENING, RING_TUBE = 6.0, 0.3   -- clear opening diameter, tube radius
+local RING_MAX_TOTAL = 300
+
+local TIRE_PATTERNS = {
+  rw = {'red', 'red', 'white', 'white'},
+  rwb = {'red', 'red', 'white', 'white', 'blue', 'blue'}
+}
 
 local SETTINGS = {
   mesh = 'cone',
-  spacing = 2.4,
+  tireColors = 'rw',
+  spacing = 1.0,
   width = 4.2,
   scale = 1.0,
   groundOffset = -0.55,
-  maxCones = 1200,
+  maxCones = 2000,
   smooth = true,
   keepBuilds = true,
   collision = false,
   driftWidth = true,
-  gates = true
+  gates = true,
+  rings = false,
+  ringCount = 5,
+  ringSize = 7.0,
+  ringGap = 15.0,
+  ringLift = 0.0
 }
 
 local recording = false
@@ -20,13 +50,29 @@ local points = {}
 local activeVehicleId = nil
 local activeVehicleName = 'No vehicle'
 local savedPaths = {}
-local spawned = {}
+local ringSets = {}
+local spawned = {}        -- path markers and gates
+local ringObjects = {}    -- rings (path rings and rings placed ahead of the car)
 local status = 'Ready. Press Start and drive.'
 local statusError = false
 local uiClock = 0
+local clockTotal = 0
 local objectSerial = 0
+local session = tostring((os and os.time and os.time() or 0) % 1000000)
 local collisionDirty = false
-local collisionWasSolid = false
+local markersSolid = false
+local ringsSolid = false
+local ringRebuildAt = nil
+local pendingRestore = false
+local restored = false
+
+local function clamp(value, minimum, maximum)
+  return math.max(minimum, math.min(maximum, value))
+end
+
+local function truthy(value)
+  return not (value == false or value == 'false' or value == 0 or value == nil)
+end
 
 local function copyPoints(source)
   local out = {}
@@ -154,6 +200,7 @@ local function vehiclePathPoint(veh, pos, id)
   }
 end
 
+
 local function publicState()
   local out = {
     recording = recording,
@@ -161,9 +208,13 @@ local function publicState()
     pathLength = pathLength(points),
     buildCount = #savedPaths,
     coneCount = #spawned,
+    ringsBuilt = #ringObjects,
+    ringSetCount = #ringSets,
+    meshCount = #spawned + #ringObjects,
     vehicleName = activeVehicleName,
     status = status,
     statusError = statusError,
+    version = M.version,
     settings = {}
   }
   for k, v in pairs(SETTINGS) do out.settings[k] = v end
@@ -175,13 +226,29 @@ local function sendState()
   return publicState()
 end
 
-local function removeObjects()
-  if collisionWasSolid then collisionDirty = true end
-  collisionWasSolid = false
-  for _, obj in ipairs(spawned) do
+local function deleteList(list)
+  for _, obj in ipairs(list) do
     if obj and obj.delete then pcall(function() obj:delete() end) end
   end
+end
+
+local function removeMarkers()
+  if markersSolid then collisionDirty = true end
+  markersSolid = false
+  deleteList(spawned)
   spawned = {}
+end
+
+local function removeRings()
+  if ringsSolid then collisionDirty = true end
+  ringsSolid = false
+  deleteList(ringObjects)
+  ringObjects = {}
+end
+
+local function removeObjects()
+  removeMarkers()
+  removeRings()
 end
 
 local function reloadCollision()
@@ -190,11 +257,52 @@ local function reloadCollision()
   collisionDirty = false
 end
 
+-- All generated objects live in one SimGroup. After a Lua reload the previous VM's
+-- objects are still in the scene; the group lets the new VM find and remove them.
+local function findGroup()
+  if not scenetree or not scenetree.findObject then return nil end
+  local ok, group = pcall(scenetree.findObject, GROUP_NAME)
+  if ok and group then return group end
+  return nil
+end
+
+local function objectGroup()
+  local group = findGroup()
+  if group or not createObject then return group end
+  local ok, created = pcall(createObject, 'SimGroup')
+  if not ok or not created then return nil end
+  ok = pcall(function()
+    created.canSave = false
+    created:registerObject(GROUP_NAME)
+    local mission = scenetree and scenetree.MissionGroup
+    if mission then
+      if mission.addObject then mission:addObject(created) else mission:add(created) end
+    end
+  end)
+  return ok and created or nil
+end
+
+local function sweepGroup()
+  local group = findGroup()
+  if not group then return 0 end
+  local count = 0
+  pcall(function() count = group:getCount() end)
+  if count > 0 then
+    pcall(function() group:deleteAllObjects() end)
+    collisionDirty = true
+  end
+  return count
+end
+
 local function clearAll()
   recording = false
   points = {}
   savedPaths = {}
+  ringSets = {}
+  ringRebuildAt = nil
+  pendingRestore = false
   removeObjects()
+  sweepGroup()
   reloadCollision()
 end
 
@@ -270,9 +378,17 @@ local function resampleLine(path, spacing, maxSamples)
   return samples
 end
 
+
+local function markerRadius()
+  return (SETTINGS.mesh == 'tireStack' and TIRE_RADIUS or CONE_RADIUS) * SETTINGS.scale
+end
+
+local function markerHeight()
+  return (SETTINGS.mesh == 'tireStack' and TIRE_HEIGHT or CONE_HEIGHT) * SETTINGS.scale
+end
+
 local function objectMargin()
-  local radius = (SETTINGS.mesh == 'tire' or SETTINGS.mesh == 'tireStack') and 0.45 or 0.24
-  return 0.35 + radius * SETTINGS.scale
+  return 0.35 + markerRadius()
 end
 
 -- Base Width is the manual minimum. Drift Widen expands only when the actual
@@ -480,18 +596,30 @@ local function buildOffsetLines(source, halfWidth, spacing, reserveObjects)
   return sweptClearLines(lines, source, spacing)
 end
 
-local function groundZ(x, y, recordedZ)
-  local origin = vec3(x, y, recordedZ + 4)
-  if castRayStatic then
-    local ok, distance = pcall(castRayStatic, origin, vec3(0, 0, -1), 12)
-    if ok and type(distance) == 'number' and distance >= 0 and distance < 12 then
-      return recordedZ + 4 - distance
-    end
+local function castDown(x, y, fromZ, maxLength)
+  if not castRayStatic then return nil end
+  local ok, distance = pcall(castRayStatic, vec3(x, y, fromZ), vec3(0, 0, -1), maxLength)
+  if ok and type(distance) == 'number' and distance >= 0 and distance < maxLength then
+    return fromZ - distance
   end
-  return recordedZ + SETTINGS.groundOffset
+  return nil
 end
 
-local MATERIAL_FILE = '/art/shapes/driftsketch_yw/main.materials.json'
+-- Ground under a recorded path point. The short ray stays below bridges and trees.
+local function groundZ(x, y, recordedZ)
+  return castDown(x, y, recordedZ + 4, 12) or (recordedZ + SETTINGS.groundOffset)
+end
+
+-- Ground away from the recorded line (gate towers, rings ahead of the car): short ray
+-- first, then a long one for hills. The second value reports whether a ray hit.
+local function groundAt(x, y, zHint)
+  local z = castDown(x, y, zHint + 4, 14)
+  if z then return z, true end
+  z = castDown(x, y, zHint + 60, 140)
+  if z then return z, true end
+  return zHint + SETTINGS.groundOffset, false
+end
+
 local materialsLoaded = false
 
 -- Runtime-created TSStatic shapes do not reliably cause a mod-root material
@@ -514,36 +642,41 @@ local function ensureMaterials()
   return true
 end
 
-local function shapePath()
-  -- Mod-root virtual path: works both unpacked and directly from the ZIP.
-  local file = 'cone.dae'
-  if SETTINGS.mesh == 'pylon' then file = 'pylon.dae'
-  elseif SETTINGS.mesh == 'tire' then file = 'tire.dae'
-  elseif SETTINGS.mesh == 'tireStack' then file = 'tire_stack.dae' end
-  return '/art/shapes/driftsketch_yw/' .. file
+-- BeamNG convention: local +Y is forward. quatFromDir maps +Y onto dir (and keeps
+-- +Z up), which is exactly what TSStatic setPosRot expects.
+local function rotationFromDir(dx, dy, dz)
+  if not quatFromDir then return nil end
+  local ok, q = pcall(quatFromDir, vec3(dx, dy, dz or 0))
+  if ok and q then return q end
+  return nil
 end
 
-local function objectNoun()
-  if SETTINGS.gates then return 'objects' end
-  if SETTINGS.mesh == 'tire' then return 'tires' end
-  if SETTINGS.mesh == 'tireStack' then return 'tire stacks' end
-  return 'cones'
+local function addToScene(obj, group)
+  if group then
+    local ok = pcall(function() group:addObject(obj) end)
+    if ok then return true end
+  end
+  local mission = scenetree and scenetree.MissionGroup
+  if mission then
+    return pcall(function()
+      if mission.addObject then mission:addObject(obj) else mission:add(obj) end
+    end)
+  end
+  return false
 end
 
 local function spawnMesh(x, y, z, options)
   if not createObject then return nil end
-  options = options or {}
   local ok, obj = pcall(createObject, 'TSStatic')
   if not ok or not obj then return nil end
   objectSerial = objectSerial + 1
-  obj.shapeName = options.shapeName or shapePath()
+  obj.shapeName = options.shapeName
   obj.canSave = false
   obj.useInstanceRenderData = true
   if obj.setField then
     obj:setField('collisionType', 0, SETTINGS.collision and 'Visible Mesh Final' or 'None')
     obj:setField('decalType', 0, 'None')
   end
-  if SETTINGS.collision then collisionWasSolid = true; collisionDirty = true end
   local rotation = options.rotation
   if rotation and obj.setPosRot then
     obj:setPosRot(x, y, z, rotation.x, rotation.y, rotation.z, rotation.w)
@@ -553,20 +686,49 @@ local function spawnMesh(x, y, z, options)
   local scale = options.scale or SETTINGS.scale
   if type(scale) == 'number' then scale = vec3(scale, scale, scale) end
   obj:setScale(scale)
-  obj:registerObject('driftSketch_' .. tostring(objectSerial))
-  if scenetree and scenetree.MissionGroup then scenetree.MissionGroup:add(obj) end
-  spawned[#spawned + 1] = obj
+  obj:registerObject(string.format('%s%s_%d', options.prefix or 'driftSketch_', session, objectSerial))
+  addToScene(obj, options.group)
+  local list = options.list or spawned
+  list[#list + 1] = obj
+  if SETTINGS.collision then
+    collisionDirty = true
+    if list == ringObjects then ringsSolid = true else markersSolid = true end
+  end
   return obj
 end
 
-local function atan2(y, x)
-  if math.atan2 then return math.atan2(y, x) end
-  if x > 0 then return math.atan(y / x) end
-  if x < 0 then return math.atan(y / x) + (y >= 0 and math.pi or -math.pi) end
-  if y > 0 then return math.pi / 2 end
-  if y < 0 then return -math.pi / 2 end
-  return 0
+local function objectNoun()
+  if SETTINGS.gates or SETTINGS.rings or #ringSets > 0 then return 'objects' end
+  if SETTINGS.mesh == 'tireStack' then return 'tire stacks' end
+  return 'cones'
 end
+
+-- Path markers ------------------------------------------------------------------
+
+local GOLDEN_ANGLE = 2.399963229728653
+
+local function markerShape(index)
+  if SETTINGS.mesh == 'tireStack' then
+    local pattern = TIRE_PATTERNS[SETTINGS.tireColors] or TIRE_PATTERNS.rw
+    return ASSET_DIR .. 'tire_stack_' .. pattern[((index - 1) % #pattern) + 1] .. '.dae'
+  end
+  return ASSET_DIR .. 'cone.dae'
+end
+
+local function markerRotation(q, index)
+  if SETTINGS.mesh == 'tireStack' then
+    -- Tyre stacks are round: a golden-angle yaw breaks up the repeated tread.
+    local angle = index * GOLDEN_ANGLE
+    return rotationFromDir(math.cos(angle), math.sin(angle), 0)
+  end
+  -- Square cone bases sit square to their line, like hand-placed cones.
+  if q.nx and q.ny and (q.nx * q.nx + q.ny * q.ny) > 0.000001 then
+    return rotationFromDir(q.nx, q.ny, 0)
+  end
+  return nil
+end
+
+-- Gates -------------------------------------------------------------------------
 
 local function pathTangent(source, index)
   local a = source[math.max(1, index - 1)]
@@ -579,72 +741,260 @@ local function pathTangent(source, index)
   return 1, 0
 end
 
-local function gateRotation(tx, ty)
-  -- BeamNG's vehicle/world convention uses +Y as local forward.
-  if quatFromDir then
-    local ok, q = pcall(quatFromDir, vec3(tx, ty, 0))
-    if ok and q then return q end
-  end
-  if quat then
-    local yaw = atan2(-tx, ty)
-    local ok, q = pcall(quat, 0, 0, math.sin(yaw * 0.5), math.cos(yaw * 0.5))
-    if ok and q then return q end
-  end
-  return nil
-end
-
-local function spawnGate(path, index, kind, lines)
-  local p = path[index]
-  if not p then return nil end
-  local tx, ty = pathTangent(path, index)
+-- A gate is scaled uniformly (no stretched banner) so its tower base plates stay at
+-- least ~1 m outside the marker lines next to it. Only markers close to the gate
+-- count: another leg of the track tens of metres away must not inflate the gate.
+local function gateScale(p, tx, ty, lines)
   local nx, ny = -ty, tx
-  local offset = driftOffset(p, nx, ny, SETTINGS.width * 0.5)
-  -- Post centres are at local X +/-2.82 and each foot extends 0.28 inward.
-  -- Size from the inner foot edge (+/-2.54), so the whole post assembly --
-  -- not only its centre -- keeps the requested clearance after X scaling.
-  local insideEdge = math.max(2.7, offset + 1.0)
-  -- Nearby swept/curved markers can sit wider than the endpoint's local
-  -- offset. Include them when they are close to the gate plane.
-  if lines then
-    for _, line in ipairs(lines) do
-      for _, q in ipairs(line) do
-        local dx, dy = q.x - p.x, q.y - p.y
-        local along = dx * tx + dy * ty
-        if math.abs(along) <= 2.0 then
-          local lateral = math.abs(dx * nx + dy * ny)
-          insideEdge = math.max(insideEdge, lateral + 1.0)
-        end
+  local base = driftOffset(p, nx, ny, SETTINGS.width * 0.5)
+  local need = base + 1.0
+  local limit = base + 4.0
+  for _, line in ipairs(lines or {}) do
+    for _, q in ipairs(line) do
+      local dx, dy = q.x - p.x, q.y - p.y
+      if math.abs(dx * tx + dy * ty) <= 3.0 then
+        local lateral = math.abs(dx * nx + dy * ny)
+        if lateral <= limit then need = math.max(need, lateral + 0.9) end
       end
     end
   end
-  local shape = kind == 'finish' and 'gate_finish.dae' or 'gate_start.dae'
-  return spawnMesh(p.x, p.y, groundZ(p.x, p.y, p.z), {
-    shapeName='/art/shapes/driftsketch_yw/' .. shape,
-    scale=vec3(insideEdge / 2.54, 1, 1),
-    rotation=gateRotation(tx, ty)
+  return clamp(need / GATE_CLEAR_HALF, GATE_MIN_SCALE, GATE_MAX_SCALE)
+end
+
+-- Markers can never stand inside a tower footprint (wide drift corridors at the
+-- maximum gate scale, or a second leg passing next to a tower).
+local function trimGateFootprint(lines, p, tx, ty, scale)
+  local nx, ny = -ty, tx
+  local inner = GATE_CLEAR_HALF * scale - markerRadius() - 0.15
+  local outer = GATE_FOOT_OUTER * scale + markerRadius() + 0.25
+  local along = GATE_FOOT_ALONG * scale + markerRadius() + 0.25
+  for index, line in ipairs(lines) do
+    local kept = {}
+    for _, q in ipairs(line) do
+      local dx, dy = q.x - p.x, q.y - p.y
+      local lateral = math.abs(dx * nx + dy * ny)
+      if not (math.abs(dx * tx + dy * ty) <= along and lateral >= inner and lateral <= outer) then
+        kept[#kept + 1] = q
+      end
+    end
+    lines[index] = kept
+  end
+end
+
+local function spawnGate(gate, group)
+  local p, tx, ty, scale = gate.p, gate.tx, gate.ty, gate.scale
+  local nx, ny = -ty, tx
+  -- Stand on the lowest of centre and both towers: no tower floats on a slope.
+  local z = groundZ(p.x, p.y, p.z)
+  local reach = GATE_TOWER_CENTER * scale
+  for _, side in ipairs({-1, 1}) do
+    local towerZ = groundAt(p.x + nx * reach * side, p.y + ny * reach * side, p.z)
+    if towerZ < z then z = towerZ end
+  end
+  return spawnMesh(p.x, p.y, z, {
+    shapeName = ASSET_DIR .. (gate.kind == 'finish' and 'gate_finish.dae' or 'gate_start.dae'),
+    scale = scale,
+    rotation = rotationFromDir(tx, ty, 0),
+    list = spawned,
+    group = group,
+    prefix = 'driftSketch_gate_'
   })
 end
 
-local function buildPath(path)
-  ensureMaterials()
+-- Rings -------------------------------------------------------------------------
+
+local function pointAtDistance(path, distance)
+  local walked = 0
+  for i = 2, #path do
+    local a, b = path[i - 1], path[i]
+    local dx, dy = b.x - a.x, b.y - a.y
+    local segment = math.sqrt(dx * dx + dy * dy)
+    if segment > 0.0001 and walked + segment >= distance then
+      local t = math.max(0, math.min(1, (distance - walked) / segment))
+      return a.x + dx * t, a.y + dy * t, a.z + (b.z - a.z) * t
+    end
+    walked = walked + segment
+  end
+  local last = path[#path]
+  return last.x, last.y, last.z
+end
+
+-- Rings on a recorded drive: centred on the line, every Ring gap metres, up to
+-- Ring count. With gates ON the first and last 8 m stay free for the gates.
+local function pathRingFrames(path)
+  local frames = {}
+  local line = smoothPath(path)
+  if #line < 2 then return frames end
+  local total = pathLength(line)
+  local margin = SETTINGS.gates and 8.0 or 1.0
+  local gap = SETTINGS.ringGap
+  local distance = math.max(gap, margin)
+  while #frames < SETTINGS.ringCount and distance <= total - margin + 0.001 do
+    local x, y, z = pointAtDistance(line, distance)
+    local ax, ay = pointAtDistance(line, math.max(0, distance - 2.0))
+    local bx, by = pointAtDistance(line, math.min(total, distance + 2.0))
+    local tx, ty = bx - ax, by - ay
+    local size = math.sqrt(tx * tx + ty * ty)
+    if size > 0.001 then
+      frames[#frames + 1] = {x = x, y = y, z = z, tx = tx / size, ty = ty / size}
+    end
+    distance = distance + gap
+  end
+  return frames
+end
+
+-- A straight line of rings in front of where the car stood when it was placed.
+local function aheadRingFrames(set)
+  local frames = {}
+  local lead = (set.halfLength or 2.4) + SETTINGS.ringGap
+  for k = 0, SETTINGS.ringCount - 1 do
+    local distance = lead + k * SETTINGS.ringGap
+    frames[#frames + 1] = {
+      x = set.x + set.fx * distance, y = set.y + set.fy * distance, z = set.z, tx = set.fx, ty = set.fy
+    }
+  end
+  return frames
+end
+
+-- Markers whose footprint meets a ring hoop on the same drive are left out, so the
+-- tube never cuts through a cone or tyre stack. A ring lifted clear of the markers
+-- needs no gap.
+local function trimRingCrossings(lines, frames)
+  local scale = SETTINGS.ringSize / RING_OPENING
+  if SETTINGS.ringLift - 2 * RING_TUBE * scale > markerHeight() + 0.1 then return lines end
+  local halfSpan = (RING_OPENING * 0.5 + 2 * RING_TUBE) * scale + markerRadius() + 0.3
+  local halfDepth = RING_TUBE * scale + markerRadius() + 0.25
+  for index, line in ipairs(lines) do
+    local kept = {}
+    for _, q in ipairs(line) do
+      local blocked = false
+      for _, frame in ipairs(frames) do
+        local dx, dy = q.x - frame.x, q.y - frame.y
+        if math.abs(dx * frame.tx + dy * frame.ty) <= halfDepth
+          and math.abs(dy * frame.tx - dx * frame.ty) <= halfSpan then
+          blocked = true
+          break
+        end
+      end
+      if not blocked then kept[#kept + 1] = q end
+    end
+    lines[index] = kept
+  end
+  return lines
+end
+
+-- The ring origin is the lowest point of its clear opening: with Ring lift 0 the
+-- opening starts at ground level and the bottom tube is buried, so cars drive
+-- straight through even with Solid ON. The hoop follows the road slope.
+local function spawnRing(frame, group)
+  if #ringObjects >= RING_MAX_TOTAL then return nil end
+  local scale = SETTINGS.ringSize / RING_OPENING
+  local z = groundAt(frame.x, frame.y, frame.z)
+  local probe = math.max(1.5, SETTINGS.ringSize * 0.2)
+  local zf, hitF = groundAt(frame.x + frame.tx * probe, frame.y + frame.ty * probe, z)
+  local zb, hitB = groundAt(frame.x - frame.tx * probe, frame.y - frame.ty * probe, z)
+  local slope = 0
+  if hitF and hitB then slope = clamp((zf - zb) / (2 * probe), -0.36, 0.36) end
+  return spawnMesh(frame.x, frame.y, z + SETTINGS.ringLift, {
+    shapeName = ASSET_DIR .. 'ring.dae',
+    scale = scale,
+    rotation = rotationFromDir(frame.tx, frame.ty, slope),
+    list = ringObjects,
+    group = group,
+    prefix = 'driftSketch_ring_'
+  })
+end
+
+local function buildRingSets(group)
+  for _, set in ipairs(ringSets) do
+    for _, frame in ipairs(aheadRingFrames(set)) do spawnRing(frame, group) end
+  end
+end
+
+-- Builds ------------------------------------------------------------------------
+
+local function buildPath(path, group)
   local reserveObjects = SETTINGS.gates and 2 or 0
   local lines = buildOffsetLines(path, SETTINGS.width * 0.5, math.max(0.5, SETTINGS.spacing), reserveObjects)
   local before = #spawned
+  local gates = {}
+  if SETTINGS.gates and #path >= 2 then
+    local sx, sy = pathTangent(path, 1)
+    gates[1] = {kind = 'start', p = path[1], tx = sx, ty = sy}
+    local a, b = path[1], path[#path]
+    local dx, dy = b.x - a.x, b.y - a.y
+    -- A closed loop ending near its start keeps one gate instead of two overlapping.
+    if dx * dx + dy * dy > 6.0 * 6.0 then
+      local ex, ey = pathTangent(path, #path)
+      gates[2] = {kind = 'finish', p = b, tx = ex, ty = ey}
+    end
+    for _, gate in ipairs(gates) do
+      gate.scale = gateScale(gate.p, gate.tx, gate.ty, lines)
+      trimGateFootprint(lines, gate.p, gate.tx, gate.ty, gate.scale)
+    end
+  end
+  local rings = SETTINGS.rings and pathRingFrames(path) or {}
+  if #rings > 0 then trimRingCrossings(lines, rings) end
   local count = math.max(#lines[1], #lines[2])
   for index = 1, count do
     for _, line in ipairs(lines) do
-      local p = line[index]
-      if p then spawnMesh(p.x, p.y, groundZ(p.x, p.y, p.z)) end
+      local q = line[index]
+      if q then
+        spawnMesh(q.x, q.y, groundZ(q.x, q.y, q.z), {
+          shapeName = markerShape(index),
+          rotation = markerRotation(q, index),
+          list = spawned,
+          group = group,
+          prefix = 'driftSketch_'
+        })
+      end
     end
   end
-  if SETTINGS.gates and #path >= 2 then
-    spawnGate(path, 1, 'start', lines)
-    local a, b = path[1], path[#path]
-    local dx, dy = b.x - a.x, b.y - a.y
-    if dx * dx + dy * dy > 1.5 * 1.5 then spawnGate(path, #path, 'finish', lines) end
-  end
+  for _, gate in ipairs(gates) do spawnGate(gate, group) end
+  for _, frame in ipairs(rings) do spawnRing(frame, group) end
   return #spawned - before
 end
+
+local function rebuildEverything()
+  removeObjects()
+  -- Old solid shapes must leave the physics world before the new ground rays.
+  reloadCollision()
+  ensureMaterials()
+  local group = objectGroup()
+  for _, path in ipairs(savedPaths) do buildPath(path, group) end
+  buildRingSets(group)
+  reloadCollision()
+end
+
+local function rebuildRingsOnly()
+  removeRings()
+  reloadCollision()
+  ensureMaterials()
+  buildRingSets(objectGroup())
+  reloadCollision()
+end
+
+local function ringSummary()
+  return string.format('%d rings · %.1f m opening · %.0f m apart', #ringObjects, SETTINGS.ringSize, SETTINGS.ringGap)
+end
+
+-- Ring sliders rebuild only the rings (a short debounce keeps dragging smooth).
+-- Rings on a drive also open gaps in its marker lines, so those need a full rebuild.
+local function applyRingSettings()
+  if recording then return end
+  if SETTINGS.rings and #savedPaths > 0 then rebuildEverything() else rebuildRingsOnly() end
+  statusError = false
+  status = 'Rings updated: ' .. ringSummary() .. '.'
+end
+
+local function scheduleRings()
+  if recording then return end
+  if #ringSets > 0 or (SETTINGS.rings and #savedPaths > 0) then
+    ringRebuildAt = clockTotal + 0.35
+  end
+end
+
+-- Public API ----------------------------------------------------------------------
 
 function M.start()
   if recording then return sendState() end
@@ -652,6 +1002,11 @@ function M.start()
     savedPaths = {}
     removeObjects()
     reloadCollision()
+    if #ringSets > 0 then
+      ensureMaterials()
+      buildRingSets(objectGroup())
+      reloadCollision()
+    end
   end
   local veh, id = currentVehicle()
   activeVehicleId = id
@@ -672,10 +1027,19 @@ function M.stop()
     return sendState()
   end
   savedPaths[#savedPaths + 1] = copyPoints(points)
-  local created = buildPath(points)
+  ensureMaterials()
+  local ringsBefore = #ringObjects
+  local created = buildPath(points, objectGroup())
   reloadCollision()
+  local rings = #ringObjects - ringsBefore
   statusError = created == 0
-  status = created > 0 and ('Built ' .. tostring(created) .. ' ' .. objectNoun() .. '. Open BeamNG replay — they stay in the scene.') or 'No objects could be created.'
+  if created > 0 then
+    status = 'Built ' .. tostring(created) .. ' ' .. objectNoun()
+      .. (rings > 0 and (' + ' .. tostring(rings) .. ' rings') or '')
+      .. '. Open BeamNG replay — they stay in the scene.'
+  else
+    status = 'No objects could be created.'
+  end
   return sendState()
 end
 
@@ -685,40 +1049,112 @@ function M.rebuild()
     status = 'Stop recording before Rebuild.'
     return sendState()
   end
-  removeObjects()
-  for _, path in ipairs(savedPaths) do buildPath(path) end
-  reloadCollision()
+  ringRebuildAt = nil
+  if #savedPaths == 0 and #ringSets == 0 then
+    removeObjects()
+    reloadCollision()
+    statusError = false
+    status = 'No saved drive yet. Press Start first.'
+    return sendState()
+  end
+  rebuildEverything()
   statusError = false
-  status = #savedPaths > 0 and ('Rebuilt ' .. tostring(#spawned) .. ' ' .. objectNoun() .. ' with current settings.') or 'No saved drive yet. Press Start first.'
+  status = 'Rebuilt ' .. tostring(#spawned + #ringObjects) .. ' ' .. objectNoun() .. ' with current settings.'
   return sendState()
 end
 
 function M.clear()
   clearAll()
   statusError = false
-  status = 'Generated objects and saved drives cleared.'
+  status = 'Generated objects, rings and saved drives cleared.'
   return sendState()
 end
 
+function M.placeRings()
+  local veh, id = currentVehicle()
+  local pos = veh and vehiclePosition(veh, id)
+  if not pos then
+    statusError = true
+    status = 'Enter a vehicle to place rings ahead of it.'
+    return sendState()
+  end
+  local p = vehiclePathPoint(veh, pos, id)
+  if #ringObjects >= RING_MAX_TOTAL then
+    statusError = true
+    status = 'Ring limit reached (' .. tostring(RING_MAX_TOTAL) .. '). Clear rings first.'
+    return sendState()
+  end
+  local set = {x = p.x, y = p.y, z = p.z, fx = p.fx, fy = p.fy, halfLength = p.carHalfLength}
+  ringSets[#ringSets + 1] = set
+  ensureMaterials()
+  local group = objectGroup()
+  local before = #ringObjects
+  for _, frame in ipairs(aheadRingFrames(set)) do spawnRing(frame, group) end
+  reloadCollision()
+  local created = #ringObjects - before
+  statusError = created == 0
+  status = created > 0 and string.format('Placed %d rings ahead: %.1f m opening, %.0f m apart.',
+    created, SETTINGS.ringSize, SETTINGS.ringGap) or 'No rings could be created.'
+  return sendState()
+end
+
+function M.clearRings()
+  ringRebuildAt = nil
+  local hadPathRings = SETTINGS.rings
+  ringSets = {}
+  SETTINGS.rings = false
+  if hadPathRings and #savedPaths > 0 and not recording then
+    rebuildEverything()   -- gives the marker gaps back to the lines
+  else
+    removeRings()
+    reloadCollision()
+  end
+  statusError = false
+  status = 'All rings removed. Cones, tyres and gates stay.'
+  return sendState()
+end
+
+local function normalizeSetting(key, value)
+  local number = tonumber(value)
+  if key == 'mesh' then return (value == 'tireStack' or value == 'tire') and 'tireStack' or 'cone' end
+  if key == 'tireColors' then return value == 'rwb' and 'rwb' or 'rw' end
+  if key == 'spacing' then return clamp(number or SETTINGS.spacing, 0.5, 10.0) end
+  if key == 'width' then return clamp(number or SETTINGS.width, 1.5, 12.0) end
+  if key == 'scale' then return clamp(number or SETTINGS.scale, 0.5, 2.0) end
+  if key == 'groundOffset' then return clamp(number or SETTINGS.groundOffset, -2.0, 1.0) end
+  if key == 'maxCones' then return math.floor(clamp(number or SETTINGS.maxCones, 100, 4000)) end
+  if key == 'ringCount' then return math.floor(clamp(number or SETTINGS.ringCount, 1, 50) + 0.5) end
+  if key == 'ringSize' then return clamp(number or SETTINGS.ringSize, 3.0, 30.0) end
+  if key == 'ringGap' then return clamp(number or SETTINGS.ringGap, 2.0, 100.0) end
+  if key == 'ringLift' then return clamp(number or SETTINGS.ringLift, 0.0, 10.0) end
+  if key == 'smooth' or key == 'keepBuilds' or key == 'collision' or key == 'driftWidth'
+    or key == 'gates' or key == 'rings' then
+    return truthy(value)
+  end
+  return nil
+end
+
 function M.setSetting(key, value)
-  if key == 'mesh' then
-    if value == 'pylon' or value == 'tire' or value == 'tireStack' then SETTINGS.mesh = value
-    else SETTINGS.mesh = 'cone' end
-  elseif key == 'spacing' then
-    SETTINGS.spacing = math.max(1.0, math.min(10.0, tonumber(value) or SETTINGS.spacing))
-  elseif key == 'width' then
-    SETTINGS.width = math.max(1.5, math.min(12.0, tonumber(value) or SETTINGS.width))
-  elseif key == 'scale' then
-    SETTINGS.scale = math.max(0.5, math.min(2.0, tonumber(value) or SETTINGS.scale))
-  elseif key == 'groundOffset' then
-    SETTINGS.groundOffset = math.max(-2.0, math.min(1.0, tonumber(value) or SETTINGS.groundOffset))
-  elseif key == 'maxCones' then
-    SETTINGS.maxCones = math.max(100, math.min(3000, math.floor(tonumber(value) or SETTINGS.maxCones)))
-  elseif key == 'collision' or key == 'driftWidth' or key == 'gates' then
-    SETTINGS[key] = not (value == false or value == 'false' or value == 0)
-    if not recording and #savedPaths > 0 then return M.rebuild() end
-  elseif key == 'smooth' or key == 'keepBuilds' then
-    SETTINGS[key] = not (value == false or value == 'false' or value == 0)
+  local normalized = normalizeSetting(key, value)
+  if normalized == nil then return sendState() end
+  local changed = SETTINGS[key] ~= normalized
+  SETTINGS[key] = normalized
+  local idle = not recording
+  if key == 'mesh' or key == 'tireColors' then
+    -- One click on a mesh / colour button updates saved drives right away.
+    if changed and idle and #savedPaths > 0 and (key == 'mesh' or SETTINGS.mesh == 'tireStack') then
+      return M.rebuild()
+    end
+  elseif key == 'collision' then
+    if idle and (#savedPaths > 0 or #ringSets > 0) then return M.rebuild() end
+  elseif key == 'driftWidth' or key == 'gates' or key == 'rings' then
+    if idle and #savedPaths > 0 then return M.rebuild() end
+    if key == 'rings' and normalized then
+      statusError = false
+      status = 'Rings ON: they will follow your next drive. PLACE RINGS AHEAD works right now.'
+    end
+  elseif key == 'ringCount' or key == 'ringSize' or key == 'ringGap' or key == 'ringLift' then
+    if changed then scheduleRings() end
   end
   return sendState()
 end
@@ -726,7 +1162,23 @@ end
 function M.uiState() return sendState() end
 
 function M.onUpdate(dtReal)
-  uiClock = uiClock + (tonumber(dtReal) or 0)
+  local dt = tonumber(dtReal) or 0
+  uiClock = uiClock + dt
+  clockTotal = clockTotal + dt
+  if pendingRestore then
+    pendingRestore = false
+    if not recording and (#savedPaths > 0 or #ringSets > 0) then
+      rebuildEverything()
+      statusError = false
+      status = 'Restored ' .. tostring(#savedPaths) .. ' saved drive(s) after a Lua reload.'
+      sendState()
+    end
+  end
+  if ringRebuildAt and clockTotal >= ringRebuildAt then
+    ringRebuildAt = nil
+    applyRingSettings()
+    sendState()
+  end
   if recording then
     local veh, id = currentVehicle()
     if veh and id then
@@ -755,8 +1207,56 @@ function M.onUpdate(dtReal)
   end
 end
 
-function M.onExtensionLoaded()
+-- Lua reload support: keep settings, saved drives and ring sets; the objects of the
+-- old VM are swept from the group and rebuilt on the next update.
+local function validPoint(p)
+  return type(p) == 'table' and type(p.x) == 'number' and type(p.y) == 'number' and type(p.z) == 'number'
+end
+
+local function restoreState(data)
+  if restored or type(data) ~= 'table' then return end
+  restored = true
+  if type(data.settings) == 'table' then
+    for key, value in pairs(data.settings) do
+      if SETTINGS[key] ~= nil then
+        local normalized = normalizeSetting(key, value)
+        if normalized ~= nil then SETTINGS[key] = normalized end
+      end
+    end
+  end
+  savedPaths = {}
+  for _, path in ipairs(type(data.savedPaths) == 'table' and data.savedPaths or {}) do
+    if type(path) == 'table' and #path >= 2 then
+      local ok = true
+      for _, p in ipairs(path) do if not validPoint(p) then ok = false break end end
+      if ok then savedPaths[#savedPaths + 1] = copyPoints(path) end
+    end
+  end
+  ringSets = {}
+  for _, set in ipairs(type(data.ringSets) == 'table' and data.ringSets or {}) do
+    if validPoint(set) and type(set.fx) == 'number' and type(set.fy) == 'number' then
+      ringSets[#ringSets + 1] = {x = set.x, y = set.y, z = set.z, fx = set.fx, fy = set.fy,
+        halfLength = tonumber(set.halfLength) or 2.4}
+    end
+  end
+  pendingRestore = #savedPaths > 0 or #ringSets > 0
+end
+
+function M.onSerialize()
+  local settings = {}
+  for k, v in pairs(SETTINGS) do settings[k] = v end
+  return {settings = settings, savedPaths = savedPaths, ringSets = ringSets}
+end
+
+function M.onDeserialized(data)
+  restoreState(data)
+end
+
+function M.onExtensionLoaded(data)
+  sweepGroup()
+  reloadCollision()
   status = 'Ready. Press Start and drive.'
+  restoreState(data)
   sendState()
   return true
 end

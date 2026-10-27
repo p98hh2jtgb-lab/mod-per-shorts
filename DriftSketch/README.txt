@@ -1,5 +1,5 @@
-DRIFTSKETCH 0.8.1 — RUNTIME MATERIAL FIX / YELLOW-WHITE
-================================
+DRIFTSKETCH 0.9.0 — REFERENCE LOOK: CONES, TYRE WALLS, TRUSS GATES AND RINGS
+===========================================================================
 
 Record a real drive, then build an object-marked path from your actual trajectory.
 DriftSketch is a standalone mod. It does not require CreatorPack.
@@ -7,10 +7,12 @@ DriftSketch is a standalone mod. It does not require CreatorPack.
 INSTALL
 -------
 1. Open BeamNG.drive > Mods > Open Mod Folder (or your user mods folder).
-2. Remove older DriftSketch ZIP versions so two copies cannot load together.
-3. Copy DriftSketch_v0.8.1.zip there without extracting it.
+2. Remove ALL older DriftSketch ZIP versions first. 0.9.0 uses a new asset
+   folder and new material names, and two copies must never load together.
+3. Copy DriftSketch_v0.9.0.zip there without extracting it.
 4. Enable DriftSketch in the Mod Manager if needed.
-5. Restart BeamNG after replacing an older version so DAEs and materials reload.
+5. Restart BeamNG after replacing an older version so shapes and materials
+   reload cleanly.
 6. In a map, open the top app menu > Add App > DriftSketch.
 
 WORKFLOW
@@ -19,163 +21,167 @@ WORKFLOW
 2. Press Start and drive the line you want.
 3. Press Stop & Build. Both sides are always generated.
 4. Drive the generated path or open BeamNG's replay; the generated TSStatic
-   objects are designed to remain in the scene for replay.
+   objects stay in the scene for replay.
 5. Change settings and use Rebuild to regenerate saved drives without recording
-   again. Keep builds controls whether a new run preserves older runs.
-6. Clear generated objects & saved drives deletes only this mod's generated
-   objects and saved paths. It does not clear map objects or other mods.
+   again. Clicking a mesh or tyre-colour button rebuilds saved drives at once.
+6. Rings: tick "Rings on drive" to put rings on your recorded line, or press
+   "Place rings ahead" to lay a straight line of rings in front of the car.
+7. Clear generated objects & saved drives deletes only this mod's objects,
+   rings and saved paths. Clear rings deletes only the rings.
 
-HOTFIX 0.8.1 — REAL RUNTIME MATERIAL LOADING / YELLOW-WHITE
-----------------------------------------------------------
-- The 0.8.0 material JSON existed but was not explicitly loaded before runtime
-  TSStatic creation. BeamNG could therefore show its orange No Texture material.
-  DriftSketch now calls loadJsonMaterialsFile once before the first TSStatic,
-  after checking that the material file exists in the packed mod VFS.
-- The complete asset folder moved to art/shapes/driftsketch_yw/. This fresh path
-  prevents an older cached Collada shape from reusing the previous material slots.
-- Gate textures now use BeamNG's recommended *.color.png source naming. Unique
-  driftsketch_* Material names and mapTo entries remain covered by asset tests.
-- Yellow/white is consistent across the track set: cones and pylons have yellow
-  bodies with white bands; Tire Stack is yellow/white/yellow; Single Tire keeps
-  black rubber and metal spokes but adds a yellow sidewall ring and white hub.
-- Start and Finish use the same deliberate yellow/white motorsport language,
-  with diagonal braces, post bands and crisp original 1536x288 banner textures.
-  START and FINISH retain large white typography on dark, yellow-accent panels.
-- Geometry budgets are unchanged: Single Tire 352 triangles, Tire Stack 768,
-  each gate 220. No JBeam props or live-driving physics queries were added.
-
-HOTFIX 0.7.1 — ONE-CLICK MESH BUTTONS
-------------------------------------
-- Removed the native Mesh dropdown, whose popup could not open reliably inside
-  the BeamNG app viewport.
-- Traffic Cone, Tall Pylon, Single Tire and Tire Stack are now four visible
-  buttons. One click selects the mesh and sends the real GE setting command;
-  there is no dropdown or second confirmation step.
-- The active button is highlighted immediately. New selections apply to the next
-  Stop & Build; use Rebuild to update an already saved drive.
-
-NEW IN 0.7.0
+NEW IN 0.9.0
 ------------
-- Added real Start and Finish gates at the ends of the recorded path. They are
-  original low-poly TSStatic meshes, not an overlay, JBeam props or extracted
-  BeamNG assets. Start / Finish gates is ON by default and can be switched OFF.
-- Each gate follows the local path tangent through a quaternion and TSStatic
-  setPosRot. The local +Y axis faces along the path, so the frame crosses the
-  driving line instead of remaining aligned to the world axes.
-- Gate width adapts to the vehicle footprint, Drift widen and nearby swept or
-  curved marker positions. The inner edges of the complete posts and feet stay
-  at least one metre outside nearby marker lines, including after width scaling.
-- Gates work with cone, pylon, Single Tire and Tire Stack paths, Both sides,
-  Rebuild/Clear, replay object retention and optional Solid / car damage.
-  Both gates count toward the performance cap. Turning gates OFF rebuilds saved
-  drives without them and returns those two slots to the path markers.
-- A closed loop whose endpoints are within 1.5 m gets a Start gate but suppresses
-  an overlapping Finish gate. This keeps donut/closed-loop geometry clean.
+New look, rebuilt from scratch to match real reference photos
+- Every shape is new original low-poly geometry, generated by
+  tests/make_driftsketch_assets.py. Nothing is extracted from BeamNG.
+- No texture files at all. Every material is a flat PBR colour and all
+  details (tread, checker squares, START/FINISH lettering, sponsor panels)
+  are real geometry, so no shape can fall back to the "No Texture" material.
+- The old yellow/white colour set is gone.
+- Traffic Cone: orange body, two white reflective bands, square orange base
+  with rounded corners, open tip with a dark inside. 0.66 m tall,
+  0.41 m base. Cones sit square to their line, like hand-placed cones.
+- Tire Stack: four stacked tyres (0.67 m diameter, 0.85 m tall) with rounded
+  shoulders, raised chevron tread blocks, darker grooves and a dark hollow
+  centre. Colours alternate in pairs:
+    Red · White         red, red, white, white, ...
+    Red · White · Blue  red, red, white, white, blue, blue, ... (karting look)
+  Each stack gets its own yaw so the tread pattern does not repeat.
+- START gate: blue box-truss towers with X bracing on base plates, a red-framed
+  banner with checker blocks, a white START panel and two generic sponsor
+  panels (DRIFT and SKETCH, no real brands).
+- FINISH gate: grey steel lattice towers with base plates and caps, and a
+  checkered banner with a dark-red FINISH panel.
+- Both gates read correctly from the front and from behind.
 
-EXISTING CLEARANCE AND TIRE PROPS
----------------------------------
-- Single Tire and Tire Stack are original TSStatic meshes for light path markers
-  and visible clipping points. Tire radius is included in Drift widen and swept
-  turn clearance. Single Tire is 352 triangles; Tire Stack is 768 triangles.
-- Swept turn clearance checks markers against the full oriented vehicle
-  rectangle at nearby recorded poses and at intermediate poses between them.
-  This protects the side, rear bumper and rear wing during a turn.
-- When available, real OOBB half axes are projected onto the vehicle basis, so
-  accessories such as a rear wing can contribute to the footprint. Vehicles
-  without initialized OOBB data use the safe initial-dimension fallback.
-- If a marker is inside that swept footprint, it is pushed outward along its
-  path normal. In extreme turns where no reasonable outward position is safe,
-  that marker is skipped instead of being placed inside the car or forming a
-  large distorted loop. Nearly stacked markers are thinned after correction.
-- The clearance pass runs only while building/rebuilding, not while driving.
-  It uses a spatial grid and the existing performance cap; it does not create
-  JBeam props or perform per-frame physics queries.
-- Drift widen OFF bypasses this automatic marker adjustment and preserves exact
-  fixed manual width as requested.
+Rings (new)
+- Red/white striped stunt hoops (16 segments) like the reference photo.
+- Count: 1-50 rings. Size: clear opening 3-30 m. Gap: 2-100 m between rings.
+  Lift: 0-10 m above the ground.
+- With Lift 0 the opening starts at ground level and the bottom tube is
+  buried, so cars drive straight through, even with Solid ON. With Lift above
+  0 the bottom tube crosses the road (useful for jumps).
+- Rings on drive: rings are centred on the recorded line, every Gap metres,
+  starting one Gap after the start. With gates ON the first and last 8 m stay
+  free for the gates. Cones or tyres that would cut through a ring tube leave a
+  small gap in their line instead.
+- Place rings ahead: a straight line of rings in front of the car's current
+  position and heading. The first ring is one Gap past the front bumper.
+- Ring sliders apply by themselves about 0.35 s after you stop moving them. No
+  Rebuild needed. Rebuild keeps placed rings; Clear rings removes all of them.
+- Rings follow the road slope (up to about 20 degrees) so the hoop stays square
+  to the road. Up to 300 rings in total. Rings do not use the Performance cap.
 
-DRIFT WIDTH / REAR CLEARANCE
-----------------------------
-- Drift widen is ON by default. Base width is the manual minimum: a car
-  driving straight keeps that base width, while a sideways car gets extra room.
-- Clearance uses the vehicle's real OOBB half axes when available (with its
-  initial length/width as fallback) plus its forward direction relative to the
-  path normal. The full oriented footprint is used, including the rear overhang,
-  rather than only protecting the front.
-- Recording prefers the real vehicle OOBB center instead of assuming the JBeam
-  reference node is the center of the car.
-- Default base width is 4.2 m. For example, a typical 4.8 m car needs about
-  6 m total width when fully sideways, including cone and safety clearance.
-- The swept pass adds protection against neighboring poses during bends; it is
-  not a promise that a different, arbitrary driving line can never intersect a
-  static cone. Solid / car damage remains the option for physical impacts.
+Removed
+- Tall Pylon and Single Tire. Saved settings that still ask for them map to
+  Traffic Cone and Tire Stack.
+
+Fixes and other changes
+- Fixed the 0.8.1 gate bug where a Finish (or Start) gate could turn into a
+  huge dark wall that looked untextured. Gate width came from every marker
+  within 2 m along the gate, at any distance sideways, so another leg of the
+  track tens of metres away stretched the gate 20-40 times. Now only markers
+  near the gate count (up to 4 m beyond the corridor). Gates also scale
+  uniformly (0.8x-2.6x) instead of stretching the banner.
+- A closed loop that ends within 6 m of its start keeps only the START gate.
+- Spacing now goes down to 0.5 m (default 1.0 m), so cones can stand much
+  closer together.
+- Performance cap: up to 4000 objects per drive (default 2000).
+- All generated objects live in one SimGroup, DriftSketch_Objects. After a
+  Lua reload the old objects are swept and the saved drives, ring sets and
+  settings are restored and rebuilt.
+- With Solid ON, old collision is reloaded before a rebuild places new
+  objects, so ground rays never hit the previous build.
+- New asset folder art/shapes/driftsketch_v09/ and new material names
+  (driftsketch09_*), so no cached 0.8.1 shape or material can be reused.
 
 PANEL SETTINGS
 --------------
-Mesh: four always-visible one-click buttons, with no dropdown: original low-poly
-Traffic Cone or Tall Pylon (256 triangles each), Single Tire (352 triangles)
-or Tire Stack (768 triangles).
+Mesh: two always-visible one-click buttons, with no dropdown: Traffic Cone or
+Tire Stack. Saved drives rebuild immediately.
+Tyre colours (Tire Stack only): Red · White, or Red · White · Blue.
 Layout: Both sides, always.
-Spacing: approximate distance between cones on the same line; lower means more
-cones. Inner and outer curves are sampled independently.
-Base width: manual distance between the two lines; the minimum with Drift
-widen ON, or the exact fixed distance with it OFF.
+Spacing: distance between markers on the same line, 0.5-10 m. Lower means more
+markers. Inner and outer curves are sampled independently.
+Base width: manual distance between the two lines. It is the minimum with
+Drift widen ON, or the exact fixed distance with it OFF.
 Drift widen: automatic extra lateral clearance for sideways driving, the rear
-of the car and neighboring poses in turns. Both sides remain equal.
-Start / Finish gates: ON creates the two aligned endpoint frames and reserves
-their places in the object cap; OFF removes them from saved builds.
-Mesh scale: visual object size. Clearance includes the scaled base radius.
-Ground fallback: height relative to the recorded point only when no ground
+of the car and neighbouring poses in turns. Both sides remain equal.
+Start / Finish gates: ON builds the START gate at the first path point and the
+FINISH gate at the last, aligned with the path. Each gate is scaled uniformly
+so its tower base plates stay at least about 1 m outside nearby marker lines.
+Gates use two places in the object cap. OFF removes them from saved builds.
+Mesh scale: marker size. Clearance includes the scaled marker radius.
+Ground fallback: height relative to the recorded point, used only when no ground
 raycast hits. -0.55 m is the normal starting value.
-Performance cap: maximum total generated objects, including endpoint gates.
-Excess points are sampled more sparsely instead of creating unlimited objects.
+Performance cap: maximum markers plus gates for one drive. Long drives are
+sampled more sparsely instead of creating unlimited objects.
 Smooth path: light path and heading smoothing to reduce small kinks.
-Keep builds: preserve previous runs when starting a new recording.
-Solid / car damage: OFF uses collisionType=None for visual-only objects. ON uses
-Visible Mesh Final static collision, so impacts can stop or damage the car.
-Changing this, Drift widen or Start / Finish gates automatically rebuilds saved
-drives when stopped.
-Rebuild: regenerate saved paths with current settings.
-Clear: remove generated objects and saved drives only.
+Keep builds: keep previous runs when you start a new recording.
+Solid / car damage: OFF uses collisionType=None, so objects are visual only.
+ON uses Visible Mesh Final static collision, so impacts can stop or damage the
+car. Changing this, Drift widen, gates or Rings on drive rebuilds saved drives
+automatically when recording is stopped.
+Rings: Rings on drive, Count, Size, Gap, Lift, Place rings ahead and Clear rings.
+See Rings above.
+Rebuild: regenerate saved paths and placed rings with the current settings.
+Clear: remove generated objects, rings and saved drives only.
+
+TRIANGLE BUDGET
+---------------
+Traffic Cone 608, Tire Stack 1184, START gate 4270, FINISH gate 1872,
+Ring 1536. Shapes use 3 materials (cone, tyres), 2 (ring), 5 (FINISH) or
+10 (START). All objects use TSStatic instance rendering.
 
 BEHAVIOR AND SAFETY
 -------------------
 - Uses real TSStatic meshes, not hundreds of JBeam cone vehicles.
-- Endpoint gates share the same tracked-object lifecycle and collision setting;
-  they are rebuilt or cleared with the path and remain for replay like markers.
+- Gates and rings share the tracked-object lifecycle and collision setting. They
+  are rebuilt or cleared with the path and remain for replay like markers.
 - Pure rotation in place does not create a fake path.
-- Smooth path keeps tight bends and independent inner/outer cone spacing.
-- Swept turn clearance uses oriented 2D rectangle/ray tests and a spatial grid;
-  it runs during Stop & Build or Rebuild, never in the live recording loop.
-- Collision reloads happen only when switching between visual and solid modes.
-- Generated objects are tagged DriftSketch_Cones and tracked individually.
-- Vehicle-specific settings are not required; dimensions and direction are
-  read from the active vehicle while recording.
+- Swept turn clearance uses oriented 2D rectangle/ray tests and a spatial grid.
+  It runs during Stop & Build or Rebuild, never in the live recording loop.
+- Collision reloads happen only when solid objects are added or removed.
+- The material library is loaded explicitly once per map, before the first
+  object is created.
 
 VALIDATION
 ----------
-Automated Lua smoke tests cover straight versus sideways clearance, full rear
-footprint allowance, exact fixed width with Drift widen OFF, curved spacing,
-stationary spins, collision switching and replay-object retention. A runtime
-regression also requires the material JSON to load exactly once before the first
-TSStatic and to stay loaded across all mesh/gate rebuilds. Gate tests
-cover default ON, mesh paths, endpoint positions, +Y quaternion alignment,
-adaptive sideways clearance, collision/toggle rebuilds and cap reservation.
-A dedicated drifting-bend regression checks every generated cone against
-nearby and intermediate vehicle poses; the old 0.4.0 algorithm fails that test.
-A separate check covers real OOBB half-axis/rear-wing clearance and fallback
-behavior. Mesh selection tests cover cone, pylon, Single Tire and Tire Stack,
-including tire-specific clearance. A long-run stress case covers roughly 700
-points and 1,500+ objects.
-COLLADA asset tests cover triangle counts, normals, winding, ground contact,
-UV indices, packed texture paths and unique Material/mapTo resolution for every
-used slot. Angular runtime and Chromium interaction tests cover the panel and
-commands,
-including four visible mesh buttons, no native select and one-click Tire Stack.
-A real BeamNG pass is still recommended for each vehicle/map to tune width,
-ground fallback, collision behavior and performance for your driving style.
+Lua smoke tests (Fengari with mocked BeamNG APIs, strict globals) cover: the
+two meshes and legacy names, 0.5 m spacing, colour pairs, immediate rebuild on a
+mesh click, straight versus sideways clearance, OOBB rear-wing clearance,
+curved spacing, the swept drifting bend, stationary spins, collision switching,
+the cap, replay retention, gates (uniform scale, +Y alignment, plates outside the
+lines, closed loops, and a regression where a parallel leg 20 m away used to
+inflate the gate), rings (count, size, gap, lift, the debounce, gaps in marker
+lines, rings ahead, the 300 cap, Clear rings), the SimGroup and Lua-reload restore.
+The asset test checks every COLLADA file: header, sources, bindings, index
+bounds, unit normals that agree with the winding, sizes, ground contact, no
+textures, the material colours, and that the Lua gate/ring/marker constants match
+the real geometry. Angular and Chromium tests cover every panel control. Every
+shape was also imported with Blender's Collada importer and rendered (see
+DriftSketch_previews/0.9.0).
+A real BeamNG pass is still recommended for each map, to tune width, ground
+fallback, collision behaviour and performance for your driving style.
 
-PROTOTYPE ASSETS
-----------------
-The cone, pylon, tire and gate meshes plus both banner textures were created
-specifically for DriftSketch. They are original assets, not extracted BeamNG
-content. Replace or license assets appropriately before commercial redistribution.
+ASSETS AND CREDITS
+------------------
+All meshes were created procedurally for DriftSketch. They are original assets,
+not extracted BeamNG content. The START/FINISH and sponsor lettering is
+geometry generated from the glyph outlines of Open Sans ExtraBold, Oswald Bold
+and Racing Sans One (SIL Open Font License 1.1; license texts are in
+tests/fonts). The sponsor panels use the generic words DRIFT and SKETCH and
+show no real brands.
+
+HISTORY
+-------
+0.8.1  Runtime material loading; yellow/white set (replaced in 0.9.0).
+0.8.0  Material fixes, redesigned tyres and gates.
+0.7.1  One-click mesh buttons instead of a dropdown.
+0.7.0  Start and Finish gates.
+0.6.0  Tyre props.
+0.5.0  Swept turn clearance.
+0.4.0  Drift-aware rear clearance.
+0.3.0  Smoother curves, optional solid collision.
+0.2.0  Both-side placement, refined meshes.
+0.1.0  First replay cone prototype.

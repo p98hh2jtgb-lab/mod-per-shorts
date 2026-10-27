@@ -1,6 +1,6 @@
 {
   "name": "DriftSketch",
-  "version": "0.8.1",
+  "version": "0.9.0",
   "author": "daimy",
-  "description": "Record a drive and build real yellow/white mesh markers, drift tires and adaptive Start/Finish gates with explicitly loaded BeamNG materials."
+  "description": "Record a drive and build real low-poly orange traffic cones or red/white/blue tyre walls on both sides, truss START/FINISH gates and red/white stunt rings. Flat PBR materials, no textures."
 }
