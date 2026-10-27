@@ -61,13 +61,13 @@
         <button class="ds-btn start" ng-click="start()" ng-disabled="state.recording">● START</button>
         <button class="ds-btn stop" ng-click="stop()" ng-disabled="!state.recording">■ STOP &amp; BUILD</button>
       </div>
-      <div class="ds-replay-note" ng-if="state.buildCount > 0 && !state.recording"><b>{{state.buildCount}} saved drive(s).</b> Hap replay-in normal të BeamNG. Konusat janë objekte reale në skenë dhe mbeten aty.</div>
+      <div class="ds-replay-note" ng-if="state.buildCount > 0 && !state.recording"><b>{{state.buildCount}} saved drive(s).</b> Hap replay-in normal të BeamNG. Objektet janë mesh-e reale në skenë dhe mbeten aty.</div>
 
       <div class="ds-section-label">MESH &amp; TRACK SETTINGS</div>
       <div class="ds-form">
         <div class="ds-grid">
           <label class="ds-field">Mesh
-            <select ng-model="settings.mesh" ng-change="pushSetting('mesh')"><option value="cone">Traffic Cone</option><option value="pylon">Tall Pylon</option></select>
+            <select ng-model="settings.mesh" ng-change="pushSetting('mesh')"><option value="cone">Traffic Cone</option><option value="pylon">Tall Pylon</option><option value="tire">Single Tire</option><option value="tireStack">Tire Stack</option></select>
           </label>
           <div class="ds-field">Layout
             <div class="ds-static">↔ Both sides</div>
@@ -76,7 +76,7 @@
           <label class="ds-field">Base width <b>{{settings.width}} m</b><input type="range" min="1.5" max="12" step="0.1" ng-model="settings.width" ng-change="pushSetting('width')"></label>
           <label class="ds-field">Mesh scale <b>{{settings.scale}}×</b><input type="range" min="0.5" max="2" step="0.05" ng-model="settings.scale" ng-change="pushSetting('scale')"></label>
           <label class="ds-field">Ground fallback <b>{{settings.groundOffset}} m</b><input type="range" min="-2" max="1" step="0.05" ng-model="settings.groundOffset" ng-change="pushSetting('groundOffset')"></label>
-          <label class="ds-field full">Performance cap <b>{{settings.maxCones}} cones</b><input type="range" min="100" max="3000" step="100" ng-model="settings.maxCones" ng-change="pushSetting('maxCones')"></label>
+          <label class="ds-field full">Performance cap <b>{{settings.maxCones}} objects</b><input type="range" min="100" max="3000" step="100" ng-model="settings.maxCones" ng-change="pushSetting('maxCones')"></label>
         </div>
         <div class="ds-checks">
           <label class="ds-check"><input type="checkbox" ng-model="settings.smooth" ng-change="pushSetting('smooth')">Smooth path</label>
@@ -85,27 +85,27 @@
           <label class="ds-check solid" title="Real static collision. Impacts can stop or damage the car. Existing paths rebuild automatically."><input type="checkbox" ng-model="settings.collision" ng-change="pushSetting('collision')">Solid / car damage <small>REBUILDS</small></label>
         </div>
         <button class="ds-btn rebuild wide" ng-click="rebuild()" ng-disabled="state.recording || state.buildCount === 0">↻ REBUILD WITH CURRENT SETTINGS</button>
-        <button class="ds-btn clear wide" ng-click="clear()">× CLEAR GENERATED CONES &amp; SAVED DRIVES</button>
+        <button class="ds-btn clear wide" ng-click="clear()">× CLEAR GENERATED OBJECTS &amp; SAVED DRIVES</button>
       </div>
       <details class="ds-help">
         <summary>? SI PUNON PANELI — SHPJEGIMET</summary>
         <div class="ds-help-body">
           <p><b>Start / Stop &amp; Build:</b> Start regjistron vijën e makinës; Stop e ndërton pistën me kone.</p>
-          <p><b>Mesh:</b> zgjedh formën Cone ose Tall Pylon.</p>
+          <p><b>Mesh:</b> zgjedh Traffic Cone, Tall Pylon, Single Tire ose Tire Stack. Gomat janë mesh-e origjinale low-poly.</p>
           <p><b>Layout:</b> Both sides — kone në të dyja anët, gjithmonë.</p>
           <p><b>Spacing:</b> distanca mes koneve në të njëjtën vijë. Më vogël = më shumë kone.</p>
           <p><b>Base width:</b> hapsira bazë mes dy vijave. Me Drift widen ON është gjerësia minimale.</p>
           <p><b>Drift widen:</b> ON zgjeron kur makina është anësor, mbron mbrapa dhe kontrollon edhe kone-t e pozicioneve fqinje gjatë kthesave; OFF mban width fiks. Në kthesa ekstreme hiqet kone që nuk ka vend të sigurt.</p>
           <p><b>Mesh scale:</b> madhësia e konusit, pa ndryshuar spacing/width.</p>
           <p><b>Ground fallback:</b> lartësia rezervë nëse toka nuk gjendet me raycast. Zakonisht lere -0.55 m.</p>
-          <p><b>Performance cap:</b> numri maksimal i koneve për FPS.</p>
+          <p><b>Performance cap:</b> numri maksimal i objekteve për FPS.</p>
           <p><b>Smooth path:</b> butëson dridhjet/kthesat e vogla të vijës së regjistruar.</p>
           <p><b>Keep builds:</b> ruan pistat e vjetra kur regjistron run të ri.</p>
           <p><b>Solid / car damage:</b> ON jep collision real dhe goditja mund të dëmtojë makinën. OFF = vetëm vizual.</p>
-          <p><b>Rebuild:</b> rikrijon pistën me settings të reja pa e përsëritur run-in. <b>Clear:</b> fshin vetëm kone dhe paths të DriftSketch.</p>
+          <p><b>Rebuild:</b> rikrijon pistën me settings të reja pa e përsëritur run-in. <b>Clear:</b> fshin vetëm objektet dhe paths të DriftSketch.</p>
         </div>
       </details>
-      <div class="ds-foot"><span>Real low-poly meshes · no JBeam cone vehicles</span><b>Prototype</b></div>
+      <div class="ds-foot"><span>Real low-poly meshes · no JBeam prop vehicles</span><b>Prototype</b></div>
     </div>
   </div>
 </div>

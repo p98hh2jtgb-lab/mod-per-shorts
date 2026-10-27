@@ -1,4 +1,4 @@
--- DriftSketch 0.5.0 — record a drive, build real low-poly mesh cones, keep them for replay.
+-- DriftSketch 0.6.0 — record a drive, build real low-poly mesh objects, keep them for replay.
 local M = {}
 
 local SETTINGS = {
@@ -269,6 +269,11 @@ local function resampleLine(path, spacing, maxSamples)
   return samples
 end
 
+local function objectMargin()
+  local radius = (SETTINGS.mesh == 'tire' or SETTINGS.mesh == 'tireStack') and 0.45 or 0.24
+  return 0.35 + radius * SETTINGS.scale
+end
+
 -- Base Width is the manual minimum. Drift Widen expands only when the actual
 -- oriented car rectangle needs more lateral room, including its rear overhang.
 local function driftOffset(p, nx, ny, baseOffset)
@@ -282,7 +287,7 @@ local function driftOffset(p, nx, ny, baseOffset)
   else
     footprint = math.sqrt(halfLength * halfLength + halfWidth * halfWidth)
   end
-  return math.max(baseOffset, footprint + 0.35 + 0.24 * SETTINGS.scale)
+  return math.max(baseOffset, footprint + objectMargin())
 end
 
 -- Return a stable planar heading even for old recordings that have no heading.
@@ -415,7 +420,7 @@ end
 -- cones. With it ON, protect the whole swept car footprint during turns.
 local function sweptClearLines(lines, source, spacing)
   if not SETTINGS.driftWidth or #source < 2 then return lines end
-  local margin = 0.35 + 0.24 * SETTINGS.scale
+  local margin = objectMargin()
   local minimumGap = math.max(0.35, spacing * 0.40)
   local grid, cell = makePoseGrid(makeSweepPoses(source, margin))
   for lineIndex, line in ipairs(lines) do
@@ -487,7 +492,17 @@ end
 
 local function shapePath()
   -- Mod-root virtual path: works both unpacked and directly from the ZIP.
-  return '/art/shapes/driftsketch/' .. (SETTINGS.mesh == 'pylon' and 'pylon.dae' or 'cone.dae')
+  local file = 'cone.dae'
+  if SETTINGS.mesh == 'pylon' then file = 'pylon.dae'
+  elseif SETTINGS.mesh == 'tire' then file = 'tire.dae'
+  elseif SETTINGS.mesh == 'tireStack' then file = 'tire_stack.dae' end
+  return '/art/shapes/driftsketch/' .. file
+end
+
+local function objectNoun()
+  if SETTINGS.mesh == 'tire' then return 'tires' end
+  if SETTINGS.mesh == 'tireStack' then return 'tire stacks' end
+  return 'cones'
 end
 
 local function spawnMesh(x, y, z)
@@ -554,7 +569,7 @@ function M.stop()
   local created = buildPath(points)
   reloadCollision()
   statusError = created == 0
-  status = created > 0 and ('Built ' .. tostring(created) .. ' cones. Open BeamNG replay — they stay in the scene.') or 'No cones could be created.'
+  status = created > 0 and ('Built ' .. tostring(created) .. ' ' .. objectNoun() .. '. Open BeamNG replay — they stay in the scene.') or 'No objects could be created.'
   return sendState()
 end
 
@@ -568,20 +583,21 @@ function M.rebuild()
   for _, path in ipairs(savedPaths) do buildPath(path) end
   reloadCollision()
   statusError = false
-  status = #savedPaths > 0 and ('Rebuilt ' .. tostring(#spawned) .. ' cones with current settings.') or 'No saved drive yet. Press Start first.'
+  status = #savedPaths > 0 and ('Rebuilt ' .. tostring(#spawned) .. ' ' .. objectNoun() .. ' with current settings.') or 'No saved drive yet. Press Start first.'
   return sendState()
 end
 
 function M.clear()
   clearAll()
   statusError = false
-  status = 'Generated cones and saved drives cleared.'
+  status = 'Generated objects and saved drives cleared.'
   return sendState()
 end
 
 function M.setSetting(key, value)
   if key == 'mesh' then
-    SETTINGS.mesh = value == 'pylon' and 'pylon' or 'cone'
+    if value == 'pylon' or value == 'tire' or value == 'tireStack' then SETTINGS.mesh = value
+    else SETTINGS.mesh = 'cone' end
   elseif key == 'spacing' then
     SETTINGS.spacing = math.max(1.0, math.min(10.0, tonumber(value) or SETTINGS.spacing))
   elseif key == 'width' then

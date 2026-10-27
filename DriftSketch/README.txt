@@ -1,13 +1,13 @@
-DRIFTSKETCH 0.5.0 — PROTOTYPE
+DRIFTSKETCH 0.6.0 — PROTOTYPE
 ================================
 
-Record a real drive, then build a cone-marked path from your actual trajectory.
+Record a real drive, then build an object-marked path from your actual trajectory.
 DriftSketch is a standalone mod. It does not require CreatorPack.
 
 INSTALL
 -------
 1. Open BeamNG.drive > Mods > Open Mod Folder (or your user mods folder).
-2. Copy DriftSketch_v0.5.0.zip there without extracting it.
+2. Copy DriftSketch_v0.6.0.zip there without extracting it.
 3. Enable DriftSketch in the Mod Manager if needed.
 4. In a map, open the top app menu > Add App > DriftSketch.
 
@@ -20,11 +20,20 @@ WORKFLOW
    objects are designed to remain in the scene for replay.
 5. Change settings and use Rebuild to regenerate saved drives without recording
    again. Keep builds controls whether a new run preserves older runs.
-6. Clear generated cones & saved drives deletes only this mod's generated
+6. Clear generated objects & saved drives deletes only this mod's generated
    objects and saved paths. It does not clear map objects or other mods.
 
-NEW IN 0.5.0
+NEW IN 0.6.0
 ------------
+- Added two original tire meshes: Single Tire for light path markers and Tire
+  Stack (three stacked tires) for visible clipping points. Both are real
+  TSStatic meshes, work on both sides, support Rebuild/Clear and use the same
+  optional Solid / car damage mode as the cones.
+- Tire radius is included in Drift widen and swept turn clearance. Drift widen
+  OFF still preserves exact manual width.
+- Single Tire is 352 triangles; Tire Stack is 768 triangles. No JBeam tire
+  vehicles or extracted BeamNG assets are used.
+
 - Added swept turn clearance. Cones are now checked against the full oriented
   vehicle rectangle at nearby recorded poses and at intermediate poses between
   them. This catches cones from adjacent path points that could otherwise end
@@ -61,7 +70,8 @@ DRIFT WIDTH / REAR CLEARANCE
 
 PANEL SETTINGS
 --------------
-Mesh: original low-poly Traffic Cone or Tall Pylon, 256 triangles each.
+Mesh: original low-poly Traffic Cone or Tall Pylon (256 triangles each),
+Single Tire (352 triangles) or Tire Stack (768 triangles).
 Layout: Both sides, always.
 Spacing: approximate distance between cones on the same line; lower means more
 cones. Inner and outer curves are sampled independently.
@@ -69,18 +79,18 @@ Base width: manual distance between the two lines; the minimum with Drift
 widen ON, or the exact fixed distance with it OFF.
 Drift widen: automatic extra lateral clearance for sideways driving, the rear
 of the car and neighboring poses in turns. Both sides remain equal.
-Mesh scale: visual cone size. Clearance includes the scaled base radius.
+Mesh scale: visual object size. Clearance includes the scaled base radius.
 Ground fallback: height relative to the recorded point only when no ground
 raycast hits. -0.55 m is the normal starting value.
-Performance cap: maximum total generated meshes. Excess points are sampled
+Performance cap: maximum total generated objects. Excess points are sampled
 more sparsely instead of creating unlimited objects.
 Smooth path: light path and heading smoothing to reduce small kinks.
 Keep builds: preserve previous runs when starting a new recording.
-Solid / car damage: OFF uses collisionType=None for visual-only cones. ON uses
+Solid / car damage: OFF uses collisionType=None for visual-only objects. ON uses
 Visible Mesh Final static collision, so impacts can stop or damage the car.
 Changing this or Drift widen automatically rebuilds saved drives when stopped.
 Rebuild: regenerate saved paths with current settings.
-Clear: remove generated cones and saved drives only.
+Clear: remove generated objects and saved drives only.
 
 BEHAVIOR AND SAFETY
 -------------------
@@ -102,13 +112,15 @@ stationary spins, collision switching and replay-object retention.
 A dedicated drifting-bend regression checks every generated cone against
 nearby and intermediate vehicle poses; the old 0.4.0 algorithm fails that test.
 A separate check covers real OOBB half-axis/rear-wing clearance and fallback
-behavior. A long-run stress case covers roughly 700 points and 1,500+ cones.
+behavior. Mesh selection tests cover cone, pylon, Single Tire and Tire Stack,
+including tire-specific clearance. A long-run stress case covers roughly 700
+points and 1,500+ objects.
 Angular runtime and Chromium interaction tests cover the panel and commands.
 A real BeamNG pass is still recommended for each vehicle/map to tune width,
 ground fallback, collision behavior and performance for your driving style.
 
 PROTOTYPE ASSETS
 ----------------
-The cone and pylon meshes were created specifically for DriftSketch. They are
-original low-poly placeholder assets, not extracted BeamNG content. Replace or
+The cone, pylon and tire meshes were created specifically for DriftSketch. They
+are original low-poly placeholder assets, not extracted BeamNG content. Replace or
 license assets appropriately before using them in a commercial redistribution.

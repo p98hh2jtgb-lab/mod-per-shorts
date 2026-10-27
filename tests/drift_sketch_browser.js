@@ -53,6 +53,8 @@ const {chromium: playwright} = require(path.join(MODULES, 'playwright-core'));
     assert(state.commands.includes('extensions.driftSketch.uiState()'));
     await page.locator('.ds-btn.start').click();
     assert(await page.evaluate(() => window.__commands.includes('extensions.driftSketch.start()')));
+    await page.locator('select[ng-model="settings.mesh"]').selectOption('tireStack');
+    assert(await page.evaluate(() => window.__commands.includes('extensions.driftSketch.setSetting("mesh","tireStack")')));
     assert(await page.locator('.ds-check.drift input').isChecked());
     await page.locator('.ds-check.drift').click();
     assert(await page.evaluate(() => window.__commands.includes('extensions.driftSketch.setSetting("driftWidth",false)')));
