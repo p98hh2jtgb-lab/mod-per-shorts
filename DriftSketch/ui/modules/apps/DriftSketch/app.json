@@ -1,8 +1,8 @@
 {
   "name": "DriftSketch",
   "author": "daimy",
-  "version": "0.7.1",
-  "description": "Record any vehicle, build real low-poly markers and aligned Start/Finish gates along the drive and keep them visible for BeamNG replay.",
+  "version": "0.8.0",
+  "description": "Record any vehicle and build real markers, colorful drift tires and aligned textured Start/Finish gates with proper BeamNG materials.",
   "directive": "driftSketchPanel",
   "domElement": "<drift-sketch-panel></drift-sketch-panel>",
   "css": {

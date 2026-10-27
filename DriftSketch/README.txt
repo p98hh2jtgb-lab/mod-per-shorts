@@ -1,4 +1,4 @@
-DRIFTSKETCH 0.7.1 — PROTOTYPE
+DRIFTSKETCH 0.8.0 — DRIFT-TRACK VISUALS
 ================================
 
 Record a real drive, then build an object-marked path from your actual trajectory.
@@ -7,9 +7,11 @@ DriftSketch is a standalone mod. It does not require CreatorPack.
 INSTALL
 -------
 1. Open BeamNG.drive > Mods > Open Mod Folder (or your user mods folder).
-2. Copy DriftSketch_v0.7.1.zip there without extracting it.
-3. Enable DriftSketch in the Mod Manager if needed.
-4. In a map, open the top app menu > Add App > DriftSketch.
+2. Remove older DriftSketch ZIP versions so two copies cannot load together.
+3. Copy DriftSketch_v0.8.0.zip there without extracting it.
+4. Enable DriftSketch in the Mod Manager if needed.
+5. Restart BeamNG after replacing an older version so DAEs and materials reload.
+6. In a map, open the top app menu > Add App > DriftSketch.
 
 WORKFLOW
 --------
@@ -22,6 +24,23 @@ WORKFLOW
    again. Keep builds controls whether a new run preserves older runs.
 6. Clear generated objects & saved drives deletes only this mod's generated
    objects and saved paths. It does not clear map objects or other mods.
+
+NEW IN 0.8.0 — DRIFT-TRACK VISUALS AND MATERIAL FIX
+--------------------------------------------------
+- Added art/shapes/driftsketch/main.materials.json with unique driftsketch_*
+  Material names and matching mapTo entries. BeamNG no longer has to substitute
+  a generic/warning material for the old unnamed rubber, metal, frame or banner
+  slots. Solid colors use PBR baseColorFactor; gates use packed PNG textures.
+- Single Tire now has black rubber, darker tread sectors, a cyan sidewall ring,
+  metal/black rim spokes and an orange hub. It remains only 352 triangles.
+- Tire Stack uses visible drift-track paint: orange on the bottom, white in the
+  middle and cyan on top. It remains 768 triangles, with no added draw geometry.
+- Start and Finish gates have new diagonal motorsport braces, colored side fins,
+  cyan/red post details and crisp original 1536x288 banner textures. START and
+  FINISH use large white typography instead of low-resolution pixel blocks.
+- Each gate is now only 220 triangles, down from 378/418. The two PNGs are the
+  only added texture assets; no BeamNG content was extracted and no JBeam props
+  or live-driving physics queries were introduced.
 
 HOTFIX 0.7.1 — ONE-CLICK MESH BUTTONS
 ------------------------------------
@@ -44,9 +63,6 @@ NEW IN 0.7.0
 - Gate width adapts to the vehicle footprint, Drift widen and nearby swept or
   curved marker positions. The inner edges of the complete posts and feet stay
   at least one metre outside nearby marker lines, including after width scaling.
-- Start uses a green banner and geometric START lettering; Finish uses a red
-  banner, FINISH lettering and checker details. Start is 378
-  triangles and Finish is 418 triangles, with no external textures.
 - Gates work with cone, pylon, Single Tire and Tire Stack paths, Both sides,
   Rebuild/Clear, replay object retention and optional Solid / car damage.
   Both gates count toward the performance cap. Turning gates OFF rebuilds saved
@@ -146,13 +162,16 @@ A separate check covers real OOBB half-axis/rear-wing clearance and fallback
 behavior. Mesh selection tests cover cone, pylon, Single Tire and Tire Stack,
 including tire-specific clearance. A long-run stress case covers roughly 700
 points and 1,500+ objects.
-Angular runtime and Chromium interaction tests cover the panel and commands,
+COLLADA asset tests cover triangle counts, normals, winding, ground contact,
+UV indices, packed texture paths and unique Material/mapTo resolution for every
+used slot. Angular runtime and Chromium interaction tests cover the panel and
+commands,
 including four visible mesh buttons, no native select and one-click Tire Stack.
 A real BeamNG pass is still recommended for each vehicle/map to tune width,
 ground fallback, collision behavior and performance for your driving style.
 
 PROTOTYPE ASSETS
 ----------------
-The cone, pylon, tire and gate meshes were created specifically for DriftSketch.
-They are original low-poly prototype assets, not extracted BeamNG content.
-Replace or license assets appropriately before commercial redistribution.
+The cone, pylon, tire and gate meshes plus both banner textures were created
+specifically for DriftSketch. They are original assets, not extracted BeamNG
+content. Replace or license assets appropriately before commercial redistribution.

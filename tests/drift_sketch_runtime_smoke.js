@@ -20,7 +20,7 @@ assert(definition, 'DriftSketch directive must register');
 const factory = definition[definition.length - 1];
 const directive = factory(windowObject);
 directive.link(scope, [{style:{}}]);
-assert.strictEqual(scope.modVersion, '0.7.1');
+assert.strictEqual(scope.modVersion, '0.8.0');
 assert(!Object.prototype.hasOwnProperty.call(scope.settings, 'sides'));
 assert.strictEqual(scope.settings.collision, false);
 assert.strictEqual(scope.settings.driftWidth, true);

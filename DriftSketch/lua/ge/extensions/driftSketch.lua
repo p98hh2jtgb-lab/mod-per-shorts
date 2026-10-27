@@ -1,4 +1,4 @@
--- DriftSketch 0.7.1 — record a drive, build real low-poly mesh objects, keep them for replay.
+-- DriftSketch 0.8.0 — record a drive, build real low-poly mesh objects, keep them for replay.
 local M = {}
 
 local SETTINGS = {

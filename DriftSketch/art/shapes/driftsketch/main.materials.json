@@ -1,0 +1,248 @@
+{
+  "driftsketch_rubber": {
+    "name": "driftsketch_rubber",
+    "mapTo": "driftsketch_rubber",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.018,
+          0.023,
+          0.03,
+          1
+        ],
+        "metallicFactor": 0.0,
+        "roughnessFactor": 0.92
+      },
+      {},
+      {},
+      {}
+    ],
+    "doubleSided": false
+  },
+  "driftsketch_tread": {
+    "name": "driftsketch_tread",
+    "mapTo": "driftsketch_tread",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.05,
+          0.06,
+          0.072,
+          1
+        ],
+        "metallicFactor": 0.0,
+        "roughnessFactor": 0.88
+      },
+      {},
+      {},
+      {}
+    ],
+    "doubleSided": false
+  },
+  "driftsketch_metal": {
+    "name": "driftsketch_metal",
+    "mapTo": "driftsketch_metal",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.16,
+          0.19,
+          0.22,
+          1
+        ],
+        "metallicFactor": 0.65,
+        "roughnessFactor": 0.38
+      },
+      {},
+      {},
+      {}
+    ],
+    "doubleSided": false
+  },
+  "driftsketch_frame": {
+    "name": "driftsketch_frame",
+    "mapTo": "driftsketch_frame",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.025,
+          0.035,
+          0.045,
+          1
+        ],
+        "metallicFactor": 0.55,
+        "roughnessFactor": 0.42
+      },
+      {},
+      {},
+      {}
+    ],
+    "doubleSided": false
+  },
+  "driftsketch_black": {
+    "name": "driftsketch_black",
+    "mapTo": "driftsketch_black",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.008,
+          0.012,
+          0.018,
+          1
+        ],
+        "metallicFactor": 0.15,
+        "roughnessFactor": 0.62
+      },
+      {},
+      {},
+      {}
+    ],
+    "doubleSided": false
+  },
+  "driftsketch_orange": {
+    "name": "driftsketch_orange",
+    "mapTo": "driftsketch_orange",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.95,
+          0.16,
+          0.025,
+          1
+        ],
+        "metallicFactor": 0.1,
+        "roughnessFactor": 0.5
+      },
+      {},
+      {},
+      {}
+    ],
+    "doubleSided": false
+  },
+  "driftsketch_cyan": {
+    "name": "driftsketch_cyan",
+    "mapTo": "driftsketch_cyan",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.0,
+          0.62,
+          0.78,
+          1
+        ],
+        "metallicFactor": 0.1,
+        "roughnessFactor": 0.45
+      },
+      {},
+      {},
+      {}
+    ],
+    "doubleSided": false
+  },
+  "driftsketch_white": {
+    "name": "driftsketch_white",
+    "mapTo": "driftsketch_white",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.88,
+          0.92,
+          0.94,
+          1
+        ],
+        "metallicFactor": 0.05,
+        "roughnessFactor": 0.58
+      },
+      {},
+      {},
+      {}
+    ],
+    "doubleSided": false
+  },
+  "driftsketch_red": {
+    "name": "driftsketch_red",
+    "mapTo": "driftsketch_red",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          0.86,
+          0.025,
+          0.045,
+          1
+        ],
+        "metallicFactor": 0.1,
+        "roughnessFactor": 0.48
+      },
+      {},
+      {},
+      {}
+    ],
+    "doubleSided": false
+  },
+  "driftsketch_start_banner": {
+    "name": "driftsketch_start_banner",
+    "mapTo": "driftsketch_start_banner",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "metallicFactor": 0.05,
+        "roughnessFactor": 0.58,
+        "baseColorMap": "/art/shapes/driftsketch/gate_start.png",
+        "useAnisotropic": true
+      },
+      {},
+      {},
+      {}
+    ],
+    "doubleSided": false
+  },
+  "driftsketch_finish_banner": {
+    "name": "driftsketch_finish_banner",
+    "mapTo": "driftsketch_finish_banner",
+    "class": "Material",
+    "version": 1.5,
+    "Stages": [
+      {
+        "baseColorFactor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "metallicFactor": 0.05,
+        "roughnessFactor": 0.58,
+        "baseColorMap": "/art/shapes/driftsketch/gate_finish.png",
+        "useAnisotropic": true
+      },
+      {},
+      {},
+      {}
+    ],
+    "doubleSided": false
+  }
+}

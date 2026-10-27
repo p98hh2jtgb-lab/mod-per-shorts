@@ -1,6 +1,6 @@
 {
   "name": "DriftSketch",
-  "version": "0.7.1",
+  "version": "0.8.0",
   "author": "daimy",
-  "description": "Start → drive → Stop & Build → replay. Real mesh markers and adaptive Start/Finish gates generated from the recorded vehicle path."
+  "description": "Record a drive and build real mesh markers, colorful drift tires and adaptive Start/Finish gates with proper BeamNG materials."
 }
