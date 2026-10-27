@@ -81,7 +81,7 @@
         <div class="ds-checks">
           <label class="ds-check"><input type="checkbox" ng-model="settings.smooth" ng-change="pushSetting('smooth')">Smooth path</label>
           <label class="ds-check"><input type="checkbox" ng-model="settings.keepBuilds" ng-change="pushSetting('keepBuilds')">Keep builds</label>
-          <label class="ds-check drift" title="ON: manual width is the minimum and sideways driving widens it. OFF: fixed manual width."><input type="checkbox" ng-model="settings.driftWidth" ng-change="pushSetting('driftWidth')">Drift widen <small>AUTO WHEN SIDEWAYS</small></label>
+          <label class="ds-check drift" title="ON: manual width is the minimum; sideways driving and neighboring turn poses get swept clearance. OFF: exact fixed manual width."><input type="checkbox" ng-model="settings.driftWidth" ng-change="pushSetting('driftWidth')">Drift widen <small>AUTO + TURN CLEARANCE</small></label>
           <label class="ds-check solid" title="Real static collision. Impacts can stop or damage the car. Existing paths rebuild automatically."><input type="checkbox" ng-model="settings.collision" ng-change="pushSetting('collision')">Solid / car damage <small>REBUILDS</small></label>
         </div>
         <button class="ds-btn rebuild wide" ng-click="rebuild()" ng-disabled="state.recording || state.buildCount === 0">↻ REBUILD WITH CURRENT SETTINGS</button>
@@ -95,7 +95,7 @@
           <p><b>Layout:</b> Both sides — kone në të dyja anët, gjithmonë.</p>
           <p><b>Spacing:</b> distanca mes koneve në të njëjtën vijë. Më vogël = më shumë kone.</p>
           <p><b>Base width:</b> hapsira bazë mes dy vijave. Me Drift widen ON është gjerësia minimale.</p>
-          <p><b>Drift widen:</b> ON zgjeron vetëm kur makina është anësor dhe duhet hapësirë edhe për mbrapa; OFF mban width fiks.</p>
+          <p><b>Drift widen:</b> ON zgjeron kur makina është anësor, mbron mbrapa dhe kontrollon edhe kone-t e pozicioneve fqinje gjatë kthesave; OFF mban width fiks. Në kthesa ekstreme hiqet kone që nuk ka vend të sigurt.</p>
           <p><b>Mesh scale:</b> madhësia e konusit, pa ndryshuar spacing/width.</p>
           <p><b>Ground fallback:</b> lartësia rezervë nëse toka nuk gjendet me raycast. Zakonisht lere -0.55 m.</p>
           <p><b>Performance cap:</b> numri maksimal i koneve për FPS.</p>

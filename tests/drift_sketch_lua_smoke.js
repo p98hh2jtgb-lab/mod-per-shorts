@@ -30,7 +30,13 @@ be = {
   getObjectByID=function(self,id) return vehicle end,
   getPlayerVehicle=function(self,index) return vehicle end,
   reloadCollision=function(self) collisionReloads=collisionReloads+1 end,
-  getObjectOOBBCenterXYZ=function(self,id) return current.x+(current.oobbX or 0),current.y,current.z end
+  getObjectOOBBCenterXYZ=function(self,id) return current.x+(current.oobbX or 0),current.y,current.z end,
+  getObjectOOBBIsInitialized=function(self,id) return current.oobbAxes==true end,
+  getObjectOOBBHalfAxisXYZ=function(self,id,axis)
+    if axis==0 then return current.fx*2.9,current.fy*2.9,0 end
+    if axis==1 then return -current.fy*1.05,current.fx*1.05,0 end
+    return 0,0,0.8
+  end
 }
 core_vehicles = {getCurrentVehicleDetails=function() return {model={Brand='Test',Name='Any Car'}} end}
 guihooks = {trigger=function(name,data) events[#events+1]={name=name,data=data} end}
@@ -68,7 +74,10 @@ current.x=0; current.y=100; current.fx=0; current.fy=1
 M.start()
 for i=1,8 do current.x=i; M.onUpdate(0.1) end
 M.stop()
-for i=#objects-7,#objects do assert(math.abs(math.abs(objects[i].position.y-100)-2.99)<0.01, 'sideways car must include full length and rear clearance') end
+for i=#objects-7,#objects do
+  local lateral=math.abs(objects[i].position.y-100)
+  assert(lateral>=2.989 and lateral<3.20, 'sideways car must include full length and rear clearance, got '..tostring(lateral))
+end
 M.setSetting('driftWidth',false)
 local fixedLive=0
 for i,obj in ipairs(objects) do
@@ -76,6 +85,20 @@ for i,obj in ipairs(objects) do
 end
 assert(fixedLive==8)
 M.clear()
+-- Real OOBB half axes include extra rear-wing length when available.
+M.setSetting('driftWidth',true)
+M.setSetting('width',4)
+M.setSetting('spacing',2)
+M.setSetting('smooth',false)
+current.oobbAxes=true; current.x=0; current.y=120; current.fx=0; current.fy=1
+M.start()
+for i=1,8 do current.x=i; M.onUpdate(0.1) end
+M.stop()
+for i=#objects-7,#objects do
+  local lateral=math.abs(objects[i].position.y-120)
+  assert(lateral>=3.48 and lateral<3.80, 'OOBB rear-wing extent must be included, got '..tostring(lateral))
+end
+M.clear(); current.oobbAxes=nil; M.setSetting('driftWidth',false)
 current.fx=1; current.fy=0
 -- A curved drive resamples inner and outer arcs independently.
 M.setSetting('width',4)
@@ -112,6 +135,58 @@ for i,obj in ipairs(objects) do if not obj.deleted then assert(obj.collisionType
 M.setSetting('collision',false)
 for i,obj in ipairs(objects) do if not obj.deleted then assert(obj.collisionType=='None') end end
 M.clear()
+-- Swept clearance: a drifting car on a bend must not meet cones from nearby poses.
+M.setSetting('driftWidth',true)
+M.setSetting('smooth',true)
+M.setSetting('width',3.3)
+M.setSetting('spacing',1)
+M.setSetting('maxCones',400)
+current.id=3; current.oobbX=0; current.x=10; current.y=220; current.z=0.6
+local turnPoses={}
+local lastTurnX,lastTurnY=nil,nil
+local function recordTurnPose()
+  if not lastTurnX or (current.x-lastTurnX)^2+(current.y-lastTurnY)^2>=0.75*0.75 then
+    turnPoses[#turnPoses+1]={x=current.x,y=current.y,fx=current.fx,fy=current.fy}
+    lastTurnX,lastTurnY=current.x,current.y
+  end
+  M.onUpdate(0.1)
+end
+local initialAngle=0
+current.fx=math.cos(initialAngle+math.pi/2+math.rad(45)); current.fy=math.sin(initialAngle+math.pi/2+math.rad(45))
+M.start(); recordTurnPose()
+for i=1,90 do
+  local angle=(math.pi*1.25)*i/90
+  current.x=10*math.cos(angle); current.y=220+10*math.sin(angle)
+  local heading=angle+math.pi/2+math.rad(45)*math.sin(angle*2)
+  current.fx=math.cos(heading); current.fy=math.sin(heading)
+  recordTurnPose()
+end
+M.stop()
+assert(M.uiState().coneCount>20, 'drifting bend should still build both cone lines')
+local function assertTurnPoseClear(p)
+  local fx,fy=p.fx,p.fy
+  local fl=math.sqrt(fx*fx+fy*fy); fx,fy=fx/fl,fy/fl
+  local rx,ry=-fy,fx
+  for _,obj in ipairs(objects) do
+    if not obj.deleted then
+      local dx,dy=obj.position.x-p.x,obj.position.y-p.y
+      local along=dx*fx+dy*fy
+      local lateral=dx*rx+dy*ry
+      assert(math.abs(along)>2.4+0.59 or math.abs(lateral)>1.0+0.59,
+        'cone entered swept car footprint at '..tostring(obj.position.x)..','..tostring(obj.position.y))
+    end
+  end
+end
+for i,p in ipairs(turnPoses) do
+  assertTurnPoseClear(p)
+  local q=turnPoses[i+1]
+  if q then
+    local fx,fy=p.fx+q.fx,p.fy+q.fy
+    if fx*fx+fy*fy<0.0001 then fx,fy=p.fx,p.fy end
+    assertTurnPoseClear({x=(p.x+q.x)/2,y=(p.y+q.y)/2,fx=fx,fy=fy})
+  end
+end
+M.clear(); M.setSetting('driftWidth',false)
 -- The recorded path must prefer the real OOBB center over getPosition().
 current.oobbX=0.75; current.x=0; current.y=140; current.fx=1; current.fy=0
 M.start(); M.onUpdate(0.1)

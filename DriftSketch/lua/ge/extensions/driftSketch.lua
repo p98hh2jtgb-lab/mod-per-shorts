@@ -1,4 +1,4 @@
--- DriftSketch 0.4.0 — record a drive, build real low-poly mesh cones, keep them for replay.
+-- DriftSketch 0.5.0 — record a drive, build real low-poly mesh cones, keep them for replay.
 local M = {}
 
 local SETTINGS = {
@@ -102,20 +102,55 @@ local function vehiclePosition(veh, id)
   return nil
 end
 
-local function vehiclePathPoint(veh, pos)
-  local p = {
-    x=pos.x, y=pos.y, z=pos.z,
-    carHalfLength=vehicleNumber(veh, 'getInitialLength', 4.8, 1.0, 20.0) * 0.5,
-    carHalfWidth=vehicleNumber(veh, 'getInitialWidth', 2.0, 0.6, 6.0) * 0.5
-  }
+local function vehicleFootprint(veh, id, fx, fy)
+  local halfLength = vehicleNumber(veh, 'getInitialLength', 4.8, 1.0, 20.0) * 0.5
+  local halfWidth = vehicleNumber(veh, 'getInitialWidth', 2.0, 0.6, 6.0) * 0.5
+  if not be or not id or not be.getObjectOOBBHalfAxisXYZ then return halfLength, halfWidth end
+
+  local initialized = true
+  if be.getObjectOOBBIsInitialized then
+    local ok, value = pcall(be.getObjectOOBBIsInitialized, be, id)
+    initialized = ok and not (value == false or value == nil or value == 0)
+  end
+  if not initialized then return halfLength, halfWidth end
+
+  -- Project all three real OOBB half axes onto the planar vehicle basis.
+  -- This includes accessories such as a rear wing without guessing axis order.
+  local axes = {}
+  for axis = 0, 2 do
+    local ok, x, y, z = pcall(be.getObjectOOBBHalfAxisXYZ, be, id, axis)
+    if not ok or type(x) ~= 'number' or type(y) ~= 'number' or type(z) ~= 'number' then
+      return halfLength, halfWidth
+    end
+    axes[#axes + 1] = {x=x, y=y}
+  end
+  local rightX, rightY = -fy, fx
+  local obbLength, obbWidth = 0, 0
+  for _, axis in ipairs(axes) do
+    obbLength = obbLength + math.abs(axis.x * fx + axis.y * fy)
+    obbWidth = obbWidth + math.abs(axis.x * rightX + axis.y * rightY)
+  end
+  if obbLength > 0.1 and obbWidth > 0.1 then
+    halfLength = math.max(halfLength, math.max(0.5, math.min(10.0, obbLength)))
+    halfWidth = math.max(halfWidth, math.max(0.3, math.min(3.0, obbWidth)))
+  end
+  return halfLength, halfWidth
+end
+
+local function vehiclePathPoint(veh, pos, id)
+  local fx, fy = 1, 0
   if veh and veh.getDirectionVector then
     local ok, forward = pcall(veh.getDirectionVector, veh)
     if ok and forward then
       local length = math.sqrt(forward.x * forward.x + forward.y * forward.y)
-      if length > 0.001 then p.fx, p.fy = forward.x / length, forward.y / length end
+      if length > 0.001 then fx, fy = forward.x / length, forward.y / length end
     end
   end
-  return p
+  local halfLength, halfWidth = vehicleFootprint(veh, id, fx, fy)
+  return {
+    x=pos.x, y=pos.y, z=pos.z, fx=fx, fy=fy,
+    carHalfLength=halfLength, carHalfWidth=halfWidth
+  }
 end
 
 local function publicState()
@@ -214,10 +249,20 @@ local function resampleLine(path, spacing, maxSamples)
     local a, b = path[segment], path[segment + 1]
     if segmentLength > 0.0001 then
       local t = math.max(0, math.min(1, (distance - segmentStart) / segmentLength))
+      local nx, ny
+      if a.nx and a.ny and b.nx and b.ny then
+        nx = a.nx + (b.nx - a.nx) * t
+        ny = a.ny + (b.ny - a.ny) * t
+        local normalLength = math.sqrt(nx * nx + ny * ny)
+        if normalLength > 0.001 then nx, ny = nx / normalLength, ny / normalLength end
+      end
       samples[#samples + 1] = {
         x = a.x + (b.x - a.x) * t,
         y = a.y + (b.y - a.y) * t,
-        z = a.z + (b.z - a.z) * t
+        z = a.z + (b.z - a.z) * t,
+        nx = nx or a.nx,
+        ny = ny or a.ny,
+        pathIndex = (t < 0.5 and a.pathIndex or b.pathIndex) or a.pathIndex
       }
     end
   end
@@ -238,6 +283,156 @@ local function driftOffset(p, nx, ny, baseOffset)
     footprint = math.sqrt(halfLength * halfLength + halfWidth * halfWidth)
   end
   return math.max(baseOffset, footprint + 0.35 + 0.24 * SETTINGS.scale)
+end
+
+-- Return a stable planar heading even for old recordings that have no heading.
+local function pathHeading(source, index)
+  local p = source[index]
+  if p.fx and p.fy then
+    local length = math.sqrt(p.fx * p.fx + p.fy * p.fy)
+    if length > 0.001 then return p.fx / length, p.fy / length end
+  end
+  local a = source[math.max(1, index - 1)]
+  local b = source[math.min(#source, index + 1)]
+  local dx, dy = b.x - a.x, b.y - a.y
+  local length = math.sqrt(dx * dx + dy * dy)
+  if length > 0.001 then return dx / length, dy / length end
+  return 1, 0
+end
+
+-- Add intermediate poses between recorded points. A cone can be clear at both
+-- endpoints and still intersect the car between them during a fast turn.
+local function makeSweepPoses(source, margin)
+  local poses = {}
+  local headingsX, headingsY = {}, {}
+  for i = 1, #source do headingsX[i], headingsY[i] = pathHeading(source, i) end
+
+  local function addPose(x, y, fx, fy, halfLength, halfWidth)
+    local length = math.sqrt(fx * fx + fy * fy)
+    if length < 0.001 then fx, fy = 1, 0 else fx, fy = fx / length, fy / length end
+    halfLength, halfWidth = halfLength or 2.4, halfWidth or 1.0
+    local alongLimit, lateralLimit = halfLength + margin, halfWidth + margin
+    poses[#poses + 1] = {
+      x=x, y=y, fx=fx, fy=fy, rightX=-fy, rightY=fx,
+      alongLimit=alongLimit, lateralLimit=lateralLimit,
+      radiusSq=(alongLimit * alongLimit) + (lateralLimit * lateralLimit)
+    }
+  end
+
+  for i, a in ipairs(source) do
+    local ax, ay = headingsX[i], headingsY[i]
+    addPose(a.x, a.y, ax, ay, a.carHalfLength, a.carHalfWidth)
+    local b = source[i + 1]
+    if b then
+      local bx, by = headingsX[i + 1], headingsY[i + 1]
+      local distance = math.sqrt((b.x - a.x) * (b.x - a.x) + (b.y - a.y) * (b.y - a.y))
+      local steps = math.max(1, math.min(8, math.ceil(distance / 0.5)))
+      for step = 1, steps - 1 do
+        local t = step / steps
+        local fx, fy = ax + (bx - ax) * t, ay + (by - ay) * t
+        if fx * fx + fy * fy < 0.0001 then fx, fy = ax, ay end
+        addPose(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, fx, fy,
+          (a.carHalfLength or 2.4) + ((b.carHalfLength or 2.4) - (a.carHalfLength or 2.4)) * t,
+          (a.carHalfWidth or 1.0) + ((b.carHalfWidth or 1.0) - (a.carHalfWidth or 1.0)) * t)
+      end
+    end
+  end
+  return poses
+end
+
+-- A small spatial grid keeps the swept-clearance pass inexpensive on long runs.
+local function makePoseGrid(poses)
+  local grid, cell = {}, 16.0
+  for _, p in ipairs(poses) do
+    local key = math.floor(p.x / cell) * 1000000 + math.floor(p.y / cell)
+    local bucket = grid[key]
+    if not bucket then bucket = {}; grid[key] = bucket end
+    bucket[#bucket + 1] = p
+  end
+  return grid, cell
+end
+
+local function slabExit(value, direction, limit)
+  if direction > 0.000001 then return (limit - value) / direction end
+  if direction < -0.000001 then return (-limit - value) / direction end
+  return math.huge
+end
+
+-- Move one cone along its outward normal until it is outside every nearby
+-- oriented vehicle rectangle. This is a 2D ray/slab test, not a physics query.
+local function pushConeOutside(q, grid, cell)
+  if not q.nx or not q.ny then return q end
+  local normalLength = math.sqrt(q.nx * q.nx + q.ny * q.ny)
+  if normalLength < 0.001 then return q end
+  local dx, dy = q.nx / normalLength, q.ny / normalLength
+  local startX, startY, distance = q.x, q.y, 0
+  -- Beyond a few metres, skipping is cleaner than folding the line back
+  -- through the inside of a very tight turn.
+  local maxPush = 4.0
+
+  for _ = 1, 48 do
+    local x, y = startX + dx * distance, startY + dy * distance
+    local gx, gy = math.floor(x / cell), math.floor(y / cell)
+    local baseKey = gx * 1000000 + gy
+    local farthestExit = nil
+    for ox = -1, 1 do
+      local rowKey = baseKey + ox * 1000000
+      for oy = -1, 1 do
+        local bucket = grid[rowKey + oy]
+        if bucket then
+          for _, p in ipairs(bucket) do
+            local px, py = x - p.x, y - p.y
+            if px * px + py * py <= p.radiusSq then
+              local along = px * p.fx + py * p.fy
+              if math.abs(along) <= p.alongLimit then
+                local lateral = px * p.rightX + py * p.rightY
+                if math.abs(lateral) <= p.lateralLimit then
+                  local alongExit = slabExit(along, dx * p.fx + dy * p.fy, p.alongLimit)
+                  local lateralExit = slabExit(lateral, dx * p.rightX + dy * p.rightY, p.lateralLimit)
+                  local exitDistance = math.min(alongExit, lateralExit)
+                  if exitDistance < 0 then exitDistance = 0 end
+                  if exitDistance < math.huge and (not farthestExit or exitDistance > farthestExit) then
+                    farthestExit = exitDistance
+                  end
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+    if not farthestExit then
+      q.x, q.y, q.nx, q.ny = x, y, dx, dy
+      return q
+    end
+    distance = distance + farthestExit + 0.035
+    if distance > maxPush then return nil end
+  end
+  return nil
+end
+
+-- With Drift Widen OFF, exact manual width is intentional, so do not move
+-- cones. With it ON, protect the whole swept car footprint during turns.
+local function sweptClearLines(lines, source, spacing)
+  if not SETTINGS.driftWidth or #source < 2 then return lines end
+  local margin = 0.35 + 0.24 * SETTINGS.scale
+  local minimumGap = math.max(0.35, spacing * 0.40)
+  local grid, cell = makePoseGrid(makeSweepPoses(source, margin))
+  for lineIndex, line in ipairs(lines) do
+    local safe = {}
+    for _, q in ipairs(line) do
+      local pushed = pushConeOutside(q, grid, cell)
+      if pushed then
+        local last = safe[#safe]
+        if not last or (pushed.x - last.x) * (pushed.x - last.x)
+          + (pushed.y - last.y) * (pushed.y - last.y) >= minimumGap * minimumGap then
+          safe[#safe + 1] = pushed
+        end
+      end
+    end
+    lines[lineIndex] = safe
+  end
+  return lines
 end
 
 -- Build two smooth offset polylines using a centered, two-point lookahead.
@@ -263,16 +458,20 @@ local function buildOffsetLines(source, halfWidth, spacing)
         raw[lineIndex][#raw[lineIndex] + 1] = {
           x = p.x + nx * offset * sign,
           y = p.y + ny * offset * sign,
-          z = p.z
+          z = p.z,
+          nx = nx * sign,
+          ny = ny * sign,
+          pathIndex = i
         }
       end
     end
   end
   local maxSamples = math.max(2, math.floor(SETTINGS.maxCones / 2))
-  return {
+  local lines = {
     resampleLine(raw[1], spacing, maxSamples),
     resampleLine(raw[2], spacing, maxSamples)
   }
+  return sweptClearLines(lines, source, spacing)
 end
 
 local function groundZ(x, y, recordedZ)
@@ -417,7 +616,7 @@ function M.onUpdate(dtReal)
       end
       local pos = vehiclePosition(veh, id)
       if pos then
-        local p = vehiclePathPoint(veh, pos)
+        local p = vehiclePathPoint(veh, pos, id)
         local last = points[#points]
         if not last then
           points[1] = p

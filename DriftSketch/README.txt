@@ -1,4 +1,4 @@
-DRIFTSKETCH 0.4.0 — PROTOTYPE
+DRIFTSKETCH 0.5.0 — PROTOTYPE
 ================================
 
 Record a real drive, then build a cone-marked path from your actual trajectory.
@@ -7,7 +7,7 @@ DriftSketch is a standalone mod. It does not require CreatorPack.
 INSTALL
 -------
 1. Open BeamNG.drive > Mods > Open Mod Folder (or your user mods folder).
-2. Copy DriftSketch_v0.4.0.zip there without extracting it.
+2. Copy DriftSketch_v0.5.0.zip there without extracting it.
 3. Enable DriftSketch in the Mod Manager if needed.
 4. In a map, open the top app menu > Add App > DriftSketch.
 
@@ -23,19 +23,41 @@ WORKFLOW
 6. Clear generated cones & saved drives deletes only this mod's generated
    objects and saved paths. It does not clear map objects or other mods.
 
-NEW IN 0.4.0
+NEW IN 0.5.0
 ------------
-- Drift widen is ON by default. Base width is now the manual minimum: a car
+- Added swept turn clearance. Cones are now checked against the full oriented
+  vehicle rectangle at nearby recorded poses and at intermediate poses between
+  them. This catches cones from adjacent path points that could otherwise end
+  up under the side, rear bumper or rear wing during a turn.
+- When available, the real OOBB half axes are projected onto the vehicle basis,
+  so accessories such as a rear wing can contribute to the footprint. Vehicles
+  without initialized OOBB data use the safe initial-dimension fallback.
+- If a cone is inside that swept footprint, it is pushed outward along its
+  path normal. In extreme turns where no reasonable outward position is safe,
+  that cone is skipped instead of being placed inside the car or forming a
+  large distorted loop. Both sides are still generated wherever space allows.
+  Nearly stacked cones are also thinned after an outward correction.
+- The clearance pass runs only while building/rebuilding, not while driving.
+  It uses a spatial grid and the existing performance cap; it does not create
+  JBeam props or perform per-frame physics queries.
+- Drift widen OFF bypasses this automatic adjustment and preserves exact fixed
+  manual width as requested.
+
+DRIFT WIDTH / REAR CLEARANCE
+----------------------------
+- Drift widen is ON by default. Base width is the manual minimum: a car
   driving straight keeps that base width, while a sideways car gets extra room.
-- Clearance uses the vehicle's actual initial length and width plus its forward
-  direction relative to the path normal. The full oriented footprint is used,
-  including the rear overhang, rather than only protecting the front.
+- Clearance uses the vehicle's real OOBB half axes when available (with its
+  initial length/width as fallback) plus its forward direction relative to the
+  path normal. The full oriented footprint is used, including the rear overhang,
+  rather than only protecting the front.
 - Recording prefers the real vehicle OOBB center instead of assuming the JBeam
   reference node is the center of the car.
-- Drift widen OFF restores an exact fixed manual width on both sides.
-- The collapsible "SI PUNON PANELI" section explains every option in Albanian.
 - Default base width is 4.2 m. For example, a typical 4.8 m car needs about
   6 m total width when fully sideways, including cone and safety clearance.
+- The swept pass adds protection against neighboring poses during bends; it is
+  not a promise that a different, arbitrary driving line can never intersect a
+  static cone. Solid / car damage remains the option for physical impacts.
 
 PANEL SETTINGS
 --------------
@@ -45,8 +67,8 @@ Spacing: approximate distance between cones on the same line; lower means more
 cones. Inner and outer curves are sampled independently.
 Base width: manual distance between the two lines; the minimum with Drift
 widen ON, or the exact fixed distance with it OFF.
-Drift widen: automatic extra lateral clearance for sideways driving and the
-rear of the car. Both sides remain equal.
+Drift widen: automatic extra lateral clearance for sideways driving, the rear
+of the car and neighboring poses in turns. Both sides remain equal.
 Mesh scale: visual cone size. Clearance includes the scaled base radius.
 Ground fallback: height relative to the recorded point only when no ground
 raycast hits. -0.55 m is the normal starting value.
@@ -65,6 +87,8 @@ BEHAVIOR AND SAFETY
 - Uses real TSStatic meshes, not hundreds of JBeam cone vehicles.
 - Pure rotation in place does not create a fake path.
 - Smooth path keeps tight bends and independent inner/outer cone spacing.
+- Swept turn clearance uses oriented 2D rectangle/ray tests and a spatial grid;
+  it runs during Stop & Build or Rebuild, never in the live recording loop.
 - Collision reloads happen only when switching between visual and solid modes.
 - Generated objects are tagged DriftSketch_Cones and tracked individually.
 - Vehicle-specific settings are not required; dimensions and direction are
@@ -75,6 +99,10 @@ VALIDATION
 Automated Lua smoke tests cover straight versus sideways clearance, full rear
 footprint allowance, exact fixed width with Drift widen OFF, curved spacing,
 stationary spins, collision switching and replay-object retention.
+A dedicated drifting-bend regression checks every generated cone against
+nearby and intermediate vehicle poses; the old 0.4.0 algorithm fails that test.
+A separate check covers real OOBB half-axis/rear-wing clearance and fallback
+behavior. A long-run stress case covers roughly 700 points and 1,500+ cones.
 Angular runtime and Chromium interaction tests cover the panel and commands.
 A real BeamNG pass is still recommended for each vehicle/map to tune width,
 ground fallback, collision behavior and performance for your driving style.
