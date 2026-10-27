@@ -1,4 +1,4 @@
-DRIFTSKETCH 0.6.0 — PROTOTYPE
+DRIFTSKETCH 0.7.0 — PROTOTYPE
 ================================
 
 Record a real drive, then build an object-marked path from your actual trajectory.
@@ -7,7 +7,7 @@ DriftSketch is a standalone mod. It does not require CreatorPack.
 INSTALL
 -------
 1. Open BeamNG.drive > Mods > Open Mod Folder (or your user mods folder).
-2. Copy DriftSketch_v0.6.0.zip there without extracting it.
+2. Copy DriftSketch_v0.7.0.zip there without extracting it.
 3. Enable DriftSketch in the Mod Manager if needed.
 4. In a map, open the top app menu > Add App > DriftSketch.
 
@@ -23,34 +23,47 @@ WORKFLOW
 6. Clear generated objects & saved drives deletes only this mod's generated
    objects and saved paths. It does not clear map objects or other mods.
 
-NEW IN 0.6.0
+NEW IN 0.7.0
 ------------
-- Added two original tire meshes: Single Tire for light path markers and Tire
-  Stack (three stacked tires) for visible clipping points. Both are real
-  TSStatic meshes, work on both sides, support Rebuild/Clear and use the same
-  optional Solid / car damage mode as the cones.
-- Tire radius is included in Drift widen and swept turn clearance. Drift widen
-  OFF still preserves exact manual width.
-- Single Tire is 352 triangles; Tire Stack is 768 triangles. No JBeam tire
-  vehicles or extracted BeamNG assets are used.
+- Added real Start and Finish gates at the ends of the recorded path. They are
+  original low-poly TSStatic meshes, not an overlay, JBeam props or extracted
+  BeamNG assets. Start / Finish gates is ON by default and can be switched OFF.
+- Each gate follows the local path tangent through a quaternion and TSStatic
+  setPosRot. The local +Y axis faces along the path, so the frame crosses the
+  driving line instead of remaining aligned to the world axes.
+- Gate width adapts to the vehicle footprint, Drift widen and nearby swept or
+  curved marker positions. The inner edges of the complete posts and feet stay
+  at least one metre outside nearby marker lines, including after width scaling.
+- Start uses a green banner and geometric START lettering; Finish uses a red
+  banner, FINISH lettering and checker details. Start is 378
+  triangles and Finish is 418 triangles, with no external textures.
+- Gates work with cone, pylon, Single Tire and Tire Stack paths, Both sides,
+  Rebuild/Clear, replay object retention and optional Solid / car damage.
+  Both gates count toward the performance cap. Turning gates OFF rebuilds saved
+  drives without them and returns those two slots to the path markers.
+- A closed loop whose endpoints are within 1.5 m gets a Start gate but suppresses
+  an overlapping Finish gate. This keeps donut/closed-loop geometry clean.
 
-- Added swept turn clearance. Cones are now checked against the full oriented
-  vehicle rectangle at nearby recorded poses and at intermediate poses between
-  them. This catches cones from adjacent path points that could otherwise end
-  up under the side, rear bumper or rear wing during a turn.
-- When available, the real OOBB half axes are projected onto the vehicle basis,
-  so accessories such as a rear wing can contribute to the footprint. Vehicles
+EXISTING CLEARANCE AND TIRE PROPS
+---------------------------------
+- Single Tire and Tire Stack are original TSStatic meshes for light path markers
+  and visible clipping points. Tire radius is included in Drift widen and swept
+  turn clearance. Single Tire is 352 triangles; Tire Stack is 768 triangles.
+- Swept turn clearance checks markers against the full oriented vehicle
+  rectangle at nearby recorded poses and at intermediate poses between them.
+  This protects the side, rear bumper and rear wing during a turn.
+- When available, real OOBB half axes are projected onto the vehicle basis, so
+  accessories such as a rear wing can contribute to the footprint. Vehicles
   without initialized OOBB data use the safe initial-dimension fallback.
-- If a cone is inside that swept footprint, it is pushed outward along its
+- If a marker is inside that swept footprint, it is pushed outward along its
   path normal. In extreme turns where no reasonable outward position is safe,
-  that cone is skipped instead of being placed inside the car or forming a
-  large distorted loop. Both sides are still generated wherever space allows.
-  Nearly stacked cones are also thinned after an outward correction.
+  that marker is skipped instead of being placed inside the car or forming a
+  large distorted loop. Nearly stacked markers are thinned after correction.
 - The clearance pass runs only while building/rebuilding, not while driving.
   It uses a spatial grid and the existing performance cap; it does not create
   JBeam props or perform per-frame physics queries.
-- Drift widen OFF bypasses this automatic adjustment and preserves exact fixed
-  manual width as requested.
+- Drift widen OFF bypasses this automatic marker adjustment and preserves exact
+  fixed manual width as requested.
 
 DRIFT WIDTH / REAR CLEARANCE
 ----------------------------
@@ -79,22 +92,27 @@ Base width: manual distance between the two lines; the minimum with Drift
 widen ON, or the exact fixed distance with it OFF.
 Drift widen: automatic extra lateral clearance for sideways driving, the rear
 of the car and neighboring poses in turns. Both sides remain equal.
+Start / Finish gates: ON creates the two aligned endpoint frames and reserves
+their places in the object cap; OFF removes them from saved builds.
 Mesh scale: visual object size. Clearance includes the scaled base radius.
 Ground fallback: height relative to the recorded point only when no ground
 raycast hits. -0.55 m is the normal starting value.
-Performance cap: maximum total generated objects. Excess points are sampled
-more sparsely instead of creating unlimited objects.
+Performance cap: maximum total generated objects, including endpoint gates.
+Excess points are sampled more sparsely instead of creating unlimited objects.
 Smooth path: light path and heading smoothing to reduce small kinks.
 Keep builds: preserve previous runs when starting a new recording.
 Solid / car damage: OFF uses collisionType=None for visual-only objects. ON uses
 Visible Mesh Final static collision, so impacts can stop or damage the car.
-Changing this or Drift widen automatically rebuilds saved drives when stopped.
+Changing this, Drift widen or Start / Finish gates automatically rebuilds saved
+drives when stopped.
 Rebuild: regenerate saved paths with current settings.
 Clear: remove generated objects and saved drives only.
 
 BEHAVIOR AND SAFETY
 -------------------
 - Uses real TSStatic meshes, not hundreds of JBeam cone vehicles.
+- Endpoint gates share the same tracked-object lifecycle and collision setting;
+  they are rebuilt or cleared with the path and remain for replay like markers.
 - Pure rotation in place does not create a fake path.
 - Smooth path keeps tight bends and independent inner/outer cone spacing.
 - Swept turn clearance uses oriented 2D rectangle/ray tests and a spatial grid;
@@ -108,7 +126,9 @@ VALIDATION
 ----------
 Automated Lua smoke tests cover straight versus sideways clearance, full rear
 footprint allowance, exact fixed width with Drift widen OFF, curved spacing,
-stationary spins, collision switching and replay-object retention.
+stationary spins, collision switching and replay-object retention. Gate tests
+cover default ON, mesh paths, endpoint positions, +Y quaternion alignment,
+adaptive sideways clearance, collision/toggle rebuilds and cap reservation.
 A dedicated drifting-bend regression checks every generated cone against
 nearby and intermediate vehicle poses; the old 0.4.0 algorithm fails that test.
 A separate check covers real OOBB half-axis/rear-wing clearance and fallback
@@ -121,6 +141,6 @@ ground fallback, collision behavior and performance for your driving style.
 
 PROTOTYPE ASSETS
 ----------------
-The cone, pylon and tire meshes were created specifically for DriftSketch. They
-are original low-poly placeholder assets, not extracted BeamNG content. Replace or
-license assets appropriately before using them in a commercial redistribution.
+The cone, pylon, tire and gate meshes were created specifically for DriftSketch.
+They are original low-poly prototype assets, not extracted BeamNG content.
+Replace or license assets appropriately before commercial redistribution.

@@ -1,4 +1,4 @@
--- DriftSketch 0.6.0 — record a drive, build real low-poly mesh objects, keep them for replay.
+-- DriftSketch 0.7.0 — record a drive, build real low-poly mesh objects, keep them for replay.
 local M = {}
 
 local SETTINGS = {
@@ -11,7 +11,8 @@ local SETTINGS = {
   smooth = true,
   keepBuilds = true,
   collision = false,
-  driftWidth = true
+  driftWidth = true,
+  gates = true
 }
 
 local recording = false
@@ -442,7 +443,7 @@ end
 
 -- Build two smooth offset polylines using a centered, two-point lookahead.
 -- This avoids the abrupt one-segment normals that made tight turns jagged.
-local function buildOffsetLines(source, halfWidth, spacing)
+local function buildOffsetLines(source, halfWidth, spacing, reserveObjects)
   local path = smoothPath(source)
   if #path < 2 then return {{}, {}} end
   local raw = {{}, {}}
@@ -471,7 +472,7 @@ local function buildOffsetLines(source, halfWidth, spacing)
       end
     end
   end
-  local maxSamples = math.max(2, math.floor(SETTINGS.maxCones / 2))
+  local maxSamples = math.max(2, math.floor((SETTINGS.maxCones - (reserveObjects or 0)) / 2))
   local lines = {
     resampleLine(raw[1], spacing, maxSamples),
     resampleLine(raw[2], spacing, maxSamples)
@@ -500,17 +501,19 @@ local function shapePath()
 end
 
 local function objectNoun()
+  if SETTINGS.gates then return 'objects' end
   if SETTINGS.mesh == 'tire' then return 'tires' end
   if SETTINGS.mesh == 'tireStack' then return 'tire stacks' end
   return 'cones'
 end
 
-local function spawnMesh(x, y, z)
+local function spawnMesh(x, y, z, options)
   if not createObject then return nil end
+  options = options or {}
   local ok, obj = pcall(createObject, 'TSStatic')
   if not ok or not obj then return nil end
   objectSerial = objectSerial + 1
-  obj.shapeName = shapePath()
+  obj.shapeName = options.shapeName or shapePath()
   obj.canSave = false
   obj.useInstanceRenderData = true
   if obj.setField then
@@ -518,17 +521,90 @@ local function spawnMesh(x, y, z)
     obj:setField('decalType', 0, 'None')
   end
   if SETTINGS.collision then collisionWasSolid = true; collisionDirty = true end
-  obj:setPosition(vec3(x, y, z))
-  local scale = SETTINGS.scale
-  obj:setScale(vec3(scale, scale, scale))
+  local rotation = options.rotation
+  if rotation and obj.setPosRot then
+    obj:setPosRot(x, y, z, rotation.x, rotation.y, rotation.z, rotation.w)
+  else
+    obj:setPosition(vec3(x, y, z))
+  end
+  local scale = options.scale or SETTINGS.scale
+  if type(scale) == 'number' then scale = vec3(scale, scale, scale) end
+  obj:setScale(scale)
   obj:registerObject('driftSketch_' .. tostring(objectSerial))
   if scenetree and scenetree.MissionGroup then scenetree.MissionGroup:add(obj) end
   spawned[#spawned + 1] = obj
   return obj
 end
 
+local function atan2(y, x)
+  if math.atan2 then return math.atan2(y, x) end
+  if x > 0 then return math.atan(y / x) end
+  if x < 0 then return math.atan(y / x) + (y >= 0 and math.pi or -math.pi) end
+  if y > 0 then return math.pi / 2 end
+  if y < 0 then return -math.pi / 2 end
+  return 0
+end
+
+local function pathTangent(source, index)
+  local a = source[math.max(1, index - 1)]
+  local b = source[math.min(#source, index + 1)]
+  local dx, dy = b.x - a.x, b.y - a.y
+  local length = math.sqrt(dx * dx + dy * dy)
+  if length > 0.001 then return dx / length, dy / length end
+  local p = source[index]
+  if p and p.fx and p.fy then return p.fx, p.fy end
+  return 1, 0
+end
+
+local function gateRotation(tx, ty)
+  -- BeamNG's vehicle/world convention uses +Y as local forward.
+  if quatFromDir then
+    local ok, q = pcall(quatFromDir, vec3(tx, ty, 0))
+    if ok and q then return q end
+  end
+  if quat then
+    local yaw = atan2(-tx, ty)
+    local ok, q = pcall(quat, 0, 0, math.sin(yaw * 0.5), math.cos(yaw * 0.5))
+    if ok and q then return q end
+  end
+  return nil
+end
+
+local function spawnGate(path, index, kind, lines)
+  local p = path[index]
+  if not p then return nil end
+  local tx, ty = pathTangent(path, index)
+  local nx, ny = -ty, tx
+  local offset = driftOffset(p, nx, ny, SETTINGS.width * 0.5)
+  -- Post centres are at local X +/-2.82 and each foot extends 0.28 inward.
+  -- Size from the inner foot edge (+/-2.54), so the whole post assembly --
+  -- not only its centre -- keeps the requested clearance after X scaling.
+  local insideEdge = math.max(2.7, offset + 1.0)
+  -- Nearby swept/curved markers can sit wider than the endpoint's local
+  -- offset. Include them when they are close to the gate plane.
+  if lines then
+    for _, line in ipairs(lines) do
+      for _, q in ipairs(line) do
+        local dx, dy = q.x - p.x, q.y - p.y
+        local along = dx * tx + dy * ty
+        if math.abs(along) <= 2.0 then
+          local lateral = math.abs(dx * nx + dy * ny)
+          insideEdge = math.max(insideEdge, lateral + 1.0)
+        end
+      end
+    end
+  end
+  local shape = kind == 'finish' and 'gate_finish.dae' or 'gate_start.dae'
+  return spawnMesh(p.x, p.y, groundZ(p.x, p.y, p.z), {
+    shapeName='/art/shapes/driftsketch/' .. shape,
+    scale=vec3(insideEdge / 2.54, 1, 1),
+    rotation=gateRotation(tx, ty)
+  })
+end
+
 local function buildPath(path)
-  local lines = buildOffsetLines(path, SETTINGS.width * 0.5, math.max(0.5, SETTINGS.spacing))
+  local reserveObjects = SETTINGS.gates and 2 or 0
+  local lines = buildOffsetLines(path, SETTINGS.width * 0.5, math.max(0.5, SETTINGS.spacing), reserveObjects)
   local before = #spawned
   local count = math.max(#lines[1], #lines[2])
   for index = 1, count do
@@ -536,6 +612,12 @@ local function buildPath(path)
       local p = line[index]
       if p then spawnMesh(p.x, p.y, groundZ(p.x, p.y, p.z)) end
     end
+  end
+  if SETTINGS.gates and #path >= 2 then
+    spawnGate(path, 1, 'start', lines)
+    local a, b = path[1], path[#path]
+    local dx, dy = b.x - a.x, b.y - a.y
+    if dx * dx + dy * dy > 1.5 * 1.5 then spawnGate(path, #path, 'finish', lines) end
   end
   return #spawned - before
 end
@@ -608,7 +690,7 @@ function M.setSetting(key, value)
     SETTINGS.groundOffset = math.max(-2.0, math.min(1.0, tonumber(value) or SETTINGS.groundOffset))
   elseif key == 'maxCones' then
     SETTINGS.maxCones = math.max(100, math.min(3000, math.floor(tonumber(value) or SETTINGS.maxCones)))
-  elseif key == 'collision' or key == 'driftWidth' then
+  elseif key == 'collision' or key == 'driftWidth' or key == 'gates' then
     SETTINGS[key] = not (value == false or value == 'false' or value == 0)
     if not recording and #savedPaths > 0 then return M.rebuild() end
   elseif key == 'smooth' or key == 'keepBuilds' then

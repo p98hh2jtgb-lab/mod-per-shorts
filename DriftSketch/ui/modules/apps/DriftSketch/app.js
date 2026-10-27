@@ -5,11 +5,11 @@ angular.module('beamng.apps')
     restrict: 'EA',
     templateUrl: '/ui/modules/apps/DriftSketch/app.html',
     link: function(scope) {
-      scope.modVersion = '0.6.0';
+      scope.modVersion = '0.7.0';
       scope.state = {recording:false, pointCount:0, pathLength:0, buildCount:0, coneCount:0,
         vehicleName:'No vehicle', status:'Loading DriftSketch…', statusError:false};
       scope.settings = {mesh:'cone', spacing:2.4, width:4.2, scale:1.0,
-        groundOffset:-0.55, maxCones:1200, smooth:true, keepBuilds:true, collision:false, driftWidth:true};
+        groundOffset:-0.55, maxCones:1200, smooth:true, keepBuilds:true, collision:false, driftWidth:true, gates:true};
 
       function lua(command) {
         if ($window.bngApi && $window.bngApi.engineLua) $window.bngApi.engineLua(command);

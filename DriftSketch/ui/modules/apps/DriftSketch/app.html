@@ -34,7 +34,7 @@
     .ds-static{border-color:rgba(105,214,221,.14);background:rgba(105,214,221,.045);color:#a5e4e8;letter-spacing:.01em}
     .ds-field input[type=range]{width:100%;height:3px;margin-top:11px;accent-color:#ff7a38}
     .ds-checks{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:12px}.ds-check{display:flex;align-items:center;gap:7px;min-height:31px;padding:7px 8px;border:1px solid rgba(255,255,255,.05);border-radius:8px;color:rgba(197,215,219,.55);font-size:8px;cursor:pointer}
-    .ds-check input{accent-color:#ff7a38}.ds-check.drift,.ds-check.solid{grid-column:1/3}.ds-check.drift{border-color:rgba(105,214,221,.15);background:rgba(105,214,221,.035);color:#a5e4e8}.ds-check.solid{border-color:rgba(255,112,42,.18);background:rgba(255,112,42,.045);color:#ffb18a}.ds-check.drift small,.ds-check.solid small{margin-left:auto;color:rgba(190,220,225,.42);font-size:7px}
+    .ds-check input{accent-color:#ff7a38}.ds-check.drift,.ds-check.gates,.ds-check.solid{grid-column:1/3}.ds-check.drift{border-color:rgba(105,214,221,.15);background:rgba(105,214,221,.035);color:#a5e4e8}.ds-check.gates{border-color:rgba(171,137,255,.16);background:rgba(171,137,255,.04);color:#d0bcff}.ds-check.solid{border-color:rgba(255,112,42,.18);background:rgba(255,112,42,.045);color:#ffb18a}.ds-check.drift small,.ds-check.gates small,.ds-check.solid small{margin-left:auto;color:rgba(190,220,225,.42);font-size:7px}
     .ds-help{margin-top:10px;border:1px solid rgba(255,255,255,.05);border-radius:9px;background:rgba(255,255,255,.015)}.ds-help summary{padding:9px 10px;outline:none;color:rgba(255,174,126,.58);font-size:8px;font-weight:800;letter-spacing:.09em;cursor:pointer}.ds-help-body{padding:0 10px 9px;color:rgba(190,211,216,.50);font-size:8px;line-height:1.5}.ds-help-body p{margin:6px 0}.ds-help-body b{color:rgba(223,235,238,.72)}
     .ds-foot{display:flex;justify-content:space-between;gap:10px;margin-top:12px;color:rgba(174,195,201,.30);font-size:8px}.ds-foot b{color:rgba(255,150,98,.42);font-weight:600}
     @media(max-width:520px){.ds-root{padding:7px}.ds-panel{width:calc(100vw - 14px);max-height:calc(100vh - 14px)}}
@@ -82,6 +82,7 @@
           <label class="ds-check"><input type="checkbox" ng-model="settings.smooth" ng-change="pushSetting('smooth')">Smooth path</label>
           <label class="ds-check"><input type="checkbox" ng-model="settings.keepBuilds" ng-change="pushSetting('keepBuilds')">Keep builds</label>
           <label class="ds-check drift" title="ON: manual width is the minimum; sideways driving and neighboring turn poses get swept clearance. OFF: exact fixed manual width."><input type="checkbox" ng-model="settings.driftWidth" ng-change="pushSetting('driftWidth')">Drift widen <small>AUTO + TURN CLEARANCE</small></label>
+          <label class="ds-check gates" title="Build a real oriented START gate at the first path point and a FINISH gate at the last."><input type="checkbox" ng-model="settings.gates" ng-change="pushSetting('gates')">Start / Finish gates <small>2 MESHES</small></label>
           <label class="ds-check solid" title="Real static collision. Impacts can stop or damage the car. Existing paths rebuild automatically."><input type="checkbox" ng-model="settings.collision" ng-change="pushSetting('collision')">Solid / car damage <small>REBUILDS</small></label>
         </div>
         <button class="ds-btn rebuild wide" ng-click="rebuild()" ng-disabled="state.recording || state.buildCount === 0">↻ REBUILD WITH CURRENT SETTINGS</button>
@@ -96,9 +97,10 @@
           <p><b>Spacing:</b> distanca mes koneve në të njëjtën vijë. Më vogël = më shumë kone.</p>
           <p><b>Base width:</b> hapsira bazë mes dy vijave. Me Drift widen ON është gjerësia minimale.</p>
           <p><b>Drift widen:</b> ON zgjeron kur makina është anësor, mbron mbrapa dhe kontrollon edhe kone-t e pozicioneve fqinje gjatë kthesave; OFF mban width fiks. Në kthesa ekstreme hiqet kone që nuk ka vend të sigurt.</p>
-          <p><b>Mesh scale:</b> madhësia e konusit, pa ndryshuar spacing/width.</p>
+          <p><b>Start / Finish gates:</b> dy mesh-e reale në skajet e path-it, të orientuara me drejtimin e makinës dhe më gjera se kone-t/gomat. Fikje i heq të dyja.</p>
+          <p><b>Mesh scale:</b> madhësia e objektit anësor, pa ndryshuar spacing/width.</p>
           <p><b>Ground fallback:</b> lartësia rezervë nëse toka nuk gjendet me raycast. Zakonisht lere -0.55 m.</p>
-          <p><b>Performance cap:</b> numri maksimal i objekteve për FPS.</p>
+          <p><b>Performance cap:</b> numri maksimal i objekteve, duke përfshirë portat, për FPS.</p>
           <p><b>Smooth path:</b> butëson dridhjet/kthesat e vogla të vijës së regjistruar.</p>
           <p><b>Keep builds:</b> ruan pistat e vjetra kur regjistron run të ri.</p>
           <p><b>Solid / car damage:</b> ON jep collision real dhe goditja mund të dëmtojë makinën. OFF = vetëm vizual.</p>

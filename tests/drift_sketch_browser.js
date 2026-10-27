@@ -40,7 +40,7 @@ const {chromium: playwright} = require(path.join(MODULES, 'playwright-core'));
       const scope = angular.element(document.querySelector('.ds-panel')).scope();
       scope.$root.$broadcast('driftSketch.state', {recording:false,pointCount:96,pathLength:182.4,buildCount:1,coneCount:248,
         vehicleName:'Any Vehicle · Live Path',status:'Built 248 cones. Open BeamNG replay — they stay in the scene.',statusError:false,
-        settings:{mesh:'cone',spacing:2.4,width:4.2,scale:1,groundOffset:-0.55,maxCones:1200,smooth:true,keepBuilds:true,collision:false,driftWidth:true}});
+        settings:{mesh:'cone',spacing:2.4,width:4.2,scale:1,groundOffset:-0.55,maxCones:1200,smooth:true,keepBuilds:true,collision:false,driftWidth:true,gates:true}});
     });
     await page.waitForTimeout(300);
     const state = await page.evaluate(() => {
@@ -58,6 +58,9 @@ const {chromium: playwright} = require(path.join(MODULES, 'playwright-core'));
     assert(await page.locator('.ds-check.drift input').isChecked());
     await page.locator('.ds-check.drift').click();
     assert(await page.evaluate(() => window.__commands.includes('extensions.driftSketch.setSetting("driftWidth",false)')));
+    assert(await page.locator('.ds-check.gates input').isChecked());
+    await page.locator('.ds-check.gates').click();
+    assert(await page.evaluate(() => window.__commands.includes('extensions.driftSketch.setSetting("gates",false)')));
     await page.locator('.ds-check.solid').click();
     assert(await page.evaluate(() => window.__commands.includes('extensions.driftSketch.setSetting("collision",true)')));
     await page.locator('.ds-help summary').click();
@@ -67,7 +70,7 @@ const {chromium: playwright} = require(path.join(MODULES, 'playwright-core'));
     await page.locator('.ds-help summary').click();
     await page.screenshot({path:'/tmp/driftsketch-panel.png'});
     assert.deepStrictEqual(errors, []);
-    console.log('✓ DriftSketch Angular UI renders; Start, Drift widen, Solid and Albanian help work without browser errors');
+    console.log('✓ DriftSketch Angular UI renders; Start, Drift widen, Gates, Solid and Albanian help work without browser errors');
   } finally {
     await browser.close();
     await new Promise(resolve => server.close(resolve));
