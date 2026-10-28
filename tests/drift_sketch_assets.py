@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate DriftSketch 0.9.0 COLLADA shapes, materials and Lua/geometry agreement.
+"""Validate DriftSketch 0.9.1 COLLADA shapes, materials and Lua/geometry agreement.
 
 Standard library only. Checks every DAE in art/shapes/driftsketch_v09:
 Collada header, sources, material slots and bindings, index bounds,

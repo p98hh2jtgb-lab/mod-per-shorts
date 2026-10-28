@@ -1,7 +1,7 @@
 {
   "name": "DriftSketch",
   "author": "daimy",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "description": "Record any vehicle and build orange traffic cones or red/white/blue tyre walls, truss START/FINISH gates and red/white stunt rings with adjustable count, size and gap.",
   "directive": "driftSketchPanel",
   "domElement": "<drift-sketch-panel></drift-sketch-panel>",

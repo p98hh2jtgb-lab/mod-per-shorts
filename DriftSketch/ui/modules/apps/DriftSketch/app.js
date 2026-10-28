@@ -5,15 +5,15 @@ angular.module('beamng.apps')
     restrict: 'EA',
     templateUrl: '/ui/modules/apps/DriftSketch/app.html',
     link: function(scope) {
-      scope.modVersion = '0.9.0';
+      scope.modVersion = '0.9.1';
       scope.state = {recording:false, pointCount:0, pathLength:0, buildCount:0, coneCount:0,
         ringsBuilt:0, ringSetCount:0, meshCount:0,
         vehicleName:'No vehicle', status:'Loading DriftSketch…', statusError:false};
-      scope.settings = {mesh:'cone', tireColors:'rw', spacing:1.0, width:4.2, scale:1.0,
-        groundOffset:-0.55, maxCones:2000, smooth:true, keepBuilds:true, collision:false, driftWidth:true, gates:true,
+      scope.settings = {mesh:'cone', tireColors:'rw', spacing:1.0, gap:0.3, scale:1.0,
+        groundOffset:-0.55, maxCones:2000, smooth:true, keepBuilds:true, collision:false, driftWidth:false, gates:true,
         rings:false, ringCount:5, ringSize:7.0, ringGap:15.0, ringLift:0.0};
 
-      var NUMERIC = ['spacing','width','scale','groundOffset','maxCones','ringCount','ringSize','ringGap','ringLift'];
+      var NUMERIC = ['spacing','gap','scale','groundOffset','maxCones','ringCount','ringSize','ringGap','ringLift'];
       function lua(command) {
         if ($window.bngApi && $window.bngApi.engineLua) $window.bngApi.engineLua(command);
       }

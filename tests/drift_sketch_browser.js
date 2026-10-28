@@ -44,7 +44,7 @@ const {chromium: playwright} = require(path.join(MODULES, 'playwright-core'));
       scope.$root.$broadcast('driftSketch.state', {recording:false,pointCount:96,pathLength:182.4,buildCount:1,coneCount:364,
         ringsBuilt:5,ringSetCount:0,meshCount:369,
         vehicleName:'Any Vehicle · Live Path',status:'Built 364 objects + 5 rings. Open BeamNG replay — they stay in the scene.',statusError:false,
-        settings:{mesh:'cone',tireColors:'rw',spacing:1.0,width:4.2,scale:1,groundOffset:-0.55,maxCones:2000,smooth:true,keepBuilds:true,
+        settings:{mesh:'cone',tireColors:'rw',spacing:1.0,gap:0.3,scale:1,groundOffset:-0.55,maxCones:2000,smooth:true,keepBuilds:true,
           collision:false,driftWidth:true,gates:true,rings:true,ringCount:5,ringSize:7,ringGap:15,ringLift:0}});
     });
     await page.waitForTimeout(300);
@@ -75,6 +75,12 @@ const {chromium: playwright} = require(path.join(MODULES, 'playwright-core'));
     assert.strictEqual(await spacing.getAttribute('min'), '0.5');
     await spacing.evaluate(element => { element.value = '0.5'; element.dispatchEvent(new Event('input', {bubbles:true})); element.dispatchEvent(new Event('change', {bubbles:true})); });
     assert(await sent('extensions.driftSketch.setSetting("spacing",0.5)'));
+    const gap = page.locator('input[ng-model="settings.gap"]');
+    assert.strictEqual(await gap.getAttribute('min'), '0');
+    assert.strictEqual(await gap.getAttribute('max'), '3');
+    await gap.evaluate(element => { element.value = '0.15'; element.dispatchEvent(new Event('input', {bubbles:true})); element.dispatchEvent(new Event('change', {bubbles:true})); });
+    assert(await sent('extensions.driftSketch.setSetting("gap",0.15)'), 'Gap to car slider reaches GE Lua');
+    assert.strictEqual(await page.locator('input[ng-model="settings.width"]').count(), 0, 'Base width slider removed');
     assert(await page.locator('.ds-check.drift input').isChecked());
     await page.locator('.ds-check.drift').click();
     assert(await sent('extensions.driftSketch.setSetting("driftWidth",false)'));
@@ -109,7 +115,7 @@ const {chromium: playwright} = require(path.join(MODULES, 'playwright-core'));
       scope.$root.$broadcast('driftSketch.state', {recording:false,pointCount:96,pathLength:182.4,buildCount:1,coneCount:364,
         ringsBuilt:5,ringSetCount:0,meshCount:369,
         vehicleName:'Any Vehicle · Live Path',status:'Built 364 objects + 5 rings. Open BeamNG replay — they stay in the scene.',statusError:false,
-        settings:{mesh:'tireStack',tireColors:'rw',spacing:1.0,width:4.2,scale:1,groundOffset:-0.55,maxCones:2000,smooth:true,keepBuilds:true,
+        settings:{mesh:'tireStack',tireColors:'rw',spacing:1.0,gap:0.3,scale:1,groundOffset:-0.55,maxCones:2000,smooth:true,keepBuilds:true,
           collision:false,driftWidth:true,gates:true,rings:true,ringCount:5,ringSize:7,ringGap:15,ringLift:0}});
     });
     await page.waitForTimeout(200);

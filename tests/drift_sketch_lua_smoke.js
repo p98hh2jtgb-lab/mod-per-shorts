@@ -133,10 +133,11 @@ setmetatable(_G,{__index=function(_,key) error('undefined global '..tostring(key
 
 const body = `
 M=assert(load(SOURCE,'@${file}'))()
-assert(M.version=='0.9.0')
+assert(M.version=='0.9.1')
 assert(M.onExtensionLoaded()==true)
 local s=M.uiState().settings
-assert(s.driftWidth==true and s.gates==true, 'Drift widen and gates default ON')
+assert(s.driftWidth==false and s.gates==true, 'Drift widen OFF (tight corridor) and gates ON by default')
+assert(s.gap==0.3 and s.width==nil and s.smooth==true, 'Gap to car (0.3 m) replaces Base width')
 assert(s.mesh=='cone' and s.tireColors=='rw' and s.spacing==1.0 and s.maxCones==2000)
 assert(s.rings==false and s.ringCount==5 and s.ringSize==7.0 and s.ringGap==15.0 and s.ringLift==0)
 assert(s.sides==nil, 'side selector removed')
@@ -148,6 +149,10 @@ M.setSetting('spacing',0.2); assert(M.uiState().settings.spacing==0.5, 'cones ma
 M.setSetting('spacing',0.7); assert(M.uiState().settings.spacing==0.7)
 M.setSetting('maxCones',9000); assert(M.uiState().settings.maxCones==4000)
 M.setSetting('ringCount',99); assert(M.uiState().settings.ringCount==50)
+M.setSetting('gap',-1); assert(M.uiState().settings.gap==0)
+M.setSetting('gap',9); assert(M.uiState().settings.gap==3)
+M.setSetting('gap','0.45'); assert(M.uiState().settings.gap==0.45)
+M.setSetting('width',4); assert(M.uiState().settings.width==nil, 'Base width is gone')
 M.setSetting('ringCount','7'); assert(M.uiState().settings.ringCount==7)
 M.setSetting('ringSize',1); assert(M.uiState().settings.ringSize==3)
 M.setSetting('ringGap',500); assert(M.uiState().settings.ringGap==100)
@@ -162,7 +167,7 @@ M.setSetting('driftWidth',false)
 M.setSetting('smooth',false)
 M.setSetting('sides','left')
 M.setSetting('spacing',2)
-M.setSetting('width',4)
+M.setSetting('gap',0.76)
 M.setSetting('maxCones',100)
 M.start()
 assert(lastState().recording==true)
@@ -241,20 +246,20 @@ current.x=0; current.y=40
 M.start(); drive(1,40,100); M.stop()
 assert(M.uiState().coneCount>0 and M.uiState().coneCount<=100)
 M.clear()
--- Manual width stays exact regardless of vehicle heading.
-M.setSetting('width',2.4)
+-- Drift widen OFF: car half width + cone radius + Gap, whatever the heading.
+M.setSetting('gap',0)
 M.setSetting('spacing',2)
 current.x=0; current.y=60; current.fx=0; current.fy=1
 M.start(); drive(1,60,8); M.stop()
 assert(M.uiState().coneCount==8)
 for _,obj in ipairs(liveObjects()) do
-  assert(math.abs(math.abs(obj.position.y-60)-1.2)<0.001, 'manual width must remain exact')
+  assert(math.abs(math.abs(obj.position.y-60)-1.24)<0.001, 'gap 0 puts the cone edge on the car side')
 end
 M.clear()
 current.fx=1; current.fy=0
 -- Drift Widen keeps the manual base while straight and expands for the rear when sideways.
 M.setSetting('driftWidth',true)
-M.setSetting('width',4)
+M.setSetting('gap',0.76)
 current.x=0; current.y=80
 M.start(); drive(1,80,8); M.stop()
 for _,obj in ipairs(liveObjects()) do assert(math.abs(math.abs(obj.position.y-80)-2)<0.001, 'straight car keeps base width') end
@@ -263,11 +268,11 @@ current.x=0; current.y=100; current.fx=0; current.fy=1
 M.start(); drive(1,100,8); M.stop()
 for _,obj in ipairs(liveObjects()) do
   local lateral=math.abs(obj.position.y-100)
-  assert(lateral>=2.989 and lateral<3.20, 'sideways car must include full length and rear clearance, got '..tostring(lateral))
+  assert(math.abs(lateral-3.4)<0.01, 'sideways car: half length + cone radius + gap, got '..tostring(lateral))
 end
 M.setSetting('mesh','tireStack')
 for _,obj in ipairs(liveObjects()) do
-  assert(math.abs(obj.position.y-100)>=3.089, 'tyre stack radius must be included in drift clearance')
+  assert(math.abs(math.abs(obj.position.y-100)-3.5)<0.01, 'tyre stack radius must be included in drift clearance')
 end
 M.setSetting('mesh','cone')
 M.setSetting('driftWidth',false)
@@ -284,12 +289,12 @@ current.oobbAxes=true; current.x=0; current.y=120; current.fx=0; current.fy=1
 M.start(); drive(1,120,8); M.stop()
 for _,obj in ipairs(liveObjects()) do
   local lateral=math.abs(obj.position.y-120)
-  assert(lateral>=3.48 and lateral<3.80, 'OOBB rear-wing extent must be included, got '..tostring(lateral))
+  assert(math.abs(lateral-3.9)<0.01, 'OOBB rear-wing extent must be included, got '..tostring(lateral))
 end
 M.clear(); current.oobbAxes=nil; M.setSetting('driftWidth',false)
 current.fx=1; current.fy=0
 -- A curved drive resamples inner and outer arcs independently.
-M.setSetting('width',4)
+M.setSetting('gap',0.76)
 M.setSetting('spacing',1)
 M.setSetting('smooth',true)
 M.start()
@@ -326,7 +331,7 @@ M.clear()
 -- Swept clearance: a drifting car on a bend must not meet cones from nearby poses.
 M.setSetting('driftWidth',true)
 M.setSetting('smooth',true)
-M.setSetting('width',3.3)
+M.setSetting('gap',0.35)
 M.setSetting('spacing',1)
 M.setSetting('maxCones',400)
 current.id=3; current.oobbX=0; current.x=10; current.y=220; current.z=0.6
@@ -396,7 +401,7 @@ M.setSetting('gates',true)
 M.setSetting('driftWidth',false)
 M.setSetting('smooth',false)
 M.setSetting('collision',false)
-M.setSetting('width',4)
+M.setSetting('gap',0.76)
 M.setSetting('spacing',1)
 M.setSetting('maxCones',100)
 current.oobbAxes=nil; current.oobbX=0; current.x=0; current.y=300; current.fx=1; current.fy=0
@@ -486,14 +491,15 @@ M.stop()
 gates=gateObjects()
 assert(#gates==2)
 for _,gate in ipairs(gates) do
-  assert(4.35*gate.scale.x>=6.59+0.9-0.001 and gate.scale.x>1.0, 'sideways footprint widens the whole gate')
+  -- 12 m long and fully sideways: Drift widen is capped at base + 2 m per side.
+  assert(4.35*gate.scale.x>=4.0+0.9-0.001 and gate.scale.x>1.0, 'sideways footprint widens the whole gate')
 end
 current.length=nil
 -- Curved drifting path: gates use the path tangent (not the sideways heading) and
 -- their plates clear nearby swept markers.
 M.clear()
 M.setSetting('smooth',true)
-M.setSetting('width',3.3)
+M.setSetting('gap',0.41)
 M.setSetting('spacing',1)
 current.x=10; current.y=420; current.z=0.6
 M.start()
@@ -530,7 +536,7 @@ current.fx=1; current.fy=0
 -- Rings on a drive: count, size (clear opening), gap and lift are all honoured.
 M.setSetting('driftWidth',false)
 M.setSetting('smooth',false)
-M.setSetting('width',4)
+M.setSetting('gap',0.76)
 M.setSetting('spacing',1)
 M.setSetting('maxCones',2000)
 M.setSetting('gates',true)
@@ -657,9 +663,142 @@ assert(#liveObjects()==0 and M2.uiState().buildCount==0)
 assert(materialLoads==2, 'materials load once per mission and again after the mission ends')
 M.onExtensionUnloaded()
 print('DriftSketch Lua assertions passed')
+
+-- 0.9.1 clean lines: a wobbly recorded line (+-0.25 m every 0.8 m) gives straight,
+-- evenly spaced cone lines, and no cone ever stands on the driven line.
+M.clear()
+M.setSetting('gates',false); M.setSetting('rings',false); M.setSetting('collision',false)
+M.setSetting('driftWidth',false); M.setSetting('smooth',true); M.setSetting('gap',0.3)
+M.setSetting('spacing',1); M.setSetting('maxCones',2000); M.setSetting('mesh','cone')
+current.id=1; current.oobbAxes=nil; current.oobbX=0; current.length=nil; current.fx=1; current.fy=0
+local raw={}
+M.start()
+for i=0,80 do
+  current.x=i*0.8; current.y=1000+((i%2==0) and 0.25 or -0.25)
+  raw[#raw+1]={x=current.x,y=current.y}
+  M.onUpdate(0.1)
+end
+M.stop()
+assert(M.uiState().pointCount==81 or M.uiState().buildCount==1)
+local function sideLines(cy)
+  local left,right={},{}
+  for _,obj in ipairs(markerObjects()) do
+    if obj.position.y>cy then left[#left+1]=obj.position else right[#right+1]=obj.position end
+  end
+  return left,right
+end
+local function clearOfDrive(points,minimum)
+  for _,obj in ipairs(markerObjects()) do
+    for _,r in ipairs(points) do
+      local d=math.sqrt((obj.position.x-r.x)^2+(obj.position.y-r.y)^2)
+      assert(d>=minimum, 'cone on the driven line: '..tostring(d)..' at '..tostring(obj.position.x)..','..tostring(obj.position.y))
+    end
+  end
+end
+local wobblyLeft,wobblyRight=sideLines(1000)
+assert(#wobblyLeft>=60 and #wobblyRight>=60, 'both lines built')
+local function spread(line,from,to)
+  from,to=from or 4,to or 60
+  local low,high=math.huge,-math.huge
+  for _,q in ipairs(line) do
+    if q.x>from and q.x<to then low=math.min(low,q.y); high=math.max(high,q.y) end
+  end
+  return high-low
+end
+assert(spread(wobblyLeft,12,52)<0.005 and spread(wobblyRight,12,52)<0.005,
+  'smoothed lines must be straight, spread '..tostring(spread(wobblyLeft,12,52))..' / '..tostring(spread(wobblyRight,12,52)))
+assert(spread(wobblyLeft)<0.06 and spread(wobblyRight)<0.06, 'the ends ease in by a few centimetres at most')
+for _,line in ipairs({wobblyLeft,wobblyRight}) do
+  for i=2,#line do
+    local d=math.sqrt((line[i].x-line[i-1].x)^2+(line[i].y-line[i-1].y)^2)
+    assert(math.abs(d-1)<0.03, 'even spacing along a smoothed line, got '..tostring(d))
+  end
+end
+clearOfDrive(raw,1.0+0.24+0.3-0.02)
+-- Tight: the corridor is only the car (2.0 m) plus the wobble and 2 x 0.3 m.
+local width=0
+for _,q in ipairs(wobblyLeft) do if q.x>20 and q.x<40 then width=math.max(width,q.y-1000) end end
+assert(width<1.54+0.27, 'corridor must stay tight, half width '..tostring(width))
+-- Smooth path OFF keeps the raw wobble (the difference the option makes).
+M.setSetting('smooth',false)
+local rawLeft=sideLines(1000)
+assert(spread(rawLeft)>0.3, 'Smooth OFF follows the raw line')
+M.setSetting('smooth',true)
+assert(spread((sideLines(1000)),12,52)<0.005, 'Smooth path toggle rebuilds saved drives')
+
+-- Gap slider: saved drives rebuild by themselves once the slider rests.
+local before=markerObjects()[1].position.y
+M.setSetting('gap',0.6)
+assert(markerObjects()[1].position.y==before, 'no rebuild while the slider moves')
+M.onUpdate(0.2)
+assert(markerObjects()[1].position.y==before)
+M.onUpdate(0.2)
+local after=sideLines(1000)
+local moved=0
+for _,q in ipairs(after) do if q.x>20 and q.x<40 then moved=math.max(moved,q.y-1000) end end
+assert(math.abs(moved-(width+0.3))<0.01, 'gap +0.3 m widens each side by 0.3 m, got '..tostring(moved))
+assert(string.find(M.uiState().status,'gap 0.60',1,true), 'status reports the new gap')
+M.setSetting('spacing',2); M.onUpdate(0.4)
+local sparse=sideLines(1000)
+assert(math.abs(#sparse-(#after-1)/2-1)<=1, 'spacing slider rebuilds too')
+M.setSetting('spacing',1); M.setSetting('gap',0.3); M.onUpdate(0.4)
+
+-- Hairpin tighter than the corridor (legs 2.4 m apart): the inner lines fold and
+-- overlap the other leg. No cone may stand on either driven leg.
+M.clear()
+M.setSetting('smooth',false); M.setSetting('spacing',0.5)
+local hairpin={}
+local function rec(x,y,fx,fy)
+  current.x=x; current.y=y; current.fx=fx; current.fy=fy
+  -- Same rule as the recorder: a point every 0.75 m.
+  local last=hairpin[#hairpin]
+  if not last or (x-last.x)^2+(y-last.y)^2>=0.75*0.75 then hairpin[#hairpin+1]={x=x,y=y} end
+  M.onUpdate(0.1)
+end
+M.start()
+for x=0,20 do rec(x,1100,1,0) end
+for i=1,5 do local a=-math.pi/2+math.pi*i/6; rec(20+1.2*math.cos(a),1101.2+1.2*math.sin(a),-math.sin(a),math.cos(a)) end
+for x=20,0,-1 do rec(x,1102.4,-1,0) end
+M.stop()
+assert(#markerObjects()>40, 'outer lines still built')
+-- Smooth OFF drops only deep intrusions (real folds).
+clearOfDrive(hairpin,(1.0+0.24+0.3)*0.8-0.05)
+local between=0
+for _,obj in ipairs(markerObjects()) do
+  if obj.position.x<18 and obj.position.y>1100.5 and obj.position.y<1101.9 then between=between+1 end
+end
+assert(between==0, 'no cones between the two legs of a too-tight hairpin')
+-- Smooth ON as well.
+M.setSetting('smooth',true)
+clearOfDrive(hairpin,1.0+0.24+0.3-0.05)
+
+-- Drift widen ON opens the corridor gently where the car went sideways, then closes.
+M.clear()
+M.setSetting('driftWidth',true); M.setSetting('smooth',true); M.setSetting('spacing',1); M.setSetting('gap',0.3)
+M.start()
+for x=0,60 do
+  local angle=0
+  if x>=25 and x<=35 then angle=math.rad(30) end
+  rec(x,1200,math.cos(angle),math.sin(angle))
+end
+M.stop()
+local driftLeft=sideLines(1200)
+local widest,narrowEnd=0,math.huge
+for i,q in ipairs(driftLeft) do
+  widest=math.max(widest,q.y-1200)
+  if q.x<12 or q.x>48 then narrowEnd=math.min(narrowEnd,q.y-1200) end
+  if i>1 then
+    local step=math.abs((q.y-1200)-(driftLeft[i-1].y-1200))
+    assert(step<0.3, 'Drift widen must ease in and out, jump '..tostring(step))
+  end
+end
+assert(widest>1.54+0.8, 'sideways stretch opens the corridor, got '..tostring(widest))
+assert(math.abs(narrowEnd-1.54)<0.01, 'straight stretches keep the tight corridor, got '..tostring(narrowEnd))
+M.clear(); M.setSetting('driftWidth',false); M.setSetting('spacing',1)
+current.fx=1; current.fy=0
 `;
 
 const script = mocks + '\nSOURCE=' + JSON.stringify(source) + '\n' + body;
 const status = lauxlib.luaL_dostring(L, to_luastring(script));
 if (status !== lua.LUA_OK) throw new Error(lua.lua_tojsstring(L, -1));
-console.log('✓ DriftSketch Lua: v09 assets, cones/tyre stacks, uniform gates, rings (count/size/gap/lift, ahead, debounce), groups and reload');
+console.log('✓ DriftSketch Lua 0.9.1: clean smoothed lines, tight gap corridor, eased drift widen, fold-free hairpins, v09 assets, cones/tyre stacks, uniform gates, rings (count/size/gap/lift, ahead, debounce), groups and reload');

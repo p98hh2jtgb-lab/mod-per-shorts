@@ -1,9 +1,10 @@
--- DriftSketch 0.9.0 — record a drive, build real low-poly meshes on both sides, keep them for replay.
+-- DriftSketch 0.9.1 — record a drive, build real low-poly meshes on both sides, keep them for replay.
 -- Markers: orange traffic cones or red/white(/blue) four-tyre stacks. Optional START/FINISH truss
 -- gates and red/white stunt rings. Every shape is an original COLLADA file with flat PBR materials
 -- (no texture files), loaded explicitly from this mod before the first TSStatic is created.
+-- 0.9.1: smooth marker lines and a tight corridor (real car width + Gap per side).
 local M = {}
-M.version = '0.9.0'
+M.version = '0.9.1'
 
 local ASSET_DIR = '/art/shapes/driftsketch_v09/'
 local MATERIAL_FILE = ASSET_DIR .. 'main.materials.json'
@@ -29,14 +30,14 @@ local SETTINGS = {
   mesh = 'cone',
   tireColors = 'rw',
   spacing = 1.0,
-  width = 4.2,
+  gap = 0.3,          -- metres between the car side and the marker, per side
   scale = 1.0,
   groundOffset = -0.55,
   maxCones = 2000,
   smooth = true,
   keepBuilds = true,
   collision = false,
-  driftWidth = true,
+  driftWidth = false,
   gates = true,
   rings = false,
   ringCount = 5,
@@ -63,6 +64,7 @@ local collisionDirty = false
 local markersSolid = false
 local ringsSolid = false
 local ringRebuildAt = nil
+local pathRebuildAt = nil
 local pendingRestore = false
 local restored = false
 
@@ -300,84 +302,12 @@ local function clearAll()
   savedPaths = {}
   ringSets = {}
   ringRebuildAt = nil
+  pathRebuildAt = nil
   pendingRestore = false
   removeObjects()
   sweepGroup()
   reloadCollision()
 end
-
-local function smoothPath(source)
-  if not SETTINGS.smooth or #source < 3 then return copyPoints(source) end
-  local out = copyPoints(source)
-  for i = 2, #source - 1 do
-    local a, b, c = source[i - 1], source[i], source[i + 1]
-    out[i].x = a.x * 0.25 + b.x * 0.50 + c.x * 0.25
-    out[i].y = a.y * 0.25 + b.y * 0.50 + c.y * 0.25
-    out[i].z = a.z * 0.25 + b.z * 0.50 + c.z * 0.25
-    if a.fx and a.fy and b.fx and b.fy and c.fx and c.fy then
-      local fx = a.fx * 0.25 + b.fx * 0.50 + c.fx * 0.25
-      local fy = a.fy * 0.25 + b.fy * 0.50 + c.fy * 0.25
-      local length = math.sqrt(fx * fx + fy * fy)
-      if length > 0.001 then out[i].fx, out[i].fy = fx / length, fy / length end
-    end
-  end
-  return out
-end
-
--- Resample one already-offset line by its own arc length. Inner and outer
--- curves have different lengths, so each gets independent physical spacing.
-local function resampleLine(path, spacing, maxSamples)
-  if #path < 2 then return {} end
-  local total = pathLength(path)
-  if total < 0.05 then return {} end
-  local count = math.floor(total / spacing) + 1
-  local step = spacing
-  if count > maxSamples then
-    count = maxSamples
-    step = total / math.max(1, count - 1)
-  end
-
-  local samples = {}
-  local segment = 1
-  local segmentStart = 0
-  local segmentLength = 0
-  local function updateSegment()
-    local a, b = path[segment], path[segment + 1]
-    local dx, dy = b.x - a.x, b.y - a.y
-    segmentLength = math.sqrt(dx * dx + dy * dy)
-  end
-  updateSegment()
-
-  for index = 0, count - 1 do
-    local distance = math.min(total, index * step)
-    while segment < #path - 1 and distance > segmentStart + segmentLength do
-      segmentStart = segmentStart + segmentLength
-      segment = segment + 1
-      updateSegment()
-    end
-    local a, b = path[segment], path[segment + 1]
-    if segmentLength > 0.0001 then
-      local t = math.max(0, math.min(1, (distance - segmentStart) / segmentLength))
-      local nx, ny
-      if a.nx and a.ny and b.nx and b.ny then
-        nx = a.nx + (b.nx - a.nx) * t
-        ny = a.ny + (b.ny - a.ny) * t
-        local normalLength = math.sqrt(nx * nx + ny * ny)
-        if normalLength > 0.001 then nx, ny = nx / normalLength, ny / normalLength end
-      end
-      samples[#samples + 1] = {
-        x = a.x + (b.x - a.x) * t,
-        y = a.y + (b.y - a.y) * t,
-        z = a.z + (b.z - a.z) * t,
-        nx = nx or a.nx,
-        ny = ny or a.ny,
-        pathIndex = (t < 0.5 and a.pathIndex or b.pathIndex) or a.pathIndex
-      }
-    end
-  end
-  return samples
-end
-
 
 local function markerRadius()
   return (SETTINGS.mesh == 'tireStack' and TIRE_RADIUS or CONE_RADIUS) * SETTINGS.scale
@@ -387,213 +317,325 @@ local function markerHeight()
   return (SETTINGS.mesh == 'tireStack' and TIRE_HEIGHT or CONE_HEIGHT) * SETTINGS.scale
 end
 
-local function objectMargin()
-  return 0.35 + markerRadius()
+-- Path shaping (0.9.1) -------------------------------------------------------------
+-- The recorded centre line is resampled every PATH_STEP metres and, with Smooth path
+-- ON, Gaussian-filtered over a few metres: steering corrections and drift wobble no
+-- longer reach the marker lines. The corridor is the real car width plus Gap on each
+-- side; any change of that width is eased along the path, never point by point.
+
+local PATH_STEP = 0.25
+local PATH_MAX_SAMPLES = 24000
+local SMOOTH_SIGMA = 2.0       -- metres along the path (Smooth path ON)
+local WIDTH_SIGMA = 2.0        -- metres: corridor width changes are eased with this
+local DRIFT_EXTRA_MAX = 2.0    -- Drift widen adds at most this per side
+
+local function median(values, fallback)
+  if #values == 0 then return fallback end
+  local sorted = {}
+  for i, value in ipairs(values) do sorted[i] = value end
+  table.sort(sorted)
+  return sorted[math.floor((#sorted + 1) / 2)]
 end
 
--- Base Width is the manual minimum. Drift Widen expands only when the actual
--- oriented car rectangle needs more lateral room, including its rear overhang.
-local function driftOffset(p, nx, ny, baseOffset)
-  if not SETTINGS.driftWidth then return baseOffset end
-  local halfLength, halfWidth = p.carHalfLength or 2.4, p.carHalfWidth or 1.0
-  local footprint
-  if p.fx and p.fy then
-    local rightX, rightY = -p.fy, p.fx
-    footprint = halfWidth * math.abs(nx * rightX + ny * rightY)
-              + halfLength * math.abs(nx * p.fx + ny * p.fy)
-  else
-    footprint = math.sqrt(halfLength * halfLength + halfWidth * halfWidth)
+-- Real car size of one drive: the median of all samples, so a single OOBB spike
+-- (a crash, a door) cannot make one stretch of the corridor wider.
+local function driveCarSize(source)
+  local widths, lengths = {}, {}
+  for _, p in ipairs(source) do
+    if type(p.carHalfWidth) == 'number' then widths[#widths + 1] = p.carHalfWidth end
+    if type(p.carHalfLength) == 'number' then lengths[#lengths + 1] = p.carHalfLength end
   end
-  return math.max(baseOffset, footprint + objectMargin())
+  return median(widths, 1.0), median(lengths, 2.4)
 end
 
--- Return a stable planar heading even for old recordings that have no heading.
-local function pathHeading(source, index)
-  local p = source[index]
-  if p.fx and p.fy then
-    local length = math.sqrt(p.fx * p.fx + p.fy * p.fy)
-    if length > 0.001 then return p.fx / length, p.fy / length end
+-- Samples every <= PATH_STEP metres along the recorded drive. Every recorded point
+-- is kept as a sample, so the corridor sees the real extremes of the driven line.
+local function resampleCenter(source)
+  local out = {}
+  local total = pathLength(source)
+  if #source < 2 or total < 0.05 then
+    for i, p in ipairs(source) do out[i] = {x = p.x, y = p.y, z = p.z, fx = p.fx, fy = p.fy} end
+    return out, PATH_STEP
   end
-  local a = source[math.max(1, index - 1)]
-  local b = source[math.min(#source, index + 1)]
-  local dx, dy = b.x - a.x, b.y - a.y
-  local length = math.sqrt(dx * dx + dy * dy)
-  if length > 0.001 then return dx / length, dy / length end
-  return 1, 0
-end
-
--- Add intermediate poses between recorded points. A cone can be clear at both
--- endpoints and still intersect the car between them during a fast turn.
-local function makeSweepPoses(source, margin)
-  local poses = {}
-  local headingsX, headingsY = {}, {}
-  for i = 1, #source do headingsX[i], headingsY[i] = pathHeading(source, i) end
-
-  local function addPose(x, y, fx, fy, halfLength, halfWidth)
-    local length = math.sqrt(fx * fx + fy * fy)
-    if length < 0.001 then fx, fy = 1, 0 else fx, fy = fx / length, fy / length end
-    halfLength, halfWidth = halfLength or 2.4, halfWidth or 1.0
-    local alongLimit, lateralLimit = halfLength + margin, halfWidth + margin
-    poses[#poses + 1] = {
-      x=x, y=y, fx=fx, fy=fy, rightX=-fy, rightY=fx,
-      alongLimit=alongLimit, lateralLimit=lateralLimit,
-      radiusSq=(alongLimit * alongLimit) + (lateralLimit * lateralLimit)
-    }
-  end
-
-  for i, a in ipairs(source) do
-    local ax, ay = headingsX[i], headingsY[i]
-    addPose(a.x, a.y, ax, ay, a.carHalfLength, a.carHalfWidth)
-    local b = source[i + 1]
-    if b then
-      local bx, by = headingsX[i + 1], headingsY[i + 1]
-      local distance = math.sqrt((b.x - a.x) * (b.x - a.x) + (b.y - a.y) * (b.y - a.y))
-      local steps = math.max(1, math.min(8, math.ceil(distance / 0.5)))
-      for step = 1, steps - 1 do
-        local t = step / steps
-        local fx, fy = ax + (bx - ax) * t, ay + (by - ay) * t
-        if fx * fx + fy * fy < 0.0001 then fx, fy = ax, ay end
-        addPose(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, fx, fy,
-          (a.carHalfLength or 2.4) + ((b.carHalfLength or 2.4) - (a.carHalfLength or 2.4)) * t,
-          (a.carHalfWidth or 1.0) + ((b.carHalfWidth or 1.0) - (a.carHalfWidth or 1.0)) * t)
-      end
+  local step = math.max(PATH_STEP, total / PATH_MAX_SAMPLES)
+  local function sample(a, b, t)
+    local q = {x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t, z = a.z + (b.z - a.z) * t}
+    if a.fx and a.fy and b.fx and b.fy then
+      local fx, fy = a.fx + (b.fx - a.fx) * t, a.fy + (b.fy - a.fy) * t
+      local size = math.sqrt(fx * fx + fy * fy)
+      if size > 0.001 then q.fx, q.fy = fx / size, fy / size else q.fx, q.fy = b.fx, b.fy end
     end
+    return q
   end
-  return poses
-end
-
--- A small spatial grid keeps the swept-clearance pass inexpensive on long runs.
-local function makePoseGrid(poses)
-  local grid, cell = {}, 16.0
-  for _, p in ipairs(poses) do
-    local key = math.floor(p.x / cell) * 1000000 + math.floor(p.y / cell)
-    local bucket = grid[key]
-    if not bucket then bucket = {}; grid[key] = bucket end
-    bucket[#bucket + 1] = p
-  end
-  return grid, cell
-end
-
-local function slabExit(value, direction, limit)
-  if direction > 0.000001 then return (limit - value) / direction end
-  if direction < -0.000001 then return (-limit - value) / direction end
-  return math.huge
-end
-
--- Move one cone along its outward normal until it is outside every nearby
--- oriented vehicle rectangle. This is a 2D ray/slab test, not a physics query.
-local function pushConeOutside(q, grid, cell)
-  if not q.nx or not q.ny then return q end
-  local normalLength = math.sqrt(q.nx * q.nx + q.ny * q.ny)
-  if normalLength < 0.001 then return q end
-  local dx, dy = q.nx / normalLength, q.ny / normalLength
-  local startX, startY, distance = q.x, q.y, 0
-  -- Beyond a few metres, skipping is cleaner than folding the line back
-  -- through the inside of a very tight turn.
-  local maxPush = 4.0
-
-  for _ = 1, 48 do
-    local x, y = startX + dx * distance, startY + dy * distance
-    local gx, gy = math.floor(x / cell), math.floor(y / cell)
-    local baseKey = gx * 1000000 + gy
-    local farthestExit = nil
-    for ox = -1, 1 do
-      local rowKey = baseKey + ox * 1000000
-      for oy = -1, 1 do
-        local bucket = grid[rowKey + oy]
-        if bucket then
-          for _, p in ipairs(bucket) do
-            local px, py = x - p.x, y - p.y
-            if px * px + py * py <= p.radiusSq then
-              local along = px * p.fx + py * p.fy
-              if math.abs(along) <= p.alongLimit then
-                local lateral = px * p.rightX + py * p.rightY
-                if math.abs(lateral) <= p.lateralLimit then
-                  local alongExit = slabExit(along, dx * p.fx + dy * p.fy, p.alongLimit)
-                  local lateralExit = slabExit(lateral, dx * p.rightX + dy * p.rightY, p.lateralLimit)
-                  local exitDistance = math.min(alongExit, lateralExit)
-                  if exitDistance < 0 then exitDistance = 0 end
-                  if exitDistance < math.huge and (not farthestExit or exitDistance > farthestExit) then
-                    farthestExit = exitDistance
-                  end
-                end
-              end
-            end
-          end
-        end
-      end
-    end
-    if not farthestExit then
-      q.x, q.y, q.nx, q.ny = x, y, dx, dy
-      return q
-    end
-    distance = distance + farthestExit + 0.035
-    if distance > maxPush then return nil end
-  end
-  return nil
-end
-
--- With Drift Widen OFF, exact manual width is intentional, so do not move
--- cones. With it ON, protect the whole swept car footprint during turns.
-local function sweptClearLines(lines, source, spacing)
-  if not SETTINGS.driftWidth or #source < 2 then return lines end
-  local margin = objectMargin()
-  local minimumGap = math.max(0.35, spacing * 0.40)
-  local grid, cell = makePoseGrid(makeSweepPoses(source, margin))
-  for lineIndex, line in ipairs(lines) do
-    local safe = {}
-    for _, q in ipairs(line) do
-      local pushed = pushConeOutside(q, grid, cell)
-      if pushed then
-        local last = safe[#safe]
-        if not last or (pushed.x - last.x) * (pushed.x - last.x)
-          + (pushed.y - last.y) * (pushed.y - last.y) >= minimumGap * minimumGap then
-          safe[#safe + 1] = pushed
-        end
-      end
-    end
-    lines[lineIndex] = safe
-  end
-  return lines
-end
-
--- Build two smooth offset polylines using a centered, two-point lookahead.
--- This avoids the abrupt one-segment normals that made tight turns jagged.
-local function buildOffsetLines(source, halfWidth, spacing, reserveObjects)
-  local path = smoothPath(source)
-  if #path < 2 then return {{}, {}} end
-  local raw = {{}, {}}
-  local signs = {-1, 1}
-  for i, p in ipairs(path) do
-    local a, b = path[math.max(1, i - 2)], path[math.min(#path, i + 2)]
+  out[1] = sample(source[1], source[1], 0)
+  for i = 1, #source - 1 do
+    local a, b = source[i], source[i + 1]
     local dx, dy = b.x - a.x, b.y - a.y
     local length = math.sqrt(dx * dx + dy * dy)
-    if length < 0.0001 then
-      a, b = path[math.max(1, i - 1)], path[math.min(#path, i + 1)]
-      dx, dy = b.x - a.x, b.y - a.y
-      length = math.sqrt(dx * dx + dy * dy)
-    end
-    if length > 0.0001 then
-      local nx, ny = -dy / length, dx / length
-      local offset = driftOffset(p, nx, ny, halfWidth)
-      for lineIndex, sign in ipairs(signs) do
-        raw[lineIndex][#raw[lineIndex] + 1] = {
-          x = p.x + nx * offset * sign,
-          y = p.y + ny * offset * sign,
-          z = p.z,
-          nx = nx * sign,
-          ny = ny * sign,
-          pathIndex = i
-        }
-      end
+    if length > 0.000001 then
+      local parts = math.max(1, math.ceil(length / step - 0.0001))
+      for k = 1, parts do out[#out + 1] = sample(a, b, k / parts) end
     end
   end
+  if #out < 2 then return out, PATH_STEP end
+  return out, total / (#out - 1)
+end
+
+-- Value at sample `from` of the least-squares line through `count` samples going
+-- in direction `dir` (+1 from the start, -1 from the end).
+local function fittedEnd(values, from, dir, count)
+  local sx, sy, sxx, sxy = 0, 0, 0, 0
+  for k = 0, count - 1 do
+    local v = values[from + dir * k]
+    sx, sy, sxx, sxy = sx + k, sy + v, sxx + k * k, sxy + k * v
+  end
+  local den = count * sxx - sx * sx
+  if math.abs(den) < 1e-9 then return values[from] end
+  return (sy * sxx - sx * sxy) / den
+end
+
+-- Gaussian filter. anchored = true (positions): the ends are mirrored through a
+-- straight fit of the first and last few metres, so the line keeps its end heading,
+-- starts and finishes where the car was (minus the wobble) and is filtered right up
+-- to the ends. anchored = false (corridor widths): the window shrinks near the
+-- ends, so the result never drops below what the running maximum asked for.
+local function smoothValues(values, sigma, step, anchored)
+  local n = #values
+  if sigma <= 0 or n < 3 then return values end
+  -- Never wider than the drive itself: a mirror must not run past the other end.
+  local radius = math.min(n - 1, math.max(1, math.floor(3 * sigma / step + 0.5)))
+  local weights = {}
+  for k = 0, radius do weights[k] = math.exp(-0.5 * (k * step / sigma) ^ 2) end
+  local first, last = values[1], values[n]
+  if anchored then
+    local count = math.max(2, math.min(n, math.floor(1.5 * sigma / step + 0.5) + 1))
+    first, last = fittedEnd(values, 1, 1, count), fittedEnd(values, n, -1, count)
+  end
+  local function at(index)
+    if index < 1 then return 2 * first - values[math.min(n, 2 - index)] end
+    if index > n then return 2 * last - values[math.max(1, 2 * n - index)] end
+    return values[index]
+  end
+  local out = {}
+  for i = 1, n do
+    local reach = anchored and radius or math.min(radius, i - 1, n - i)
+    local sum, weight = values[i] * weights[0], weights[0]
+    for k = 1, reach do
+      sum = sum + (at(i - k) + at(i + k)) * weights[k]
+      weight = weight + 2 * weights[k]
+    end
+    out[i] = sum / weight
+  end
+  return out
+end
+
+-- Smoothed centre line. rx/ry keep where the car really was at that sample.
+local function smoothPath(source)
+  local path, step = resampleCenter(source)
+  local xs, ys, zs = {}, {}, {}
+  for i, p in ipairs(path) do xs[i], ys[i], zs[i] = p.x, p.y, p.z end
+  if SETTINGS.smooth then
+    xs = smoothValues(xs, SMOOTH_SIGMA, step, true)
+    ys = smoothValues(ys, SMOOTH_SIGMA, step, true)
+    zs = smoothValues(zs, SMOOTH_SIGMA, step, true)
+  end
+  for i, p in ipairs(path) do
+    p.rx, p.ry = p.x, p.y
+    p.x, p.y, p.z = xs[i], ys[i], zs[i]
+  end
+  -- Tangents over +-1 m of the (already smooth) line.
+  local reach = math.max(1, math.floor(1.0 / step + 0.5))
+  for i, p in ipairs(path) do
+    local a, b = path[math.max(1, i - reach)], path[math.min(#path, i + reach)]
+    local dx, dy = b.x - a.x, b.y - a.y
+    local size = math.sqrt(dx * dx + dy * dy)
+    if size > 0.0001 then
+      p.tx, p.ty = dx / size, dy / size
+    elseif i > 1 then
+      p.tx, p.ty = path[i - 1].tx, path[i - 1].ty
+    else
+      p.tx, p.ty = p.fx or 1, p.fy or 0
+    end
+  end
+  return path, step
+end
+
+-- Distance from the smoothed line to the marker centres on each side. The base is
+-- car half width + Gap + marker radius. Every real car position nearby must stay at
+-- least that far from the marker (where the car ran beside the smoothed line, that
+-- side opens by the difference). Drift widen also keeps the whole car rectangle,
+-- turned to its real heading, clear for every pose within one car length.
+local function corridorNeeds(path, step, halfWidth, halfLength)
+  local margin = SETTINGS.gap + markerRadius()
+  local base = halfWidth + margin
+  local drift = SETTINGS.driftWidth
+  local reachClear = math.floor((base + 1.0) / step + 0.5)
+  local reachDrift = drift and math.floor((halfLength + margin + 0.5) / step + 0.5) or 0
+  local reach = math.max(reachClear, reachDrift)
+  local left, right = {}, {}
+  for i, c in ipairs(path) do
+    local tx, ty = c.tx, c.ty
+    local nx, ny = -ty, tx
+    local needLeft, needRight = base, base
+    for j = math.max(1, i - reach), math.min(#path, i + reach) do
+      local q = path[j]
+      local dx, dy = q.rx - c.x, q.ry - c.y
+      local lateral = dx * nx + dy * ny
+      local along = dx * tx + dy * ty
+      if math.abs(along) < base then
+        -- Circle of radius base around the real car position.
+        local half = math.sqrt(base * base - along * along)
+        needLeft = math.max(needLeft, lateral + half)
+        needRight = math.max(needRight, half - lateral)
+      end
+      if drift and math.abs(i - j) <= reachDrift then
+        -- Reach of the car rectangle (grown by the margin) across the path here.
+        local fx, fy = q.fx or q.tx, q.fy or q.ty
+        local extent = base * math.abs(fx * ny - fy * nx) + (halfLength + margin) * math.abs(fx * nx + fy * ny)
+        extent = math.min(math.max(extent, base), base + DRIFT_EXTRA_MAX)
+        needLeft = math.max(needLeft, lateral + extent)
+        needRight = math.max(needRight, extent - lateral)
+      end
+    end
+    left[i], right[i] = needLeft, needRight
+  end
+  return left, right, base
+end
+
+-- Running maximum, then a Gaussian no wider than that window: the eased width is
+-- never below what any sample needs, and it changes gently.
+local function easeNeeds(values, step)
+  local radius = math.max(1, math.floor(3 * WIDTH_SIGMA / step + 0.5))
+  local maxed = {}
+  for i = 1, #values do
+    local high = values[i]
+    for j = math.max(1, i - radius), math.min(#values, i + radius) do
+      if values[j] > high then high = values[j] end
+    end
+    maxed[i] = high
+  end
+  return smoothValues(maxed, radius * step / 3, step, false)
+end
+
+-- On the inside of a turn tighter than the corridor the offset line folds back over
+-- itself. A point that lies inside the corridor of any other sample is dropped.
+-- Smooth path OFF follows the raw line, whose small wobble may come a little closer
+-- to a neighbouring sample: there only a deep intrusion (a real fold) is dropped.
+local function markFolds(line, path, offsetsLeft, offsetsRight)
+  local depth = SETTINGS.smooth and 1.0 or 0.8
+  local largest = 0
+  for i = 1, #path do largest = math.max(largest, offsetsLeft[i], offsetsRight[i]) end
+  local cell = math.max(2.0, largest)
+  local grid = {}
+  for index, c in ipairs(path) do
+    local key = math.floor(c.x / cell) * 1000000 + math.floor(c.y / cell)
+    local bucket = grid[key]
+    if not bucket then bucket = {}; grid[key] = bucket end
+    bucket[#bucket + 1] = index
+  end
+  for _, q in ipairs(line) do
+    local gx, gy = math.floor(q.x / cell), math.floor(q.y / cell)
+    local blocked = false
+    for ox = -1, 1 do
+      for oy = -1, 1 do
+        local bucket = grid[(gx + ox) * 1000000 + gy + oy]
+        if bucket then
+          for _, index in ipairs(bucket) do
+            local c = path[index]
+            local dx, dy = q.x - c.x, q.y - c.y
+            local side = (dx * -c.ty + dy * c.tx) >= 0 and offsetsLeft[index] or offsetsRight[index]
+            local limit = math.min(q.offset, side) * depth - 0.03
+            if dx * dx + dy * dy < limit * limit then blocked = true; break end
+          end
+        end
+        if blocked then break end
+      end
+      if blocked then break end
+    end
+    q.blocked = blocked
+  end
+end
+
+-- Resample one offset polyline by its own arc length. Inner and outer curves have
+-- different lengths, so each gets independent physical spacing.
+local function resampleLine(path, spacing)
+  if #path < 2 then return {} end
+  local total = pathLength(path)
+  if total < 0.05 then return {} end
+  local count = math.floor(total / spacing + 0.0001) + 1
+  local samples = {}
+  local segment, segmentStart, segmentLength = 1, 0, 0
+  local function updateSegment()
+    local a, b = path[segment], path[segment + 1]
+    local dx, dy = b.x - a.x, b.y - a.y
+    segmentLength = math.sqrt(dx * dx + dy * dy)
+  end
+  updateSegment()
+  for index = 0, count - 1 do
+    local distance = math.min(total, index * spacing)
+    while segment < #path - 1 and distance > segmentStart + segmentLength do
+      segmentStart = segmentStart + segmentLength
+      segment = segment + 1
+      updateSegment()
+    end
+    local a, b = path[segment], path[segment + 1]
+    local t = 0
+    if segmentLength > 0.0001 then t = math.max(0, math.min(1, (distance - segmentStart) / segmentLength)) end
+    local nx, ny = a.nx + (b.nx - a.nx) * t, a.ny + (b.ny - a.ny) * t
+    local size = math.sqrt(nx * nx + ny * ny)
+    if size > 0.001 then nx, ny = nx / size, ny / size else nx, ny = a.nx, a.ny end
+    samples[#samples + 1] = {
+      x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t, z = a.z + (b.z - a.z) * t, nx = nx, ny = ny
+    }
+  end
+  return samples
+end
+
+-- Markers every `spacing` metres along the kept runs of one line (a folded stretch
+-- is a break, never a chord across the corridor), within the object cap.
+local function placeAlong(line, spacing, maxSamples)
+  local runs, run = {}, nil
+  for _, q in ipairs(line) do
+    if q.blocked then
+      run = nil
+    else
+      if not run then run = {}; runs[#runs + 1] = run end
+      run[#run + 1] = q
+    end
+  end
+  local total = 0
+  for _, part in ipairs(runs) do total = total + pathLength(part) end
+  local step = spacing
+  if total / step + #runs > maxSamples then step = total / math.max(1, maxSamples - #runs) end
+  local out = {}
+  for _, part in ipairs(runs) do
+    for _, q in ipairs(resampleLine(part, step)) do
+      if #out >= maxSamples then return out end
+      out[#out + 1] = q
+    end
+  end
+  return out
+end
+
+-- Two clean marker lines (right, left) for one drive, and the corridor half width.
+local function buildOffsetLines(source, spacing, reserveObjects)
+  local path, step = smoothPath(source)
+  if #path < 2 then return {{}, {}}, 0 end
+  local halfWidth, halfLength = driveCarSize(source)
+  local needLeft, needRight, base = corridorNeeds(path, step, halfWidth, halfLength)
+  local offsetsLeft, offsetsRight = easeNeeds(needLeft, step), easeNeeds(needRight, step)
+  local right, left = {}, {}
+  for i, c in ipairs(path) do
+    local nx, ny = -c.ty, c.tx
+    left[i] = {x = c.x + nx * offsetsLeft[i], y = c.y + ny * offsetsLeft[i], z = c.z,
+      nx = nx, ny = ny, offset = offsetsLeft[i]}
+    right[i] = {x = c.x - nx * offsetsRight[i], y = c.y - ny * offsetsRight[i], z = c.z,
+      nx = -nx, ny = -ny, offset = offsetsRight[i]}
+  end
+  markFolds(left, path, offsetsLeft, offsetsRight)
+  markFolds(right, path, offsetsLeft, offsetsRight)
   local maxSamples = math.max(2, math.floor((SETTINGS.maxCones - (reserveObjects or 0)) / 2))
-  local lines = {
-    resampleLine(raw[1], spacing, maxSamples),
-    resampleLine(raw[2], spacing, maxSamples)
-  }
-  return sweptClearLines(lines, source, spacing)
+  return {placeAlong(right, spacing, maxSamples), placeAlong(left, spacing, maxSamples)}, base
 end
 
 local function castDown(x, y, fromZ, maxLength)
@@ -744,9 +786,8 @@ end
 -- A gate is scaled uniformly (no stretched banner) so its tower base plates stay at
 -- least ~1 m outside the marker lines next to it. Only markers close to the gate
 -- count: another leg of the track tens of metres away must not inflate the gate.
-local function gateScale(p, tx, ty, lines)
+local function gateScale(p, tx, ty, lines, base)
   local nx, ny = -ty, tx
-  local base = driftOffset(p, nx, ny, SETTINGS.width * 0.5)
   local need = base + 1.0
   local limit = base + 4.0
   for _, line in ipairs(lines or {}) do
@@ -915,7 +956,7 @@ end
 
 local function buildPath(path, group)
   local reserveObjects = SETTINGS.gates and 2 or 0
-  local lines = buildOffsetLines(path, SETTINGS.width * 0.5, math.max(0.5, SETTINGS.spacing), reserveObjects)
+  local lines, base = buildOffsetLines(path, math.max(0.5, SETTINGS.spacing), reserveObjects)
   local before = #spawned
   local gates = {}
   if SETTINGS.gates and #path >= 2 then
@@ -929,7 +970,7 @@ local function buildPath(path, group)
       gates[2] = {kind = 'finish', p = b, tx = ex, ty = ey}
     end
     for _, gate in ipairs(gates) do
-      gate.scale = gateScale(gate.p, gate.tx, gate.ty, lines)
+      gate.scale = gateScale(gate.p, gate.tx, gate.ty, lines, base)
       trimGateFootprint(lines, gate.p, gate.tx, gate.ty, gate.scale)
     end
   end
@@ -1050,6 +1091,7 @@ function M.rebuild()
     return sendState()
   end
   ringRebuildAt = nil
+  pathRebuildAt = nil
   if #savedPaths == 0 and #ringSets == 0 then
     removeObjects()
     reloadCollision()
@@ -1119,7 +1161,7 @@ local function normalizeSetting(key, value)
   if key == 'mesh' then return (value == 'tireStack' or value == 'tire') and 'tireStack' or 'cone' end
   if key == 'tireColors' then return value == 'rwb' and 'rwb' or 'rw' end
   if key == 'spacing' then return clamp(number or SETTINGS.spacing, 0.5, 10.0) end
-  if key == 'width' then return clamp(number or SETTINGS.width, 1.5, 12.0) end
+  if key == 'gap' then return clamp(number or SETTINGS.gap, 0.0, 3.0) end
   if key == 'scale' then return clamp(number or SETTINGS.scale, 0.5, 2.0) end
   if key == 'groundOffset' then return clamp(number or SETTINGS.groundOffset, -2.0, 1.0) end
   if key == 'maxCones' then return math.floor(clamp(number or SETTINGS.maxCones, 100, 4000)) end
@@ -1147,7 +1189,7 @@ function M.setSetting(key, value)
     end
   elseif key == 'collision' then
     if idle and (#savedPaths > 0 or #ringSets > 0) then return M.rebuild() end
-  elseif key == 'driftWidth' or key == 'gates' or key == 'rings' then
+  elseif key == 'driftWidth' or key == 'smooth' or key == 'gates' or key == 'rings' then
     if idle and #savedPaths > 0 then return M.rebuild() end
     if key == 'rings' and normalized then
       statusError = false
@@ -1155,6 +1197,9 @@ function M.setSetting(key, value)
     end
   elseif key == 'ringCount' or key == 'ringSize' or key == 'ringGap' or key == 'ringLift' then
     if changed then scheduleRings() end
+  elseif key == 'gap' or key == 'spacing' then
+    -- Dragging Gap / Spacing reshapes saved drives once the slider rests.
+    if changed and idle and #savedPaths > 0 then pathRebuildAt = clockTotal + 0.35 end
   end
   return sendState()
 end
@@ -1178,6 +1223,14 @@ function M.onUpdate(dtReal)
     ringRebuildAt = nil
     applyRingSettings()
     sendState()
+  end
+  if pathRebuildAt and clockTotal >= pathRebuildAt then
+    pathRebuildAt = nil
+    if not recording and #savedPaths > 0 then
+      M.rebuild()
+      status = string.format('Rebuilt: gap %.2f m, spacing %.1f m.', SETTINGS.gap, SETTINGS.spacing)
+      sendState()
+    end
   end
   if recording then
     local veh, id = currentVehicle()

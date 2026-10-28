@@ -1,5 +1,5 @@
-DRIFTSKETCH 0.9.0 — REFERENCE LOOK: CONES, TYRE WALLS, TRUSS GATES AND RINGS
-===========================================================================
+DRIFTSKETCH 0.9.1 — CLEAN LINES, TIGHT CORRIDOR, CONES, TYRE WALLS, GATES, RINGS
+==================================================================================
 
 Record a real drive, then build an object-marked path from your actual trajectory.
 DriftSketch is a standalone mod. It does not require CreatorPack.
@@ -7,9 +7,9 @@ DriftSketch is a standalone mod. It does not require CreatorPack.
 INSTALL
 -------
 1. Open BeamNG.drive > Mods > Open Mod Folder (or your user mods folder).
-2. Remove ALL older DriftSketch ZIP versions first. 0.9.0 uses a new asset
-   folder and new material names, and two copies must never load together.
-3. Copy DriftSketch_v0.9.0.zip there without extracting it.
+2. Remove ALL older DriftSketch ZIP versions first (including 0.9.0). Two
+   copies must never load together.
+3. Copy DriftSketch_v0.9.1.zip there without extracting it.
 4. Enable DriftSketch in the Mod Manager if needed.
 5. Restart BeamNG after replacing an older version so shapes and materials
    reload cleanly.
@@ -17,7 +17,7 @@ INSTALL
 
 WORKFLOW
 --------
-1. Choose Mesh, Spacing, Base width and the other settings.
+1. Choose Mesh, Spacing, Gap to car and the other settings.
 2. Press Start and drive the line you want.
 3. Press Stop & Build. Both sides are always generated.
 4. Drive the generated path or open BeamNG's replay; the generated TSStatic
@@ -28,6 +28,24 @@ WORKFLOW
    "Place rings ahead" to lay a straight line of rings in front of the car.
 7. Clear generated objects & saved drives deletes only this mod's objects,
    rings and saved paths. Clear rings deletes only the rings.
+
+NEW IN 0.9.1
+------------
+Clean, tight lines like a real cone slalom
+- Smooth path now resamples the recorded line every 0.25 m and filters it over
+  a few metres (Gaussian). Steering corrections and drift wobble no longer
+  reach the marker lines, which flow cleanly instead of zig-zagging.
+- Base width is replaced by Gap to car (0-3 m, default 0.3 m): the space
+  between the car side and the markers, per side. The real car width is
+  measured from the vehicle, so the corridor is always just the car plus Gap.
+  Dragging Gap or Spacing rebuilds saved drives by itself after a short pause.
+- Wherever the car really ran beside the smoothed line, that side opens by the
+  difference, gently, so the tight corridor never cuts into the driven line.
+- Drift widen is now OFF by default. ON opens the corridor smoothly (eased over
+  several metres, at most 2 m extra per side) only where the car went
+  sideways; the old point-by-point pushing that scattered cones is gone.
+- On the inside of a turn tighter than the corridor the line no longer loops:
+  that stretch is left empty instead of folding back over itself.
 
 NEW IN 0.9.0
 ------------
@@ -103,10 +121,10 @@ Tyre colours (Tire Stack only): Red · White, or Red · White · Blue.
 Layout: Both sides, always.
 Spacing: distance between markers on the same line, 0.5-10 m. Lower means more
 markers. Inner and outer curves are sampled independently.
-Base width: manual distance between the two lines. It is the minimum with
-Drift widen ON, or the exact fixed distance with it OFF.
-Drift widen: automatic extra lateral clearance for sideways driving, the rear
-of the car and neighbouring poses in turns. Both sides remain equal.
+Gap to car (0.9.1, replaces Base width): space between the car side and the
+markers on each side. The corridor is the measured car width plus Gap.
+Drift widen (0.9.1, OFF by default): opens the corridor smoothly only where the
+car drove sideways, so the rear and front corners stay clear.
 Start / Finish gates: ON builds the START gate at the first path point and the
 FINISH gate at the last, aligned with the path. Each gate is scaled uniformly
 so its tower base plates stay at least about 1 m outside nearby marker lines.
@@ -116,11 +134,11 @@ Ground fallback: height relative to the recorded point, used only when no ground
 raycast hits. -0.55 m is the normal starting value.
 Performance cap: maximum markers plus gates for one drive. Long drives are
 sampled more sparsely instead of creating unlimited objects.
-Smooth path: light path and heading smoothing to reduce small kinks.
+Smooth path: strong arc-length smoothing for clean, flowing marker lines.
 Keep builds: keep previous runs when you start a new recording.
 Solid / car damage: OFF uses collisionType=None, so objects are visual only.
 ON uses Visible Mesh Final static collision, so impacts can stop or damage the
-car. Changing this, Drift widen, gates or Rings on drive rebuilds saved drives
+car. Changing this, Drift widen, Smooth path, gates or Rings on drive rebuilds saved drives
 automatically when recording is stopped.
 Rings: Rings on drive, Count, Size, Gap, Lift, Place rings ahead and Clear rings.
 See Rings above.
@@ -175,6 +193,7 @@ show no real brands.
 
 HISTORY
 -------
+0.9.0  Reference look: new cones, tyre walls, truss gates and rings.
 0.8.1  Runtime material loading; yellow/white set (replaced in 0.9.0).
 0.8.0  Material fixes, redesigned tyres and gates.
 0.7.1  One-click mesh buttons instead of a dropdown.

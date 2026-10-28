@@ -94,15 +94,15 @@
             </div>
           </div>
           <label class="ds-field">Spacing <b>{{settings.spacing}} m</b><input type="range" min="0.5" max="10" step="0.1" ng-model="settings.spacing" ng-change="pushSetting('spacing')"></label>
-          <label class="ds-field">Base width <b>{{settings.width}} m</b><input type="range" min="1.5" max="12" step="0.1" ng-model="settings.width" ng-change="pushSetting('width')"></label>
+          <label class="ds-field" title="Space between the car side and the cones, per side. The real car width is measured automatically.">Gap to car <b>{{settings.gap}} m</b><input type="range" min="0" max="3" step="0.05" ng-model="settings.gap" ng-change="pushSetting('gap')"></label>
           <label class="ds-field">Mesh scale <b>{{settings.scale}}×</b><input type="range" min="0.5" max="2" step="0.05" ng-model="settings.scale" ng-change="pushSetting('scale')"></label>
           <label class="ds-field">Ground fallback <b>{{settings.groundOffset}} m</b><input type="range" min="-2" max="1" step="0.05" ng-model="settings.groundOffset" ng-change="pushSetting('groundOffset')"></label>
           <label class="ds-field full">Performance cap <b>{{settings.maxCones}} objects / drive</b><input type="range" min="100" max="4000" step="100" ng-model="settings.maxCones" ng-change="pushSetting('maxCones')"></label>
         </div>
         <div class="ds-checks">
-          <label class="ds-check"><input type="checkbox" ng-model="settings.smooth" ng-change="pushSetting('smooth')">Smooth path</label>
+          <label class="ds-check" title="Clean flowing lines: steering corrections and drift wobble are filtered out of the recorded line."><input type="checkbox" ng-model="settings.smooth" ng-change="pushSetting('smooth')">Smooth path</label>
           <label class="ds-check"><input type="checkbox" ng-model="settings.keepBuilds" ng-change="pushSetting('keepBuilds')">Keep builds</label>
-          <label class="ds-check drift" title="ON: manual width is the minimum; sideways driving and neighboring turn poses get swept clearance. OFF: exact fixed manual width."><input type="checkbox" ng-model="settings.driftWidth" ng-change="pushSetting('driftWidth')">Drift widen <small>AUTO + TURN CLEARANCE</small></label>
+          <label class="ds-check drift" title="OFF: tight corridor, car width + gap. ON: the corridor opens smoothly where the car drove sideways, so the rear does not touch the cones."><input type="checkbox" ng-model="settings.driftWidth" ng-change="pushSetting('driftWidth')">Drift widen <small>SMOOTH · SIDEWAYS ONLY</small></label>
           <label class="ds-check gates" title="Blue START truss gate at the first path point, steel FINISH gate with checkered banner at the last. Scaled uniformly to the track width."><input type="checkbox" ng-model="settings.gates" ng-change="pushSetting('gates')">Start / Finish gates <small>TRUSS · CHECKERED</small></label>
           <label class="ds-check solid" title="Real static collision. Impacts can stop or damage the car. Existing paths rebuild automatically."><input type="checkbox" ng-model="settings.collision" ng-change="pushSetting('collision')">Solid / car damage <small>REBUILDS</small></label>
         </div>
@@ -133,15 +133,15 @@
           <p><b>Mesh:</b> kliko direkt <b>Traffic Cone</b> (kon portokalli me dy shirita të bardhë) ose <b>Tire Stack</b> (4 goma të stivuara) — pa dropdown. Nëse ke drive të ruajtur, pista ndërrohet menjëherë.</p>
           <p><b>Ngjyrat e gomave:</b> Red · White = çifte të kuqe dhe të bardha; Red · White · Blue = si pista e kartingut.</p>
           <p><b>Layout:</b> Both sides — objekte në të dyja anët, gjithmonë.</p>
-          <p><b>Spacing:</b> distanca mes objekteve në të njëjtën vijë, nga 0.5 m. Më vogël = më afër njëri-tjetrit.</p>
-          <p><b>Base width:</b> hapësira bazë mes dy vijave. Me Drift widen ON është gjerësia minimale.</p>
-          <p><b>Drift widen:</b> ON zgjeron kur makina është anësor, mbron mbrapa dhe kontrollon edhe pozicionet fqinje gjatë kthesave; OFF mban width fiks. Në kthesa ekstreme hiqet objekti që nuk ka vend të sigurt.</p>
+          <p><b>Spacing:</b> distanca mes objekteve në të njëjtën vijë, nga 0.5 m. Më vogël = më afër njëri-tjetrit. Edhe ky rindërtohet vetë.</p>
+          <p><b>Gap to car:</b> sa hapësirë mbetet mes anës së veturës dhe konave, në secilën anë. Gjerësia e veturës matet vetë, kështu 0.3 m = korridor shumë i ngushtë si në foto. Kur e lëviz, pista e ruajtur rindërtohet vetë.</p>
+          <p><b>Drift widen:</b> OFF (rekomandohet) = korridor i ngushtë dhe i njëtrajtshëm. ON = korridori hapet butë vetëm aty ku vetura ka shkuar anash, që mbrapa të mos i prekë konat.</p>
           <p><b>Start / Finish gates:</b> START me kulla truss blu dhe FINISH me kulla çeliku e flamur me kuadrate. Madhësia rritet njëtrajtësisht sipas pistës, pa u shtrembëruar; kullat qëndrojnë jashtë vijave.</p>
           <p><b>Rings:</b> <b>Rings on drive</b> vendos rrathë mbi vijën e regjistruar. <b>PLACE RINGS AHEAD</b> i vendos drejt përpara makinës. <b>Count</b> = sa rrathë, <b>Size</b> = hapja e brendshme në metra, <b>Gap</b> = sa larg njëri nga tjetri, <b>Lift</b> = sa lart nga toka. Ndryshimet aplikohen vetë pas pak çastesh. <b>Clear rings</b> fshin vetëm rrathët.</p>
-          <p><b>Mesh scale:</b> madhësia e konit/gomave, pa ndryshuar spacing/width.</p>
+          <p><b>Mesh scale:</b> madhësia e konit/gomave; hapësira nga vetura mbetet e njëjtë.</p>
           <p><b>Ground fallback:</b> lartësia rezervë nëse toka nuk gjendet me raycast. Zakonisht lëre -0.55 m.</p>
           <p><b>Performance cap:</b> numri maksimal i objekteve për një drive, duke përfshirë portat, për FPS.</p>
-          <p><b>Smooth path:</b> butëson dridhjet/kthesat e vogla të vijës së regjistruar.</p>
+          <p><b>Smooth path:</b> vijat dalin të lëmuara dhe të rregullta: korrigjimet e timonit dhe dridhjet e drift-it hiqen. Konat qëndrojnë prapë jashtë vendit ku ka kaluar vetura.</p>
           <p><b>Keep builds:</b> ruan pistat e vjetra kur regjistron run të ri.</p>
           <p><b>Solid / car damage:</b> ON jep collision real dhe goditja mund të dëmtojë makinën. OFF = vetëm vizual. Rrathët me Lift 0 kanë pjesën e poshtme nën tokë, kështu kalon pa u përplasur.</p>
           <p><b>Rebuild:</b> rikrijon pistën me settings të reja pa e përsëritur run-in. <b>Clear:</b> fshin vetëm objektet, rrathët dhe paths të DriftSketch.</p>
