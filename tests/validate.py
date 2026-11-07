@@ -1,170 +1,208 @@
 #!/usr/bin/env python3
-"""Static validation for the DriftSketch 0.9.22 clean-rollback package.
+"""Static package validation for DriftSketch 0.9.23 (rig-aware cone placement).
 
-Usage: validate.py <mod-folder-or-zip> [previous-package-folder-or-zip]
-Optional: CSSTREE=<path to css-tree> for full CSS parsing with node.
+Usage: PYTHONPATH=/home/user/work/pylib CSSTREE=/home/user/work/nodemod/node_modules/css-tree \
+       python3 validate.py <dir-or-zip> [baseline-0.9.4-dir-or-zip]
+
+The optional baseline argument adds a byte-for-byte comparison against an
+extracted exact 0.9.4 package; the built-in SHA-256 table always runs.
 """
-import json, re, subprocess, sys, os, hashlib, tempfile, zipfile
-from html.parser import HTMLParser
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+import zipfile
 from pathlib import Path
 
-_keep = []
-def resolve_tree(value):
-    path = Path(value).resolve()
-    if path.is_file() and path.suffix.lower() == '.zip':
-        holder = tempfile.TemporaryDirectory()
-        _keep.append(holder)
-        zipfile.ZipFile(path).extractall(holder.name)
-        return Path(holder.name)
-    return path
-
-root = resolve_tree(sys.argv[1])
-previous = resolve_tree(sys.argv[2]) if len(sys.argv) > 2 else None
-checks = fails = 0
-
+total = failed = 0
 def check(cond, msg):
-    global checks, fails
-    checks += 1
+    global total, failed
+    total += 1
     if not cond:
-        fails += 1
+        failed += 1
         print('FAIL: ' + msg)
     else:
         print('ok  : ' + msg)
 
-def sha(path):
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+def load(target):
+    p = Path(target)
+    if p.is_dir():
+        return p, None
+    if p.is_file() and zipfile.is_zipfile(p):
+        tmp = tempfile.mkdtemp(prefix='ds0923_')
+        with zipfile.ZipFile(p) as z:
+            z.extractall(tmp)
+        return Path(tmp), tmp
+    raise SystemExit('Not a directory or ZIP: ' + str(p))
 
-all_files = sorted(str(p.relative_to(root)) for p in root.rglob('*') if p.is_file())
-expected = sorted([
-    'README.txt', 'mod.json',
-    'art/shapes/driftsketch_v09/cone.dae',
-    'art/shapes/driftsketch_v09/main.materials.json',
-    'lua/ge/extensions/driftSketch.lua',
-    'ui/modules/apps/DriftSketch/app.html',
-    'ui/modules/apps/DriftSketch/app.js',
+src, tmp1 = load(sys.argv[1])
+base, tmp2 = (load(sys.argv[2]) if len(sys.argv) > 2 else (None, None))
+CSSTREE = os.environ.get('CSSTREE', '/home/user/work/nodemod/node_modules/css-tree')
+
+# SHA-256 of every art asset in the exact 0.9.4 ZIP (c3c4c457...). Keeping them
+# here means the check is self-contained and needs no baseline download.
+import hashlib
+ASSET_HASHES = {
+    'art/shapes/driftsketch_v09/apex_bump.dae': '572e51f09fbb6fff8d942f75f518671026fad1e71f36ec5f8e3e506e41fb51e5',
+    'art/shapes/driftsketch_v09/brake_board_100.dae': 'b3e9ba1f4d85728a8f4e3379f5a807bc387e525d9c0aebc050b281601a6f477f',
+    'art/shapes/driftsketch_v09/brake_board_50.dae': 'd36a8c0bfc1c4c79db375ade5029c4942892e9ab43fb4e7c09de2907641640c7',
+    'art/shapes/driftsketch_v09/checkered_flag.dae': 'dbdefa98c09aaf6148b3c3b1c9ae71bfd14ea5fb4142093d982b93e170f945cf',
+    'art/shapes/driftsketch_v09/cone.dae': 'af2ac877add00116b98be7abe2536d0fe1a4cc2db2ce078b6e2ff61ac314eed6',
+    'art/shapes/driftsketch_v09/gate_finish.dae': '0bc965c371f88c76a6246c8a0b42baad86853a60e5566e703e0a7c080e2a50d9',
+    'art/shapes/driftsketch_v09/gate_start.dae': '244ef26810c21e0e5abae44409c7d412d54718a203d98ba75e8e2353c1acf448',
+    'art/shapes/driftsketch_v09/main.materials.json': 'b7801a122f2701f5366b9d8220072d2dabca37836a8acac8bca9a3563763b77b',
+    'art/shapes/driftsketch_v09/race_curb.dae': 'f93e022c1924d2940475595233dae7d8c79ce18b9fcfd5fc934ec4611660faf1',
+    'art/shapes/driftsketch_v09/ring.dae': 'a601bac3c35954761d645f6f8f9edf629d8de95954fe9a6b3f2f29500a8f8cf0',
+    'art/shapes/driftsketch_v09/tire_stack_blue.dae': '1e151c02bba247fba8ce6107cdf7c6443e6052de4a9fa5f5d57a690d1e1f7a45',
+    'art/shapes/driftsketch_v09/tire_stack_red.dae': 'f3cd6d4ecee26fe489c4155ca895360b6245f8657eb7eeb6bf0e73bd8b2bf3ee',
+    'art/shapes/driftsketch_v09/tire_stack_white.dae': 'cd6e0edb14a8d6fd77842e685abdf1abec718562b68aa9dae4206709692efcb6',
+    'ui/modules/apps/DriftSketch/app.png': '12dcaf4577a664d00b3b63a25f82fd5d4bacd58e1f44bae68c176177ab4d2f04',
+}
+
+files = sorted(str(f.relative_to(src)) for f in src.rglob('*') if f.is_file())
+basefiles = (sorted(str(f.relative_to(base)) for f in base.rglob('*') if f.is_file())
+             if base is not None else files)
+EXPECTED_FILES = sorted([
+    'README.txt', 'mod.json', 'lua/ge/extensions/driftSketch.lua',
+    'ui/modules/apps/DriftSketch/app.html', 'ui/modules/apps/DriftSketch/app.js',
     'ui/modules/apps/DriftSketch/app.json',
-    'ui/modules/apps/DriftSketch/app.png',
-])
-check(all_files == expected, 'mod contains exactly the 9 clean-rollback files')
-check(not any('DriftSketchCounter' in f for f in all_files), 'NO DriftSketch Counter app in the ZIP')
+] + [p for p in ASSET_HASHES])
+print('== files ==')
+check(len(files) == 20, 'package has the 20 expected 0.9.4-layout files (got %d)' % len(files))
+check(files == EXPECTED_FILES, 'exact 0.9.4 file layout, no files added or removed')
+if base is not None:
+    check(files == basefiles, 'no files added or removed vs supplied baseline')
+for rel in ['mod.json', 'README.txt', 'lua/ge/extensions/driftSketch.lua',
+            'ui/modules/apps/DriftSketch/app.html', 'ui/modules/apps/DriftSketch/app.js',
+            'ui/modules/apps/DriftSketch/app.json', 'ui/modules/apps/DriftSketch/app.png',
+            'art/shapes/driftsketch_v09/cone.dae', 'art/shapes/driftsketch_v09/main.materials.json']:
+    check(rel in files, 'present: ' + rel)
+check(not any(n.startswith('DriftSketch_v') and n.endswith('.zip') for n in files),
+      'no nested ZIP')
 
-# ---- JSON ------------------------------------------------------------------
-json_files = sorted(root.rglob('*.json'))
-check(len(json_files) == 3, 'exactly three JSON files (%d)' % len(json_files))
-for p in json_files:
+print('== JSON ==')
+for rel in ['mod.json', 'ui/modules/apps/DriftSketch/app.json',
+            'art/shapes/driftsketch_v09/main.materials.json']:
     try:
-        data = json.loads(p.read_text(encoding='utf-8'))
-        check(True, 'valid JSON: ' + str(p.relative_to(root)))
-    except Exception as exc:
-        check(False, 'valid JSON: %s (%s)' % (p.relative_to(root), exc))
-        continue
-    if p.name in ('mod.json', 'app.json'):
-        check(data.get('version') == '0.9.22', '%s version is 0.9.22' % p.relative_to(root))
+        data = json.loads((src / rel).read_text())
+        check(True, 'valid JSON: ' + rel)
+    except Exception as e:
+        data = {}
+        check(False, 'valid JSON: ' + rel + ' — ' + str(e))
+    if rel != 'art/shapes/driftsketch_v09/main.materials.json':
+        check(data.get('version') == '0.9.23', rel + ' version 0.9.23')
+check('DriftSketch' in json.loads((src / 'mod.json').read_text()).get('name', '') or
+      'DriftSketch' in json.loads((src / 'mod.json').read_text()).get('description', ''),
+      'mod.json identifies DriftSketch')
 
-# ---- JavaScript ------------------------------------------------------------
-js_files = sorted(root.rglob('*.js'))
-check(len(js_files) == 1, 'only one app.js (no counter app JS)')
-for p in js_files:
-    r = subprocess.run(['node', '--check', str(p)], capture_output=True, text=True)
-    check(r.returncode == 0, 'node --check: %s %s' % (p.relative_to(root), r.stderr.strip()))
-
-# ---- Lua -------------------------------------------------------------------
-lua_path = root / 'lua/ge/extensions/driftSketch.lua'
-lua_src = lua_path.read_text(encoding='utf-8')
+print('== scripts ==')
+lua_rel = 'lua/ge/extensions/driftSketch.lua'
+lua = (src / lua_rel).read_text()
+js = (src / 'ui/modules/apps/DriftSketch/app.js').read_text()
+html = (src / 'ui/modules/apps/DriftSketch/app.html').read_text()
+readme = (src / 'README.txt').read_text()
 try:
-    import lupa
-    rt = lupa.LuaRuntime()
-    res = rt.execute('return loadfile(%s)' % json.dumps(str(lua_path)))
-    check(callable(res), 'Lua syntax OK (loadfile)')
-except ImportError:
-    r = subprocess.run(['luac', '-p', str(lua_path)], capture_output=True, text=True)
-    check(r.returncode == 0, 'luac -p: %s' % r.stderr.strip())
-check("M.version = '0.9.22'" in lua_src, 'Lua reports v0.9.22')
+    from lupa import LuaRuntime
+    l = LuaRuntime()
+    res = l.execute('return loadfile(%s)' % json.dumps(str(src / lua_rel)))
+    check(callable(res), 'Lua core compiles (loadfile)')
+except Exception as e:
+    check(False, 'Lua core compiles — ' + str(e))
+for rel in [p for p in files if p.endswith('.js')]:
+    r = subprocess.run(['node', '--check', str(src / rel)], capture_output=True, text=True)
+    check(r.returncode == 0, 'node --check: ' + rel + ((' — ' + r.stderr.strip()) if r.returncode else ''))
 
-# Code (not comments) must contain NONE of the removed features.
-lua_code = '\n'.join(line for line in lua_src.splitlines() if not line.lstrip().startswith('--'))
-forbidden_code = ['updateTumbles(', 'tumbleCones', 'movingCones', 'makeConeMovable',
-                  'toppleRotation', 'notifyConeToppled', 'SETTINGS.topple',
-                  'SETTINGS.coneCollision', 'coneCollision', 'hudTotal', 'hudLabel',
-                  'hudStyle', 'soundVolume', 'soundEnabled', 'driftSketch.hit',
-                  'editor.selection.object', 'onCouplerAttached', 'useSelectedVehicle',
-                  'Visible Mesh', 'toppledCount']
-for snippet in forbidden_code:
-    check(snippet not in lua_code, 'removed code absent from Lua: ' + snippet)
-check("obj:setField('collisionType', 0, 'None')" in lua_code, 'cones always spawn with collision=None')
-check("pcall(createObject, 'TSStatic')" in lua_code, 'cones are TSStatic objects')
-check('spawnVehicle' not in lua_code and 'spawn.spawnVehicle' not in lua_code,
-      'no JBeam vehicle is spawned for a cone')
+print('== versions ==')
+check("M.version = '0.9.23'" in lua or 'M.version="0.9.23"' in lua, 'Lua module version 0.9.23')
+check("scope.modVersion = '0.9.23';" in js, 'UI modVersion 0.9.23')
+check('v{{modVersion}}' in html, 'HTML footer shows modVersion')
+check('0.9.23' in readme, 'README documents 0.9.23')
+check('0.9.4' not in re.findall(r'version\s*=\s*[\'"]?([\d.]+)', lua), 'no stale Lua version string')
 
-panel_js = (root / 'ui/modules/apps/DriftSketch/app.js').read_text(encoding='utf-8')
-for snippet in ['Audio', 'playHitSound', 'hud', 'topple', 'sound', 'Counter', 'extraVehicles']:
-    check(snippet not in panel_js, 'removed code absent from app.js: ' + snippet)
+print('== rig-aware core ==')
+for token in ['rigAware', 'rigMargin', 'RIG_MAX_DIST', 'RIG_MIN_STREAK',
+              'RIG_LAG_SAMPLES', 'rigHalfWidth', 'sampleRig', 'applyRigLag',
+              'activeRigEntries', 'nearbyVehicles', 'editorSelectionEntries',
+              'editor.selection.object', 'rigEnabled', 'rigVehicles', 'rigCount',
+              'M.useSelectedVehicle', 'M.unregisterSelectedVehicle',
+              'M.unregisterVehicle', 'M.clearSelectedVehicles',
+              'M.onCouplerAttached', 'M.onCouplerDetached']:
+    check(token in lua, 'Lua core has ' + token)
+for token in ['rigAware', 'rigMargin', 'useSelectedTrailer', 'unregisterSelectedTrailer',
+              'unregisterTrailer', 'clearTrailers', 'rigVehicles', 'rigCount']:
+    check(token in js and token in html, 'UI JS + HTML wire ' + token)
+check('Përdor rimorkion e zgjedhur' in html, 'Albanian "Përdor rimorkion e zgjedhur" button')
+check('ATTACHED VEHICLES' in html, 'rig section visible in panel')
+check('NO HITCH / NO L NEEDED' in html, 'panel states no hitch / no L key needed')
+check('Auto-detect' in readme or 'AUTO' in readme.upper(), 'README documents auto detection')
+check('sampleRig(id, pos, p)' in lua, 'onUpdate samples the rig at each path point')
+check('applyRigLag(points)' in lua, 'stop applies the trailer lag before building')
+check('rigEnabled()' in lua, 'rig width gated by auto/manual/coupler state')
 
-# ---- CSS -------------------------------------------------------------------
-css_helper = Path(__file__).parent / 'css_check.js'
-csstree = None
-for candidate in [os.environ.get('CSSTREE'),
-                  str(Path(__file__).parent / 'nodemod/node_modules/css-tree'),
-                  str(Path(__file__).parent.parent / 'work/nodemod/node_modules/css-tree')]:
-    if candidate and Path(candidate).exists():
-        csstree = Path(candidate)
-        break
-html_files = sorted(root.rglob('*.html'))
-if csstree:
-    r = subprocess.run(['node', str(css_helper), str(csstree)] + [str(p) for p in html_files],
-                       capture_output=True, text=True)
-    print(r.stdout.strip())
-    if r.stderr.strip():
-        print(r.stderr.strip())
-    check(r.returncode == 0, 'css-tree parses the embedded <style> without errors')
-else:
-    for p in html_files:
-        css = ''.join(re.findall(r'<style>(.*?)</style>', p.read_text(encoding='utf-8'), re.S))
-        check(css.count('{') == css.count('}') and css.count('(') == css.count(')'),
-              'balanced CSS braces in ' + p.name)
+print('== clean-rollback guarantees ==')
+lua_code = '\n'.join(line for line in lua.splitlines()
+                     if not line.lstrip().startswith('--'))
+for token in ['updateTumbles', 'movingCones', 'toppled', 'toppling', 'tumble',
+              'spawn.spawnVehicle', 'spawnVehicle', 'DriftSketchCounter',
+              'cone-hit.wav', '.wav', 'playSound', 'onContact', 'hudCard',
+              'soundVolume', 'photoCard', 'NEON BADGE', 'outlineStyle']:
+    check(token.lower() not in lua_code.lower(), 'no rollback residue: ' + token)
+for token in ['topple', 'tumble', 'counter', 'hud', 'sound', 'wav']:
+    check(token.lower() not in html.lower(), 'HTML free of ' + token)
+    check(token.lower() not in js.lower(), 'app.js free of ' + token)
+check("collisionType" in lua, 'TSStatic cones still spawned with collisionType')
+check("SETTINGS.collision and 'Visible Mesh Final' or 'None'" in lua,
+      'physical collision off unless explicitly enabled')
+check('collision:false' in js.replace(' ', ''), 'Solid / car damage defaults OFF')
+check('gates:false' in js.replace(' ', ''), 'optional gates default OFF')
+check('rings:false' in js.replace(' ', ''), 'optional rings default OFF')
 
-# ---- HTML ------------------------------------------------------------------
-VOID = {'area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr'}
-class Balance(HTMLParser):
-    def __init__(self):
-        super().__init__(); self.stack = []; self.errors = []
-    def handle_starttag(self, tag, attrs):
-        if tag not in VOID: self.stack.append(tag)
-    def handle_startendtag(self, tag, attrs): pass
-    def handle_endtag(self, tag):
-        if tag in VOID: return
-        if not self.stack or self.stack[-1] != tag:
-            self.errors.append('unexpected </%s>' % tag)
-        else: self.stack.pop()
+print('== no per-frame / map-wide work ==')
+check(lua.count('sampleRig(') <= 6, 'rig sampling called only at path-recording points')
+check('function M.onUpdate' in lua, 'onUpdate present')
+check('be.getObjectCount' in lua, 'nearby vehicle list available for detection')
+check('RIG_MAX_DIST' in lua and 'pose.dist <= RIG_MAX_DIST' in lua,
+      'only vehicles within the 12 m rig radius are considered')
+check('loadJsonMaterialsFile' in lua and 'useInstanceRenderData' in lua,
+      'lightweight TSStatic meshes + instance rendering retained')
 
-panel_html_path = root / 'ui/modules/apps/DriftSketch/app.html'
-panel_html = panel_html_path.read_text(encoding='utf-8')
-for p in html_files:
-    parser = Balance(); parser.feed(p.read_text(encoding='utf-8'))
-    check(not parser.errors and not parser.stack,
-          'balanced HTML tags in %s %s' % (p.relative_to(root), parser.errors[:2]))
-check('ng-model="settings.topple"' not in panel_html, 'no topple checkbox in the panel')
-for label in ['● FILLO', 'NDALO', 'RINDËRTO', 'PASTRO', 'KONAT &amp; PISTA',
-              'Hapësira', 'Kufiri total i konave', 'Zgjero në drift']:
-    check(label in panel_html, 'panel keeps core control "%s"' % label)
-for label in ['DriftSketch Counter', 'NEON BADGE', 'OUTLINE', 'Kartela si në foto',
-              'Kontakt fizik me veturën']:
-    check(label not in panel_html, 'panel no longer offers "%s"' % label)
-handlers = set()
-for attr_value in re.findall(r'ng-(?:click|change|if|disabled|class)="([^"]*)"', panel_html):
-    handlers.update(re.findall(r'\b([A-Za-z_][A-Za-z0-9_]*)\s*\(', attr_value))
-for handler in sorted(handlers):
-    check(('scope.%s =' % handler) in panel_js or ('scope.%s=' % handler) in panel_js,
-          'Angular handler defined in app.js: ' + handler)
+print('== HTML / CSS ==')
+r = subprocess.run(['node', str(Path(__file__).parent / 'css_check.js'), CSSTREE,
+                    str(src / 'ui/modules/apps/DriftSketch/app.html')],
+                   capture_output=True, text=True)
+print(r.stdout.strip())
+check(r.returncode == 0, 'css-tree parse of embedded CSS')
+for tag in ['div', 'label', 'button', 'details', 'summary', 'p', 'b', 'small', 'span']:
+    opens = len(re.findall(r'<%s[\s>]' % tag, html))
+    closes = len(re.findall(r'</%s>' % tag, html))
+    check(opens == closes, 'balanced <%s> (%d/%d)' % (tag, opens, closes))
+check('<style>' in html and '</style>' in html, 'single style block present')
+check(html.count('<style>') == 1, 'exactly one style block')
+check('ng-click="start()"' in html and 'ng-click="stop()"' in html, 'START / STOP wired')
+check('ng-click="rebuild()"' in html and 'ng-click="clear()"' in html, 'Rebuild / Clear wired')
 
-# ---- Assets unchanged vs previous release ---------------------------------
-if previous:
-    for rel in ['art/shapes/driftsketch_v09/cone.dae',
-                'art/shapes/driftsketch_v09/main.materials.json',
-                'ui/modules/apps/DriftSketch/app.png']:
-        a, b = previous / rel, root / rel
-        check(a.exists() and b.exists() and sha(a) == sha(b),
-              'cone artwork/icon unchanged from 0.9.21: ' + rel)
+print('== unchanged assets ==')
+for rel, digest in sorted(ASSET_HASHES.items()):
+    f = src / rel
+    check(f.is_file() and hashlib.sha256(f.read_bytes()).hexdigest() == digest,
+          'byte-identical to exact 0.9.4: ' + rel)
+if base is not None:
+    for rel in basefiles:
+        if rel.endswith(('.dae', '.png', '.materials.json')):
+            check((src / rel).read_bytes() == (base / rel).read_bytes(),
+                  'matches supplied baseline: ' + rel)
 
-print('== RESULT: %d checks, %d failed ==' % (checks, fails))
-sys.exit(1 if fails else 0)
+print('== no network / external refs ==')
+for rel in [p for p in files if p.endswith(('.js', '.html', '.lua'))]:
+    t = (src / rel).read_text()
+    check('localhost' not in t and '127.0.0.1' not in t and 'http://' not in t,
+          'no hardcoded external address in ' + rel)
+
+print('== RESULT: %d checks, %d failed ==' % (total, failed))
+for t in (tmp1, tmp2):
+    if t:
+        shutil.rmtree(t, ignore_errors=True)
+sys.exit(1 if failed else 0)

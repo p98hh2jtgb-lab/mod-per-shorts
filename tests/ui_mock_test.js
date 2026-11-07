@@ -1,71 +1,112 @@
-// Mock of the BeamNG UI app directive for the 0.9.22 clean rollback.
-// Usage: node ui_mock_test.js <app.js path>
+// DriftSketch 0.9.23 UI panel mock test ---------------------------------------
+// Usage: node ui_mock_test_0923.js [path/to/app.js]
 const fs = require('fs');
-const file = process.argv[2];
+const vm = require('vm');
+const path = require('path');
+
+const FILE = process.argv[2] || path.join(__dirname, 'ui/modules/apps/DriftSketch/app.js');
+const source = fs.readFileSync(FILE, 'utf8');
 let total = 0, failed = 0;
 function check(cond, msg) {
   total++;
   if (!cond) { failed++; console.log('FAIL: ' + msg); }
   else console.log('ok  : ' + msg);
 }
-function eq(a, b, msg) { check(a === b, msg + ' (got ' + String(a) + ', expected ' + String(b) + ')'); }
+function eq(a, b, msg) { check(a === b, msg + ' (got ' + JSON.stringify(a) + ')'); }
 
-let directiveDef = null;
-global.angular = {
+const commands = [];
+const listeners = {};
+let linkFn = null;
+const angular = {
   module: function () {
-    return { directive: function (name, def) { check(name === 'driftSketchPanel', 'registers driftSketchPanel'); directiveDef = def; } };
+    return {
+      directive: function (name, def) { linkFn = def[def.length - 1]($window).link; return angular; }
+    };
   }
 };
-new Function('angular', fs.readFileSync(file, 'utf8'))(global.angular);
-check(!!directiveDef, 'app.js registered its directive');
-eq(directiveDef[0], '$window', 'directive injects $window');
-
-const calls = [];
-const listeners = {};
-const fakeWindow = { bngApi: { engineLua: function (cmd) { calls.push(cmd); } } };
+const $window = {
+  bngApi: {
+    engineLua: function (cmd) { commands.push(cmd); }
+  }
+};
 const scope = {
-  $on: function (name, fn) { listeners[name] = fn; return function () {}; },
+  $on: function (name, fn) { listeners[name] = fn; return function () { delete listeners[name]; }; },
   $applyAsync: function (fn) { fn(); }
 };
-directiveDef[1](fakeWindow).link(scope);
+vm.runInNewContext(source, {angular, JSON, Math, Number, isFinite, console});
 
-eq(scope.modVersion, '0.9.22', 'panel displays v0.9.22');
-check(calls.indexOf('extensions.driftSketch.uiState()') >= 0, 'panel asks for Lua state on load');
+check(typeof linkFn === 'function', 'directive link function registered');
+linkFn(scope);
+eq(scope.modVersion, '0.9.23', 'panel displays version 0.9.23');
+eq(scope.settings.rigAware, true, 'auto-detect checkbox defaults ON');
+eq(scope.settings.rigMargin, 0.25, 'extra rig clearance defaults 0.25 m');
+eq(scope.settings.collision, false, 'Solid / car damage OFF');
+eq(scope.settings.gates, false, 'optional truss gates OFF');
+eq(scope.settings.rings, false, 'rings OFF');
+eq(scope.state.rigCount, 0, 'rig list starts empty');
+check(Array.isArray(scope.state.rigVehicles), 'rigVehicles is an array');
+eq(scope.settings.topple, undefined, 'no topple setting');
+eq(scope.settings.coneCollision, undefined, 'no physical cone collision setting');
+eq(scope.settings.hudCard, undefined, 'no HUD card setting');
+eq(scope.settings.soundVolume, undefined, 'no sound setting');
+eq(scope.settings.physics, undefined, 'no physics setting');
+check(!('toppledCount' in scope.state), 'no topple counter in UI state');
+check(commands.indexOf('extensions.driftSketch.uiState()') >= 0, 'initial uiState requested');
 
-const forbidden = ['topple', 'coneCollision', 'hudTotal', 'hudLabel', 'hudSize', 'hudStyle',
-  'hudCard', 'hudOutline', 'hudGlow', 'hudShadow', 'soundEnabled', 'soundVolume',
-  'useSelectedTrailer', 'unregisterSelectedTrailer', 'clearTrailers', 'playHitSound'];
-for (const key of forbidden) {
-  check(!(key in scope.settings) && typeof scope[key] === 'undefined',
-    'removed feature is absent from the panel: ' + key);
-}
+// Panel button -> GE extension command (World Editor selected trailer)
+const before = commands.length;
+scope.useSelectedTrailer();
+eq(commands[before], 'extensions.driftSketch.useSelectedVehicle()', 'Use selected trailer calls useSelectedVehicle()');
+scope.unregisterSelectedTrailer();
+eq(commands[before + 1], 'extensions.driftSketch.unregisterSelectedVehicle()', 'Remove selected calls unregisterSelectedVehicle()');
+scope.unregisterTrailer(202);
+eq(commands[before + 2], 'extensions.driftSketch.unregisterVehicle(202)', 'per-row x calls unregisterVehicle(id)');
+scope.unregisterTrailer('nope');
+eq(commands.length, before + 3, 'invalid row id is ignored (no lua command)');
+scope.clearTrailers();
+eq(commands[before + 3], 'extensions.driftSketch.clearSelectedVehicles()', 'Remove all calls clearSelectedVehicles()');
 
-const actions = [
+// Rig settings are passed through with correct numeric/boolean coercion
+scope.settings.rigMargin = 0.75;
+scope.pushSetting('rigMargin');
+eq(commands[commands.length - 1], 'extensions.driftSketch.setSetting("rigMargin",0.75)', 'rigMargin pushed as number');
+scope.settings.rigAware = false;
+scope.pushSetting('rigAware');
+eq(commands[commands.length - 1], 'extensions.driftSketch.setSetting("rigAware",false)', 'rigAware pushed as boolean');
+
+// Core actions still work
+for (const [fn, cmd] of [
   ['start', 'extensions.driftSketch.start()'],
   ['stop', 'extensions.driftSketch.stop()'],
   ['rebuild', 'extensions.driftSketch.rebuild()'],
-  ['clear', 'extensions.driftSketch.clear()']
-];
-for (const [fn, cmd] of actions) {
-  calls.length = 0;
-  scope[fn]();
-  eq(calls[0], cmd, '"' + fn + '" calls ' + cmd);
-}
-calls.length = 0;
-scope.settings.spacing = 2.5;
-scope.pushSetting('spacing');
-eq(calls[0], 'extensions.driftSketch.setSetting("spacing",2.5)', 'pushSetting sends numeric setting');
+  ['clear', 'extensions.driftSketch.clear()'],
+  ['placeRings', 'extensions.driftSketch.placeRings()'],
+  ['clearRings', 'extensions.driftSketch.clearRings()']
+]) { scope[fn](); eq(commands[commands.length - 1], cmd, fn + '() command'); }
 
-check(typeof listeners['driftSketch.state'] === 'function', 'panel listens to driftSketch.state');
-listeners['driftSketch.state'](null, {
-  recording: false, coneCount: 56, buildCount: 1,
-  settings: {spacing: 1.0, gap: 0.3, groundOffset: -0.55, maxCones: 2000,
-    smooth: true, keepBuilds: true, driftWidth: false}
+// Incoming state from GE, including the rig list
+check(typeof listeners['driftSketch.state'] === 'function', 'state listener registered');
+listeners['driftSketch.state']({}, {
+  recording: false, buildCount: 1, rigCount: 1,
+  rigVehicles: [{id: 202, name: 'Rimorkio_WE', source: 'Auto'}],
+  settings: {mesh: 'cone', rigAware: true, rigMargin: 0.5, spacing: 2}
 });
-eq(scope.state.coneCount, 56, 'state event updates cone count');
-check(scope.state.toppledCount === undefined && scope.state.displayTotal === undefined,
-  'no counter/HUD numbers in state');
-check(scope.state.extraVehicles === undefined, 'no World Editor trailer list in state');
+eq(scope.state.rigCount, 1, 'rig count from GE displayed');
+eq(scope.state.rigVehicles[0].name, 'Rimorkio_WE', 'rig vehicle name from GE displayed');
+eq(scope.settings.rigMargin, 0.5, 'settings snapshot from GE applied');
+eq(scope.integer(scope.state.rigCount), 1, 'integer() renders the rig count');
+eq(scope.canRebuild(), true, 'Rebuild enabled after a build');
+
+// HTML wiring
+const html = fs.readFileSync(path.join(path.dirname(FILE), 'app.html'), 'utf8');
+for (const token of [
+  'useSelectedTrailer()', 'unregisterSelectedTrailer()', 'clearTrailers()',
+  'unregisterTrailer(veh.id)', 'settings.rigAware', 'settings.rigMargin',
+  'state.rigVehicles', 'state.rigCount', 'v{{modVersion}}',
+  'ATTACHED VEHICLES', 'Përdor rimorkion e zgjedhur', 'Auto-detect attached trailer'
+]) check(html.indexOf(token) >= 0, 'HTML contains ' + token);
+for (const token of ['topple', 'counter', 'Counter', 'hudCard', 'soundVolume', 'physics'])
+  check(html.toLowerCase().indexOf(token.toLowerCase()) < 0, 'HTML free of ' + token);
 
 console.log('== RESULT: ' + total + ' checks, ' + failed + ' failed ==');
-process.exitCode = failed > 0 ? 1 : 0;
+process.exit(failed ? 1 : 0);
