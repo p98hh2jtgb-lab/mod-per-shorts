@@ -124,9 +124,14 @@ local function setup()
       if v then return v.pos.x, v.pos.y, v.pos.z end
     end,
     getObjectOOBBIsInitialized = function(_s, _id) return true end,
-    getObjectOOBBHalfAxisXYZ = function(_s, _id, axis)
-      if axis == 0 then return 2.4, 0, 0 end
-      if axis == 1 then return 0, 1.0, 0 end
+    getObjectOOBBHalfAxisXYZ = function(_s, id, axis)
+      -- Realistic OOBB: the three half-axis VECTORS rotate with the object,
+      -- exactly like BeamNG's be:getObjectOOBBHalfAxisXYZ(id, axis).
+      local v = ctx.byId[tonumber(id)]
+      local a = (v and v.dirAngle) or 0
+      local c, sn = math.cos(a), math.sin(a)
+      if axis == 0 then return 2.4 * c, 2.4 * sn, 0 end
+      if axis == 1 then return -1.0 * sn, 1.0 * c, 0 end
       return 0, 0, 0.6
     end,
     reloadCollision = function(_s) ctx.reloads = ctx.reloads + 1 end
@@ -161,7 +166,9 @@ local function driveRig(ctx, opts)
     local dX = -behind * fx - (side + w) * fy
     local dY = -behind * fy + (side + w) * fx
     ctx.trailer.pos = vec3(x + dX, carY + dY, 0.5)
-    ctx.rigCenters[#ctx.rigCenters + 1] = {x = x + dX, y = carY + dY}
+    local ta = ctx.trailer.dirAngle or 0
+    ctx.rigCenters[#ctx.rigCenters + 1] = {x = x + dX, y = carY + dY,
+      fx = math.cos(ta), fy = math.sin(ta), hl = 2.4, hw = 1.0}
     ctx.M.onUpdate(0.05)
   end
   ctx.M.stop()
@@ -199,6 +206,25 @@ local function conesInsideTrailer(ctx, radius)
   return hits, worst
 end
 
+-- STRONGER CHECK: the trailer is a ROTATED RECTANGLE, not a point/circle.
+local function conesInRectangles(ctx, margin)
+  local hits, worst = 0, 0
+  for _, c in ipairs(ctx.cones) do
+    for _, r in ipairs(ctx.rigCenters) do
+      local dx, dy = c.x - r.x, c.y - r.y
+      local along = dx * r.fx + dy * r.fy
+      local lat = -dx * r.fy + dy * r.fx
+      local penLong = r.hl + (margin or 0) - math.abs(along)
+      local penLat = r.hw + (margin or 0) - math.abs(lat)
+      if penLong > 0 and penLat > 0 then
+        hits = hits + 1
+        if math.min(penLong, penLat) > worst then worst = math.min(penLong, penLat) end
+      end
+    end
+  end
+  return hits, worst
+end
+
 local function sideMaxima(ctx)
   local plus, minus = 0, 0
   for _, p in ipairs(ctx.cones) do
@@ -209,8 +235,8 @@ end
 
 print('== 1. defaults & no per-frame scanning ==')
 local a = setup()
-eq(a.M.version, '0.9.26', 'module version is 0.9.26')
-eq(a.M.uiState().settings.rigPad, 1.0, 'safety floor lowered to 1.0 m')
+eq(a.M.version, '0.9.27', 'module version is 0.9.27')
+eq(a.M.uiState().settings.rigPad, 1.0, 'trailer-side extra room defaults to 1.0 m')
 eq(a.M.uiState().settings.rigAware, true, 'auto detection ON by default')
 eq(a.M.uiState().settings.collision, false, 'physical collision OFF')
 eq(a.M.uiState().toppledCount, nil, 'no topple counter')
@@ -245,6 +271,9 @@ check(r.M.uiState().rigPoseCount > 20,
 local hits, worst = conesInsideTrailer(r, 0.95)
 eq(hits, 0, 'NO cone inside a recorded trailer footprint (worst penetration ' ..
   string.format('%.2f', worst) .. ' m)')
+local rectHits, rectWorst = conesInRectangles(r, 0.0)
+eq(rectHits, 0, 'NO cone inside the real ROTATED RECTANGLE (worst ' ..
+  string.format('%.2f', rectWorst) .. ' m)')
 local plus, minus = sideMaxima(r)
 check(plus > 2.2, string.format('trailer side widened (%.2f m)', plus))
 check(minus < 2.0, string.format('empty side stays TIGHT (%.2f m)', minus))
@@ -258,6 +287,7 @@ check(d.M.uiState().rigPoseCount > 20, 'drift run recorded a trailer centreline'
 local dhits, dworst = conesInsideTrailer(d, 0.95)
 eq(dhits, 0, 'NO cone inside the drifting trailer footprint (worst ' ..
   string.format('%.2f', dworst) .. ' m)')
+eq((conesInRectangles(d, 0.0)), 0, 'NO cone inside the drifting trailer RECTANGLE')
 local dplus, dminus = sideMaxima(d)
 -- Control: the SAME drift angle with no trailer. A car at 52 deg already needs
 -- a wide lateral band of its own, so compare against that baseline, not 1.54 m.
@@ -284,6 +314,7 @@ driveRig(w, {curve = true, wobble = 0.45})
 local whits, wworst = conesInsideTrailer(w, 0.95)
 eq(whits, 0, 'NO cone inside a wobbling trailer on a curved path (worst ' ..
   string.format('%.2f', wworst) .. ' m)')
+eq((conesInRectangles(w, 0.0)), 0, 'NO cone inside the wobbling trailer RECTANGLE')
 check(w.M.uiState().rigCount >= 1, 'wobbling collision-glued rig is not dropped')
 
 -- A LONG rig: the trailer centre is 6 m behind the car, i.e. ~24 resampled
@@ -294,6 +325,7 @@ driveRig(lag, {side = 1.2, behind = 6})
 local lhits, lworst = conesInsideTrailer(lag, 0.95)
 eq(lhits, 0, 'LONG trailer (6 m behind): NO cone inside its footprint (worst ' ..
   string.format('%.2f', lworst) .. ' m)')
+eq((conesInRectangles(lag, 0.0)), 0, 'LONG trailer: NO cone inside its RECTANGLE')
 
 -- Articulation: the trailer's OWN heading differs from the car's (it swings on
 -- the collision glue). Its rotated rectangle must still be fully cleared.
@@ -303,6 +335,7 @@ driveRig(art, {angle = 0.9, trailerAngle = 1.45, side = 0.4})
 local ahits, aworst = conesInsideTrailer(art, 0.95)
 eq(ahits, 0, 'ARTICULATED trailer (own heading): NO cone inside its footprint (worst ' ..
   string.format('%.2f', aworst) .. ' m)')
+eq((conesInRectangles(art, 0.0)), 0, 'ARTICULATED trailer: NO cone inside its RECTANGLE')
 
 print('== 2b. NODE GRABBER (CTRL + LMB, then MMB): soft swinging joint ==')
 -- This is how the rig is actually attached in game: two NODES are joined with
@@ -316,9 +349,12 @@ check(ng.M.uiState().rigCount >= 1,
   'swinging Node Grabber trailer detected by CO-MOTION (no stable pose exists)')
 check(ng.M.uiState().rigPoseCount > 20,
   'Node Grabber centreline recorded at ' .. tostring(ng.M.uiState().rigPoseCount) .. ' stations')
+eq(ng.M.uiState().settings.rigPad, 0,
+  'auto-detection does NOT silently overwrite the user rigPad slider')
 local nghits, ngworst = conesInsideTrailer(ng, 0.95)
 eq(nghits, 0, 'NO cone inside the swinging trailer footprint (worst ' ..
   string.format('%.2f', ngworst) .. ' m)')
+eq((conesInRectangles(ng, 0.0)), 0, 'NODE GRABBER: NO cone inside the swinging RECTANGLE')
 local ngplus, ngminus = sideMaxima(ng)
 check(math.max(ngplus, ngminus) > 2.2,
   'swinging trailer still pushes cones out on its side')
@@ -339,7 +375,7 @@ check(rd.M.uiState().rigPoseCount > 0,
   'redetectRig() re-measures the live pose and rebuilds (' ..
   tostring(before) .. ' -> ' .. tostring(rd.M.uiState().rigPoseCount) .. ' stations)')
 
-print('== 3. old saved drive (0.9.4/0.9.24, no rigPoses) rebuilds from LIVE pose ==')
+print('== 3. old saved drive: synthesized centreline + TRAILER-SIDE pad ==')
 local old = setup()
 old.M.setSetting('rigPad', 0)
 old.M.setSetting('rigAware', false)
@@ -350,16 +386,19 @@ data.settings.rigPad = nil
 for _, path in ipairs(data.savedPaths) do
   for _, p in ipairs(path) do p.rigPoses = nil; p.rigHalfWidth = nil end
 end
+-- With NO rig registered, the old drive must stay at the tight 0.9.4 width:
+-- the pad must NEVER widen the empty side on its own.
 local restored = setup()
 restored.M.onDeserialized(data)
 restored.cones = {}
 restored.M.onUpdate(0.05)
-check(corridorWidth(restored) > narrow + 0.5,
-  'old drive still widens via the 1.0 m safety floor')
--- With a LIVE attached rig, the rebuilt line is synthesized from its real pose.
+check(corridorWidth(restored) <= narrow + 0.15,
+  'old drive with NO rig stays tight even with default pad 1.0 m (no global widening)')
+
+-- With a LIVE rig, the synthesized centreline is used and the pad widens
+-- ONLY the side where the trailer passes.
 local live = setup()
 live.M.setSetting('rigPad', 0)
-live.M.setSetting('rigAware', false)
 live.M.onDeserialized(data)
 live.M.onUpdate(0.05)
 live.player.pos = vec3(20, 0, 0.5)
@@ -369,6 +408,15 @@ live.cones = {}
 live.M.useSelectedVehicle()
 check(live.M.uiState().rigPoseCount > 20,
   'synthesized centreline covers ' .. tostring(live.M.uiState().rigPoseCount) .. ' stations')
+local lp0, lm0 = sideMaxima(live)
+live.M.setSetting('rigPad', 2)
+live.cones = {}
+live.M.rebuild()
+local lp2, lm2 = sideMaxima(live)
+check(lp2 > lp0 + 1.0, string.format(
+  'pad widens the TRAILER side of a rebuilt old drive (%.2f -> %.2f m)', lp0, lp2))
+check(math.abs(lm2 - lm0) < 0.25, string.format(
+  'pad does NOT widen the EMPTY side of a rebuilt old drive (%.2f -> %.2f m)', lm0, lm2))
 
 print('== 4. World Editor selection (optional), props, replay observer ==')
 local m = setup()
@@ -379,6 +427,8 @@ m.cones = {}
 m.editor.selection.object = {m.trailer.simId}
 local st = m.M.useSelectedVehicle()
 eq(st.rigCount, 1, 'selected trailer registered')
+eq(m.M.uiState().settings.rigPad, 0,
+  'World Editor registration does NOT silently overwrite the user rigPad slider')
 check(st.rigPoseCount > 0, 'registration immediately rebuilds with a centreline')
 check(m.M.uiState().settings.rigPad >= 0, 'safety floor intact')
 
@@ -462,6 +512,29 @@ h.M.onDeserialized{settings = {spacing = 1.5, topple = true, coneCollision = tru
 eq(h.M.uiState().settings.topple, nil, 'topple NOT brought back')
 eq(h.M.uiState().settings.coneCollision, nil, 'physical cone collision NOT brought back')
 eq(h.M.uiState().settings.hudCard, nil, 'HUD card NOT brought back')
+
+print('== 6. PAD SWEEP: extra room goes to the TRAILER side only ==')
+-- This is the exact screenshot complaint: dragging Hapesira minimale 0 -> 4 m
+-- used to widen the EMPTY side and leave the trailer side unchanged.
+local sweep = {}
+for _, pad in ipairs({0, 1, 2, 3, 4}) do
+  local c = setup()
+  c.M.setSetting('rigPad', pad)
+  driveRig(c, {side = 1.2})
+  local plus, minus = sideMaxima(c)
+  sweep[pad] = {plus = plus, minus = minus}
+  check(math.abs(minus - 1.54) < 0.25, string.format(
+    'pad %d: EMPTY side stays tight at %.2f m', pad, minus))
+  eq((conesInRectangles(c, 0.0)), 0, 'pad ' .. pad .. ': no cone inside the trailer RECTANGLE')
+end
+check(sweep[1].plus > sweep[0].plus + 0.7,
+  string.format('pad 0 -> 1 m NOW widens the TRAILER side (%.2f -> %.2f m)',
+    sweep[0].plus, sweep[1].plus))
+check(sweep[4].plus > sweep[0].plus + 3.5,
+  string.format('pad 0 -> 4 m widens the TRAILER side by %.2f m',
+    sweep[4].plus - sweep[0].plus))
+check(math.abs(sweep[4].minus - sweep[0].minus) < 0.25,
+  'pad 0 -> 4 m leaves the EMPTY side unchanged')
 
 print(string.format('== RESULT: %d checks, %d failed ==', total, failed))
 TEST_TOTAL = total

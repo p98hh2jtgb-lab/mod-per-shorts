@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Static package validation for DriftSketch 0.9.26 (Node Grabber co-motion).
+"""Static package validation for DriftSketch 0.9.27 (trailer-side pad only).
 
 Usage: PYTHONPATH=/home/user/work/pylib CSSTREE=/home/user/work/nodemod/node_modules/css-tree \
        python3 validate.py <dir-or-zip> [baseline-0.9.4-dir-or-zip]
@@ -93,7 +93,7 @@ for rel in ['mod.json', 'ui/modules/apps/DriftSketch/app.json',
         data = {}
         check(False, 'valid JSON: ' + rel + ' — ' + str(e))
     if rel != 'art/shapes/driftsketch_v09/main.materials.json':
-        check(data.get('version') == '0.9.26', rel + ' version 0.9.26')
+        check(data.get('version') == '0.9.27', rel + ' version 0.9.27')
 check('DriftSketch' in json.loads((src / 'mod.json').read_text()).get('name', '') or
       'DriftSketch' in json.loads((src / 'mod.json').read_text()).get('description', ''),
       'mod.json identifies DriftSketch')
@@ -116,20 +116,23 @@ for rel in [p for p in files if p.endswith('.js')]:
     check(r.returncode == 0, 'node --check: ' + rel + ((' — ' + r.stderr.strip()) if r.returncode else ''))
 
 print('== versions ==')
-check("M.version = '0.9.26'" in lua or 'M.version="0.9.26"' in lua, 'Lua module version 0.9.26')
-check("scope.modVersion = '0.9.26';" in js, 'UI modVersion 0.9.26')
+check("M.version = '0.9.27'" in lua or 'M.version="0.9.27"' in lua, 'Lua module version 0.9.27')
+check("scope.modVersion = '0.9.27';" in js, 'UI modVersion 0.9.27')
 check('v{{modVersion}}' in html, 'HTML footer shows modVersion')
-check('0.9.26' in readme and 'NODE GRABBER' in readme, 'README documents 0.9.26 + Node Grabber')
-check('ÇFARË ISHTE GABIM' in readme and '17 konë' in readme,
-      'README explains the 0.9.25 Node Grabber detection failure')
+check('0.9.27' in readme and 'VËZHGIMI YT ISHTE GABIMI REAL' in readme, 'README documents the 0.9.27 wrong-side bug')
+check('ana BOSH 2.54 m' in readme and 'ana e rimorkios 3.99 m' in readme,
+      'README documents the measured before/after pad sweep')
+
+
 check('0.9.4' not in re.findall(r'version\s*=\s*[\'"]?([\d.]+)', lua), 'no stale Lua version string')
 
 print('== rig-aware core ==')
-for token in ['motionFollow', 'rigMotion', 'RIG_COMOVE_MIN_DOT', 'RIG_COMOVE_STREAK',
+for token in ['padLeft', 'padRight', 'objectHalfExtents(id, obj, fx2, fy2)',
+              'motionFollow', 'rigMotion', 'RIG_COMOVE_MIN_DOT', 'RIG_COMOVE_STREAK',
               'RIG_SWING_ANGLE', 'RIG_SWING_GROW', 'M.redetectRig',
               'rigPoses', 'rigPoseCount', 'buildRigProfile', 'copyRigPoses',
               'interpRigPoses', 'RIG_REACH', 'lastRigPoseCount', 'rigRear',
-              'rigPad', 'playerFrame', 'rigPadFor', 'isGeneratedMarker',
+              'rigPad', 'playerFrame', 'isGeneratedMarker',
               'RIG_OBSERVE_INTERVAL', 'observeRig', 'resetRigObserver',
               'rigAware', 'rigMargin', 'RIG_MAX_DIST', 'RIG_MIN_STREAK',
               'RIG_LAG_SAMPLES', 'rigHalfWidth', 'sampleRig', 'applyRigLag',
@@ -156,7 +159,10 @@ check('Nuk duhet ta zgjedhësh në World Editor' in html,
       'panel states World Editor selection is NOT required')
 check(html.index('RIPROVË ZBULIMIN') < html.index('(Opsionale)'),
       'Node Grabber re-scan precedes the optional World Editor button')
-check('Hapësira minimale' in html and 'settings.rigPad' in html, 'safety floor slider present')
+check('Hapësira shtesë e rimorkios' in html and 'settings.rigPad' in html,
+      'trailer-side extra-room slider present')
+check('ds-rig-pad-note' in html and 'nuk mbishkruhet më' in html,
+      'panel explains one-sided pad and no silent slider overwrite')
 check('state.rigPoseCount' in html and 'vijës së rimorkios' in html,
       'panel shows how many trailer-centreline stations were used')
 check('co-motion' in readme.lower(), 'README documents co-motion detection')
@@ -166,12 +172,23 @@ check('sampleRig(id, pos, p)' in lua, 'onUpdate samples the rig at each path poi
 check('applyRigLag(points)' in lua, 'stop applies the trailer lag before building')
 check('local pad = math.max(0, tonumber(SETTINGS.rigPad) or 0)' in lua,
       'corridor uses build-time rigPad (fixes old saved drives)')
-check('local base = halfWidth + margin + pad' in lua,
-      'build-time pad is added to BOTH cone lines')
+check('local base = halfWidth + margin\n' in lua and
+      'local base = halfWidth + margin + pad' not in lua,
+      'rigPad is NO LONGER a global floor added to both cone lines')
+check('if padLeft then needLeft = needLeft + pad end' in lua and
+      'if padRight then needRight = needRight + pad end' in lua,
+      'extra room is added on top of the trailer-side requirement only')
+check('if pad > 0 then' in lua and 'rlat > 0.15' in lua and 'rlat < -0.15' in lua,
+      'pad side is chosen from the trailer centre lateral sign')
+check('rigPadFor' not in lua and 'if pad and pad >' not in lua,
+      'auto-overwriting the user slider has been REMOVED')
+check('objectHalfExtents(id, obj, fx2, fy2)' in lua,
+      'trailer OOBB measured in the trailer OWN frame')
 check('stationBase = math.max(stationBase, w + margin)' not in lua,
       'symmetric scalar rig widening REMOVED (the 0.9.24 bug)')
-check('needLeft = math.max(needLeft, rlat + extent)' in lua and
-      'needRight = math.max(needRight, extent - rlat)' in lua,
+check('local lNeed, rNeed = rlat + extent, extent - rlat' in lua and
+      'needLeft = math.max(needLeft, lNeed)' in lua and
+      'needRight = math.max(needRight, rNeed)' in lua,
       'one-sided clearance computed from the trailer rectangle')
 check('SETTINGS.rigPad' in lua and "key == 'rigPad'" in lua,
       'rigPad is a normalised / rebuildable setting')

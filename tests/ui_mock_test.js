@@ -1,5 +1,5 @@
-// DriftSketch 0.9.26 UI panel mock test ---------------------------------------
-// Usage: node ui_mock_test_0926.js [path/to/app.js]
+// DriftSketch 0.9.27 UI panel mock test ---------------------------------------
+// Usage: node ui_mock_test_0927.js [path/to/app.js]
 const fs = require('fs');
 const vm = require('vm');
 const path = require('path');
@@ -37,7 +37,7 @@ vm.runInNewContext(source, {angular, JSON, Math, Number, isFinite, console});
 
 check(typeof linkFn === 'function', 'directive link function registered');
 linkFn(scope);
-eq(scope.modVersion, '0.9.26', 'panel displays version 0.9.26');
+eq(scope.modVersion, '0.9.27', 'panel displays version 0.9.27');
 eq(scope.settings.rigPad, 1.0, 'safety floor defaults to 1.0 m');
 eq(scope.state.rigPoseCount, 0, 'trailer centreline station count starts at 0');
 eq(scope.settings.rigAware, true, 'auto-detect checkbox defaults ON');
@@ -112,13 +112,20 @@ for (const token of [
   'unregisterTrailer(veh.id)', 'settings.rigAware', 'settings.rigMargin',
   'state.rigVehicles', 'state.rigCount', 'v{{modVersion}}',
   'RIMORKIO / TRAILER', 'Auto-detect / Zbulo vetë',
-  'settings.rigPad', 'Hapësira minimale', 'state.rigPoseCount',
+  'settings.rigPad', 'Hapësira shtesë e rimorkios', 'Trailer extra room',
+  'ds-rig-pad-note', 'vetëm në anën e rimorkios', 'ana BOSH', 'math.max',
+  'state.rigPoseCount',
   'pika të vijës së rimorkios', 'REBUILD WITH CURRENT SETTINGS',
   'redetectRig()', 'RIPROVË ZBULIMIN', 'NODE GRABBER',
   'CTRL', 'mesi i mausit', '(Opsionale)', 'ds-rig-ng'
 ]) check(html.indexOf(token) >= 0, 'HTML contains ' + token);
 check(html.indexOf('RIMORKIO / TRAILER') < html.indexOf('MESH &amp; TRACK SETTINGS'),
   'trailer section is at the TOP of the panel (visible without scrolling)');
+check(html.indexOf('Hapësira shtesë e rimorkios') > 0 &&
+      html.indexOf('Global safety floor added to BOTH cone lines') < 0,
+      'slider no longer described as a global symmetric safety floor');
+check(html.indexOf('nuk mbishkruhet më') >= 0,
+      'panel states the slider is no longer silently overwritten');
 check(html.indexOf('RIPROVË ZBULIMIN') < html.indexOf('(Opsionale)'),
   'Node Grabber re-scan is offered BEFORE the optional World Editor button');
 check(html.indexOf('Nuk duhet ta zgjedhësh në World Editor') >= 0 &&
