@@ -1,5 +1,5 @@
-// DriftSketch 0.9.27 UI panel mock test ---------------------------------------
-// Usage: node ui_mock_test_0927.js [path/to/app.js]
+// DriftSketch 0.9.28 UI panel mock test ---------------------------------------
+// Usage: node ui_mock_test_0928.js [path/to/app.js]
 const fs = require('fs');
 const vm = require('vm');
 const path = require('path');
@@ -37,7 +37,7 @@ vm.runInNewContext(source, {angular, JSON, Math, Number, isFinite, console});
 
 check(typeof linkFn === 'function', 'directive link function registered');
 linkFn(scope);
-eq(scope.modVersion, '0.9.27', 'panel displays version 0.9.27');
+eq(scope.modVersion, '0.9.28', 'panel displays version 0.9.28');
 eq(scope.settings.rigPad, 1.0, 'safety floor defaults to 1.0 m');
 eq(scope.state.rigPoseCount, 0, 'trailer centreline station count starts at 0');
 eq(scope.settings.rigAware, true, 'auto-detect checkbox defaults ON');
@@ -114,7 +114,9 @@ for (const token of [
   'RIMORKIO / TRAILER', 'Auto-detect / Zbulo vetë',
   'settings.rigPad', 'Hapësira shtesë e rimorkios', 'Trailer extra room',
   'ds-rig-pad-note', 'vetëm në anën e rimorkios', 'ana BOSH', 'math.max',
-  'state.rigPoseCount',
+  'state.rigPoseCount', 'state.trimmedCones', 'ds-rig-trim',
+  'konë u hoqën nga mbivendosja', 'RREGULLIMI 0.9.28',
+  'self-overlap keep-out',
   'pika të vijës së rimorkios', 'REBUILD WITH CURRENT SETTINGS',
   'redetectRig()', 'RIPROVË ZBULIMIN', 'NODE GRABBER',
   'CTRL', 'mesi i mausit', '(Opsionale)', 'ds-rig-ng'
@@ -126,6 +128,12 @@ check(html.indexOf('Hapësira shtesë e rimorkios') > 0 &&
       'slider no longer described as a global symmetric safety floor');
 check(html.indexOf('nuk mbishkruhet më') >= 0,
       'panel states the slider is no longer silently overwritten');
+check(html.indexOf('state.trimmedCones > 0') > html.indexOf('state.rigPoseCount > 0') &&
+      html.indexOf('ds-rig-trim') >= 0,
+      'removed-overlap-cones indicator follows the centreline indicator');
+check(html.indexOf('mbivendoset me vetveten') >= 0 &&
+      html.indexOf('rrjet hapësinor') >= 0,
+      'panel/help explain the self-overlap keep-out');
 check(html.indexOf('RIPROVË ZBULIMIN') < html.indexOf('(Opsionale)'),
   'Node Grabber re-scan is offered BEFORE the optional World Editor button');
 check(html.indexOf('Nuk duhet ta zgjedhësh në World Editor') >= 0 &&

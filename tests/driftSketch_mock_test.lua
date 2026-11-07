@@ -1,4 +1,4 @@
--- DriftSketch 0.9.25 rig-centreline mock test ---------------------------------
+-- DriftSketch 0.9.28 mock test: rig centreline + self-overlap keep-out ---------------------------------
 -- Runs the real lua/ge/extensions/driftSketch.lua in a mocked BeamNG GE VM.
 --
 -- The 0.9.24 failure: a scalar "rigHalfWidth" stored at the CAR's station and
@@ -235,7 +235,7 @@ end
 
 print('== 1. defaults & no per-frame scanning ==')
 local a = setup()
-eq(a.M.version, '0.9.27', 'module version is 0.9.27')
+eq(a.M.version, '0.9.28', 'module version is 0.9.28')
 eq(a.M.uiState().settings.rigPad, 1.0, 'trailer-side extra room defaults to 1.0 m')
 eq(a.M.uiState().settings.rigAware, true, 'auto detection ON by default')
 eq(a.M.uiState().settings.collision, false, 'physical collision OFF')
@@ -535,6 +535,103 @@ check(sweep[4].plus > sweep[0].plus + 3.5,
     sweep[4].plus - sweep[0].plus))
 check(math.abs(sweep[4].minus - sweep[0].minus) < 0.25,
   'pad 0 -> 4 m leaves the EMPTY side unchanged')
+
+
+-- 0.9.28: self-overlapping paths (slow spins / donuts / hairpins)
+local function driveSpiral(ctx, N)
+  local centres = {}
+  ctx.M.start()
+  for i = 0, N do
+    local a = i * 0.08
+    local R = 9.0 - 6.0 * (i / N)
+    local x, y = math.cos(a) * R - 9.0, math.sin(a) * R
+    ctx.player.pos = vec3(x, y, 0.5)
+    ctx.player.dirAngle = a + math.pi / 2
+    local lag = 3.0
+    local tx = x - lag * math.cos(ctx.player.dirAngle)
+    local ty = y - lag * math.sin(ctx.player.dirAngle)
+    ctx.trailer.pos = vec3(tx, ty, 0.5)
+    ctx.trailer.dirAngle = ctx.player.dirAngle + 0.55
+    centres[#centres + 1] = {x = x, y = y}
+    ctx.rigCenters[#ctx.rigCenters + 1] = {x = tx, y = ty,
+      fx = math.cos(ctx.trailer.dirAngle), fy = math.sin(ctx.trailer.dirAngle),
+      hl = 2.4, hw = 1.0}
+    ctx.M.onUpdate(0.05)
+  end
+  ctx.M.stop()
+  return centres
+end
+
+local function driveCircle(ctx, radius, laps)
+  local centres = {}
+  local N = math.floor(laps * 2 * math.pi * radius / 0.5)
+  ctx.M.start()
+  for i = 0, N do
+    local a = i * 0.5 / radius
+    local x, y = math.cos(a) * radius - radius, math.sin(a) * radius
+    ctx.player.pos = vec3(x, y, 0.5)
+    ctx.player.dirAngle = a + math.pi / 2
+    local tx = x - 3.0 * math.cos(ctx.player.dirAngle)
+    local ty = y - 3.0 * math.sin(ctx.player.dirAngle)
+    ctx.trailer.pos = vec3(tx, ty, 0.5)
+    ctx.trailer.dirAngle = ctx.player.dirAngle
+    centres[#centres + 1] = {x = x, y = y}
+    ctx.rigCenters[#ctx.rigCenters + 1] = {x = tx, y = ty,
+      fx = math.cos(ctx.trailer.dirAngle), fy = math.sin(ctx.trailer.dirAngle),
+      hl = 2.4, hw = 1.0}
+    ctx.M.onUpdate(0.05)
+  end
+  ctx.M.stop()
+  return centres
+end
+
+local function conesInCorridor(ctx, centres, width)
+  local n = 0
+  for _, c in ipairs(ctx.cones) do
+    for _, p in ipairs(centres) do
+      local dx, dy = c.x - p.x, c.y - p.y
+      if dx * dx + dy * dy < width * width then n = n + 1 break end
+    end
+  end
+  return n
+end
+
+print('== 7. SELF-OVERLAPPING SPIN: no cone inside the car / trailer ==')
+-- The two 0.9.27 screenshots: a slow turn where the path crosses itself, leaving
+-- a comb of cones in the middle of the road and inside the jackknifed trailer.
+for _, N in ipairs({200, 320}) do
+  local c = setup()
+  c.M.setSetting('rigPad', 0)
+  c.M.setSetting('rigMargin', 0)
+  c.M.setSetting('maxCones', 4000)
+  local centres = driveSpiral(c, N)
+  local inside = conesInCorridor(c, centres, 1.2)
+  local rectHits = conesInRectangles(c, 0.0)
+  eq(inside, 0, 'N=' .. N .. ': NO cone left inside the driving corridor')
+  check(rectHits <= 5, string.format('N=%d: almost no cone inside a trailer RECTANGLE (got %d)', N, rectHits))
+  check(c.M.uiState().trimmedCones > 20,
+    string.format('N=%d: %d overlapping cones were removed and reported in the panel',
+      N, c.M.uiState().trimmedCones))
+  check(#c.cones > 40,
+    string.format('N=%d: the outer cone lines are still built (%d cones)', N, #c.cones))
+end
+for _, radius in ipairs({4, 6}) do
+  local c = setup()
+  c.M.setSetting('rigPad', 0)
+  c.M.setSetting('rigMargin', 0)
+  c.M.setSetting('maxCones', 4000)
+  local centres = driveCircle(c, radius, 1)
+  eq(conesInCorridor(c, centres, 1.2), 0,
+    'clean circle r=' .. radius .. ': no cone inside the corridor')
+  eq((conesInRectangles(c, 0.0)), 0,
+    'clean circle r=' .. radius .. ': no cone inside the trailer')
+  check(#c.cones >= 40, 'clean circle r=' .. radius .. ': cone lines preserved')
+end
+local straight = setup()
+straight.M.setSetting('maxCones', 4000)
+plainDrive(straight)
+eq(straight.M.uiState().trimmedCones, 0,
+  'a normal straight drive removes NO cones (no false positives)')
 
 print(string.format('== RESULT: %d checks, %d failed ==', total, failed))
 TEST_TOTAL = total

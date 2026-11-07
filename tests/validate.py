@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Static package validation for DriftSketch 0.9.27 (trailer-side pad only).
+"""Static package validation for DriftSketch 0.9.28 (self-overlap keep-out).
 
 Usage: PYTHONPATH=/home/user/work/pylib CSSTREE=/home/user/work/nodemod/node_modules/css-tree \
        python3 validate.py <dir-or-zip> [baseline-0.9.4-dir-or-zip]
@@ -93,7 +93,7 @@ for rel in ['mod.json', 'ui/modules/apps/DriftSketch/app.json',
         data = {}
         check(False, 'valid JSON: ' + rel + ' — ' + str(e))
     if rel != 'art/shapes/driftsketch_v09/main.materials.json':
-        check(data.get('version') == '0.9.27', rel + ' version 0.9.27')
+        check(data.get('version') == '0.9.28', rel + ' version 0.9.28')
 check('DriftSketch' in json.loads((src / 'mod.json').read_text()).get('name', '') or
       'DriftSketch' in json.loads((src / 'mod.json').read_text()).get('description', ''),
       'mod.json identifies DriftSketch')
@@ -116,18 +116,25 @@ for rel in [p for p in files if p.endswith('.js')]:
     check(r.returncode == 0, 'node --check: ' + rel + ((' — ' + r.stderr.strip()) if r.returncode else ''))
 
 print('== versions ==')
-check("M.version = '0.9.27'" in lua or 'M.version="0.9.27"' in lua, 'Lua module version 0.9.27')
-check("scope.modVersion = '0.9.27';" in js, 'UI modVersion 0.9.27')
+check("M.version = '0.9.28'" in lua or 'M.version="0.9.28"' in lua, 'Lua module version 0.9.28')
+check("scope.modVersion = '0.9.28';" in js, 'UI modVersion 0.9.28')
 check('v{{modVersion}}' in html, 'HTML footer shows modVersion')
-check('0.9.27' in readme and 'VËZHGIMI YT ISHTE GABIMI REAL' in readme, 'README documents the 0.9.27 wrong-side bug')
-check('ana BOSH 2.54 m' in readme and 'ana e rimorkios 3.99 m' in readme,
-      'README documents the measured before/after pad sweep')
+check('0.9.28' in readme and 'RROTULLIMI / MBIVENDOSJA E RRUGËS' in readme, 'README documents the 0.9.28 spin / overlap fix')
+check('0.9.27' in readme and 'ana BOSH' in readme.lower() or 'ana bosh' in readme.lower(),
+      'README keeps the 0.9.27 wrong-side diagnosis')
+check('23 konë BRENDA korridorit' in readme and '212 goditje' in readme and
+      '43 konë të hequra' in readme,
+      'README documents the reproduced 0.9.27 spin failure and the 0.9.28 result')
+check('KUFI I NATYRSHËM' in readme and 'Konet janë **statike**' in readme,
+      'README states the static-cone limit honestly')
 
 
 check('0.9.4' not in re.findall(r'version\s*=\s*[\'"]?([\d.]+)', lua), 'no stale Lua version string')
 
 print('== rig-aware core ==')
-for token in ['padLeft', 'padRight', 'objectHalfExtents(id, obj, fx2, fy2)',
+for token in ['buildKeepOutGrid', 'isKeptOut', 'trimRigCrossings', 'trimFinishRow',
+              'lastTrimmedCones', 'trimmedCones = lastTrimmedCones', 'stepOf',
+              'padLeft', 'padRight', 'objectHalfExtents(id, obj, fx2, fy2)',
               'motionFollow', 'rigMotion', 'RIG_COMOVE_MIN_DOT', 'RIG_COMOVE_STREAK',
               'RIG_SWING_ANGLE', 'RIG_SWING_GROW', 'M.redetectRig',
               'rigPoses', 'rigPoseCount', 'buildRigProfile', 'copyRigPoses',
@@ -163,6 +170,9 @@ check('Hapësira shtesë e rimorkios' in html and 'settings.rigPad' in html,
       'trailer-side extra-room slider present')
 check('ds-rig-pad-note' in html and 'nuk mbishkruhet më' in html,
       'panel explains one-sided pad and no silent slider overwrite')
+check('state.trimmedCones' in html and 'ds-rig-trim' in html and
+      'konë u hoqën nga mbivendosja' in html,
+      'panel reports how many overlapping cones were removed')
 check('state.rigPoseCount' in html and 'vijës së rimorkios' in html,
       'panel shows how many trailer-centreline stations were used')
 check('co-motion' in readme.lower(), 'README documents co-motion detection')
@@ -184,6 +194,16 @@ check('rigPadFor' not in lua and 'if pad and pad >' not in lua,
       'auto-overwriting the user slider has been REMOVED')
 check('objectHalfExtents(id, obj, fx2, fy2)' in lua,
       'trailer OOBB measured in the trailer OWN frame')
+check('buildKeepOutGrid(smoothed or path, halfWidth)' in lua and
+      'trimRigCrossings(lines, keepGrid' in lua and
+      'trimFinishRow(finishObjects, keepGrid' in lua,
+      'global spatial keep-out is applied to BOTH cone lines and the finish row')
+check('for _, r in ipairs(c.rigPoses or {}) do' in lua and
+      "kind = 'rig'" in lua and "kind = 'car'" in lua and
+      "if e.kind == 'car' then" in lua,
+      'keep-out indexes car body AND rotated trailer rectangles')
+check('local slop = 0.02' in lua,
+      'keep-out tolerance stays small so legitimate cone lines survive')
 check('stationBase = math.max(stationBase, w + margin)' not in lua,
       'symmetric scalar rig widening REMOVED (the 0.9.24 bug)')
 check('local lNeed, rNeed = rlat + extent, extent - rlat' in lua and
