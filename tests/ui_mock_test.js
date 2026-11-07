@@ -1,5 +1,5 @@
-// DriftSketch 0.9.25 UI panel mock test ---------------------------------------
-// Usage: node ui_mock_test_0924.js [path/to/app.js]
+// DriftSketch 0.9.26 UI panel mock test ---------------------------------------
+// Usage: node ui_mock_test_0926.js [path/to/app.js]
 const fs = require('fs');
 const vm = require('vm');
 const path = require('path');
@@ -37,7 +37,7 @@ vm.runInNewContext(source, {angular, JSON, Math, Number, isFinite, console});
 
 check(typeof linkFn === 'function', 'directive link function registered');
 linkFn(scope);
-eq(scope.modVersion, '0.9.25', 'panel displays version 0.9.25');
+eq(scope.modVersion, '0.9.26', 'panel displays version 0.9.26');
 eq(scope.settings.rigPad, 1.0, 'safety floor defaults to 1.0 m');
 eq(scope.state.rigPoseCount, 0, 'trailer centreline station count starts at 0');
 eq(scope.settings.rigAware, true, 'auto-detect checkbox defaults ON');
@@ -57,16 +57,18 @@ check(commands.indexOf('extensions.driftSketch.uiState()') >= 0, 'initial uiStat
 
 // Panel button -> GE extension command (World Editor selected trailer)
 const before = commands.length;
+scope.redetectRig();
+eq(commands[before], 'extensions.driftSketch.redetectRig()', 'Node Grabber re-scan button calls redetectRig()');
 scope.useSelectedTrailer();
-eq(commands[before], 'extensions.driftSketch.useSelectedVehicle()', 'Use selected trailer calls useSelectedVehicle()');
+eq(commands[before + 1], 'extensions.driftSketch.useSelectedVehicle()', 'Use selected trailer calls useSelectedVehicle()');
 scope.unregisterSelectedTrailer();
-eq(commands[before + 1], 'extensions.driftSketch.unregisterSelectedVehicle()', 'Remove selected calls unregisterSelectedVehicle()');
+eq(commands[before + 2], 'extensions.driftSketch.unregisterSelectedVehicle()', 'Remove selected calls unregisterSelectedVehicle()');
 scope.unregisterTrailer(202);
-eq(commands[before + 2], 'extensions.driftSketch.unregisterVehicle(202)', 'per-row x calls unregisterVehicle(id)');
+eq(commands[before + 3], 'extensions.driftSketch.unregisterVehicle(202)', 'per-row x calls unregisterVehicle(id)');
 scope.unregisterTrailer('nope');
-eq(commands.length, before + 3, 'invalid row id is ignored (no lua command)');
+eq(commands.length, before + 4, 'invalid row id is ignored (no lua command)');
 scope.clearTrailers();
-eq(commands[before + 3], 'extensions.driftSketch.clearSelectedVehicles()', 'Remove all calls clearSelectedVehicles()');
+eq(commands[before + 4], 'extensions.driftSketch.clearSelectedVehicles()', 'Remove all calls clearSelectedVehicles()');
 
 // Rig settings are passed through with correct numeric/boolean coercion
 scope.settings.rigMargin = 0.75;
@@ -109,12 +111,19 @@ for (const token of [
   'useSelectedTrailer()', 'unregisterSelectedTrailer()', 'clearTrailers()',
   'unregisterTrailer(veh.id)', 'settings.rigAware', 'settings.rigMargin',
   'state.rigVehicles', 'state.rigCount', 'v{{modVersion}}',
-  'RIMORKIO / TRAILER', 'Përdor rimorkion e zgjedhur', 'Auto-detect / Zbulo vetë',
+  'RIMORKIO / TRAILER', 'Auto-detect / Zbulo vetë',
   'settings.rigPad', 'Hapësira minimale', 'state.rigPoseCount',
-  'pika të vijës së rimorkios', 'REBUILD WITH CURRENT SETTINGS'
+  'pika të vijës së rimorkios', 'REBUILD WITH CURRENT SETTINGS',
+  'redetectRig()', 'RIPROVË ZBULIMIN', 'NODE GRABBER',
+  'CTRL', 'mesi i mausit', '(Opsionale)', 'ds-rig-ng'
 ]) check(html.indexOf(token) >= 0, 'HTML contains ' + token);
 check(html.indexOf('RIMORKIO / TRAILER') < html.indexOf('MESH &amp; TRACK SETTINGS'),
   'trailer section is at the TOP of the panel (visible without scrolling)');
+check(html.indexOf('RIPROVË ZBULIMIN') < html.indexOf('(Opsionale)'),
+  'Node Grabber re-scan is offered BEFORE the optional World Editor button');
+check(html.indexOf('Nuk duhet ta zgjedhësh në World Editor') >= 0 &&
+      html.indexOf('(Opsionale) Objekti i zgjedhur në World Editor') >= 0,
+  'panel explains that World Editor selection is NOT required');
 for (const token of ['topple', 'counter', 'Counter', 'hudCard', 'soundVolume', 'physics'])
   check(html.toLowerCase().indexOf(token.toLowerCase()) < 0, 'HTML free of ' + token);
 

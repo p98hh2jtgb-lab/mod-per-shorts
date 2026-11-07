@@ -150,9 +150,13 @@ local function driveRig(ctx, opts)
     local carY = opts.curve and 1.5 * math.sin(x / 7) or 0
     ctx.player.pos = vec3(x, carY, 0.5)
     ctx.player.dirAngle = angle
-    ctx.trailer.dirAngle = opts.trailerAngle or angle
+    -- Node Grabber joint: the trailer swings laterally AND rotates on its own,
+    -- so its relative pose is NOT stable, but it still travels with the car.
+    local swing = opts.swing or 0
+    local baseAngle = opts.trailerAngle or angle
+    ctx.trailer.dirAngle = baseAngle + 0.95 * math.sin(i * 1.15) * (swing > 0 and 1 or 0)
     local fx, fy = math.cos(angle), math.sin(angle)
-    local w = wobble * math.sin(i * 0.9)
+    local w = wobble * math.sin(i * 0.9) + swing * math.sin(i * 1.7)
     local behind = opts.behind or 3
     local dX = -behind * fx - (side + w) * fy
     local dY = -behind * fy + (side + w) * fx
@@ -205,7 +209,7 @@ end
 
 print('== 1. defaults & no per-frame scanning ==')
 local a = setup()
-eq(a.M.version, '0.9.25', 'module version is 0.9.25')
+eq(a.M.version, '0.9.26', 'module version is 0.9.26')
 eq(a.M.uiState().settings.rigPad, 1.0, 'safety floor lowered to 1.0 m')
 eq(a.M.uiState().settings.rigAware, true, 'auto detection ON by default')
 eq(a.M.uiState().settings.collision, false, 'physical collision OFF')
@@ -300,6 +304,41 @@ local ahits, aworst = conesInsideTrailer(art, 0.95)
 eq(ahits, 0, 'ARTICULATED trailer (own heading): NO cone inside its footprint (worst ' ..
   string.format('%.2f', aworst) .. ' m)')
 
+print('== 2b. NODE GRABBER (CTRL + LMB, then MMB): soft swinging joint ==')
+-- This is how the rig is actually attached in game: two NODES are joined with
+-- the node grabber. There is no coupler event, no hitch, no L key and NO World
+-- Editor object. The relative pose changes by metres every sample and the
+-- trailer rotates independently, yet it travels with the player car.
+local ng = setup()
+ng.M.setSetting('rigPad', 0)
+driveRig(ng, {angle = 0.30, swing = 1.6})
+check(ng.M.uiState().rigCount >= 1,
+  'swinging Node Grabber trailer detected by CO-MOTION (no stable pose exists)')
+check(ng.M.uiState().rigPoseCount > 20,
+  'Node Grabber centreline recorded at ' .. tostring(ng.M.uiState().rigPoseCount) .. ' stations')
+local nghits, ngworst = conesInsideTrailer(ng, 0.95)
+eq(nghits, 0, 'NO cone inside the swinging trailer footprint (worst ' ..
+  string.format('%.2f', ngworst) .. ' m)')
+local ngplus, ngminus = sideMaxima(ng)
+check(math.max(ngplus, ngminus) > 2.2,
+  'swinging trailer still pushes cones out on its side')
+
+-- A parked car and a stationary object must NEVER be adopted as rig members.
+local pk = setup()
+pk.M.setSetting('rigPad', 0)
+plainDrive(pk)
+eq(pk.M.uiState().rigCount, 0, 'parked car / stationary object NOT adopted as rig')
+
+-- Manual re-scan, no World Editor involved.
+local rd = setup()
+rd.M.setSetting('rigPad', 0)
+driveRig(rd, {side = 1.2})
+local before = rd.M.uiState().rigPoseCount
+eq(rd.M.redetectRig().rigCount >= 1, true, 'redetectRig() keeps the registered rig')
+check(rd.M.uiState().rigPoseCount > 0,
+  'redetectRig() re-measures the live pose and rebuilds (' ..
+  tostring(before) .. ' -> ' .. tostring(rd.M.uiState().rigPoseCount) .. ' stations)')
+
 print('== 3. old saved drive (0.9.4/0.9.24, no rigPoses) rebuilds from LIVE pose ==')
 local old = setup()
 old.M.setSetting('rigPad', 0)
@@ -331,7 +370,7 @@ live.M.useSelectedVehicle()
 check(live.M.uiState().rigPoseCount > 20,
   'synthesized centreline covers ' .. tostring(live.M.uiState().rigPoseCount) .. ' stations')
 
-print('== 4. World Editor selection, props, replay observer ==')
+print('== 4. World Editor selection (optional), props, replay observer ==')
 local m = setup()
 m.M.setSetting('rigPad', 0)
 plainDrive(m)

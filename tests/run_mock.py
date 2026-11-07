@@ -2,7 +2,7 @@
 """Run the DriftSketch Lua mock test (real Lua VM, mocked BeamNG GE environment).
 
 Usage:
-    python3 tests/run_mock.py DriftSketch_v0.9.25.zip
+    python3 tests/run_mock.py DriftSketch_v0.9.26.zip
     python3 tests/run_mock.py <extracted mod folder>
 
 Requires: pip install lupa  (a Lua 5.x runtime embedded in Python).
@@ -17,7 +17,7 @@ try:
 except ImportError:
     sys.exit('Missing dependency: pip install lupa')
 
-source = Path(sys.argv[1] if len(sys.argv) > 1 else '../DriftSketch_v0.9.25.zip').resolve()
+source = Path(sys.argv[1] if len(sys.argv) > 1 else '../DriftSketch_v0.9.26.zip').resolve()
 if not source.exists():
     sys.exit('Not found: ' + str(source))
 

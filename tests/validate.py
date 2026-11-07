@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Static package validation for DriftSketch 0.9.25 (trailer centreline).
+"""Static package validation for DriftSketch 0.9.26 (Node Grabber co-motion).
 
 Usage: PYTHONPATH=/home/user/work/pylib CSSTREE=/home/user/work/nodemod/node_modules/css-tree \
        python3 validate.py <dir-or-zip> [baseline-0.9.4-dir-or-zip]
@@ -93,7 +93,7 @@ for rel in ['mod.json', 'ui/modules/apps/DriftSketch/app.json',
         data = {}
         check(False, 'valid JSON: ' + rel + ' — ' + str(e))
     if rel != 'art/shapes/driftsketch_v09/main.materials.json':
-        check(data.get('version') == '0.9.25', rel + ' version 0.9.25')
+        check(data.get('version') == '0.9.26', rel + ' version 0.9.26')
 check('DriftSketch' in json.loads((src / 'mod.json').read_text()).get('name', '') or
       'DriftSketch' in json.loads((src / 'mod.json').read_text()).get('description', ''),
       'mod.json identifies DriftSketch')
@@ -116,16 +116,18 @@ for rel in [p for p in files if p.endswith('.js')]:
     check(r.returncode == 0, 'node --check: ' + rel + ((' — ' + r.stderr.strip()) if r.returncode else ''))
 
 print('== versions ==')
-check("M.version = '0.9.25'" in lua or 'M.version="0.9.25"' in lua, 'Lua module version 0.9.25')
-check("scope.modVersion = '0.9.25';" in js, 'UI modVersion 0.9.25')
+check("M.version = '0.9.26'" in lua or 'M.version="0.9.26"' in lua, 'Lua module version 0.9.26')
+check("scope.modVersion = '0.9.26';" in js, 'UI modVersion 0.9.26')
 check('v{{modVersion}}' in html, 'HTML footer shows modVersion')
-check('0.9.25' in readme and '0.9.24' in readme, 'README documents 0.9.25 and the 0.9.24 bug')
-check('PSE 0.9.24 PRAP' in readme or 'shkaku' in readme.lower(),
-      'README explains why 0.9.24 still clipped the cones')
+check('0.9.26' in readme and 'NODE GRABBER' in readme, 'README documents 0.9.26 + Node Grabber')
+check('ÇFARË ISHTE GABIM' in readme and '17 konë' in readme,
+      'README explains the 0.9.25 Node Grabber detection failure')
 check('0.9.4' not in re.findall(r'version\s*=\s*[\'"]?([\d.]+)', lua), 'no stale Lua version string')
 
 print('== rig-aware core ==')
-for token in ['rigPoses', 'rigPoseCount', 'buildRigProfile', 'copyRigPoses',
+for token in ['motionFollow', 'rigMotion', 'RIG_COMOVE_MIN_DOT', 'RIG_COMOVE_STREAK',
+              'RIG_SWING_ANGLE', 'RIG_SWING_GROW', 'M.redetectRig',
+              'rigPoses', 'rigPoseCount', 'buildRigProfile', 'copyRigPoses',
               'interpRigPoses', 'RIG_REACH', 'lastRigPoseCount', 'rigRear',
               'rigPad', 'playerFrame', 'rigPadFor', 'isGeneratedMarker',
               'RIG_OBSERVE_INTERVAL', 'observeRig', 'resetRigObserver',
@@ -137,18 +139,29 @@ for token in ['rigPoses', 'rigPoseCount', 'buildRigProfile', 'copyRigPoses',
               'M.unregisterVehicle', 'M.clearSelectedVehicles',
               'M.onCouplerAttached', 'M.onCouplerDetached']:
     check(token in lua, 'Lua core has ' + token)
-for token in ['rigPad', 'rigPoseCount', 'rigAware', 'rigMargin', 'useSelectedTrailer', 'unregisterSelectedTrailer',
+for token in ['rigPad', 'rigPoseCount', 'rigAware', 'rigMargin', 'redetectRig',
+              'useSelectedTrailer', 'unregisterSelectedTrailer',
               'unregisterTrailer', 'clearTrailers', 'rigVehicles', 'rigCount']:
     check(token in js and token in html, 'UI JS + HTML wire ' + token)
-check('Përdor rimorkion e zgjedhur' in html, 'Albanian "Përdor rimorkion e zgjedhur" button')
+check('(Opsionale) Objekti i zgjedhur në World Editor' in html,
+      'optional World Editor button (NOT required for Node Grabber)')
+check('↻ RIPROVË ZBULIMIN' in html, 'Albanian Node Grabber re-scan button')
 check('RIMORKIO / TRAILER' in html, 'rig section visible in panel')
 check(html.index('RIMORKIO / TRAILER') < html.index('MESH &amp; TRACK SETTINGS'),
       'rig section is ABOVE the mesh settings (visible without scrolling)')
-check('NO HITCH / NO L NEEDED' in html, 'panel states no hitch / no L key needed')
+check('NODE GRABBER · NO HITCH · NO L' in html, 'panel states Node Grabber / no hitch / no L key')
+check('RIPROVË ZBULIMIN' in html and 'redetectRig()' in html,
+      'Node Grabber re-scan button wired to M.redetectRig()')
+check('Nuk duhet ta zgjedhësh në World Editor' in html,
+      'panel states World Editor selection is NOT required')
+check(html.index('RIPROVË ZBULIMIN') < html.index('(Opsionale)'),
+      'Node Grabber re-scan precedes the optional World Editor button')
 check('Hapësira minimale' in html and 'settings.rigPad' in html, 'safety floor slider present')
 check('state.rigPoseCount' in html and 'vijës së rimorkios' in html,
       'panel shows how many trailer-centreline stations were used')
-check('Auto-detect' in readme or 'AUTO' in readme.upper(), 'README documents auto detection')
+check('co-motion' in readme.lower(), 'README documents co-motion detection')
+check('be.nodeGrabber' in readme and 'fixCurrentNode()' in readme,
+      'README documents the missing BeamNG API for node-to-node joints')
 check('sampleRig(id, pos, p)' in lua, 'onUpdate samples the rig at each path point')
 check('applyRigLag(points)' in lua, 'stop applies the trailer lag before building')
 check('local pad = math.max(0, tonumber(SETTINGS.rigPad) or 0)' in lua,
@@ -189,8 +202,14 @@ check(lua.count('sampleRig(') <= 6, 'rig sampling called only at path-recording 
 check('function M.onUpdate' in lua, 'onUpdate present')
 check('be.getObjectCount' in lua, 'nearby vehicle list available for detection')
 check('RIG_OBSERVE_INTERVAL = 0.30' in lua, 'replay observer is throttled to 3 Hz')
-check('RIG_STABLE_POS = 1.50' in lua and 'RIG_STABLE_DOT = 0.85' in lua,
-      'detection tolerates a wobbling collision-glued trailer')
+check('RIG_COMOVE_STREAK = 3' in lua and 'track.follow >= RIG_COMOVE_STREAK' in lua,
+      'detection now REQUIRES co-motion, not a fixed relative pose')
+check('track.follow >= need' in lua and 'motionFollow(track, rigMotion.prev' in lua,
+      'sampleRig uses the co-motion score (Node Grabber)')
+check('RIG_SWING_ANGLE = 0.35' in lua and 'for k = -1, 1 do' in lua,
+      'old-drive synthesis emits a swing envelope of rotated rectangles')
+check('rigCandidatesCache.at, rigCandidatesCache.list = clockTotal, out' in lua,
+      'candidate cache TTL uses real accumulated time')
 check('rigAttached[cid] = nil' not in lua, 'detected rig is never dropped mid-drive')
 check('p.rigPoses = #poses > 0 and poses or nil' in lua,
       'sampleRig records the real trailer world centre')
