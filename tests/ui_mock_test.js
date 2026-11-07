@@ -1,5 +1,5 @@
-// DriftSketch 0.9.23 UI panel mock test ---------------------------------------
-// Usage: node ui_mock_test_0923.js [path/to/app.js]
+// DriftSketch 0.9.24 UI panel mock test ---------------------------------------
+// Usage: node ui_mock_test_0924.js [path/to/app.js]
 const fs = require('fs');
 const vm = require('vm');
 const path = require('path');
@@ -37,7 +37,8 @@ vm.runInNewContext(source, {angular, JSON, Math, Number, isFinite, console});
 
 check(typeof linkFn === 'function', 'directive link function registered');
 linkFn(scope);
-eq(scope.modVersion, '0.9.23', 'panel displays version 0.9.23');
+eq(scope.modVersion, '0.9.24', 'panel displays version 0.9.24');
+eq(scope.settings.rigPad, 2.0, 'build-time Trailer width defaults to 2.0 m');
 eq(scope.settings.rigAware, true, 'auto-detect checkbox defaults ON');
 eq(scope.settings.rigMargin, 0.25, 'extra rig clearance defaults 0.25 m');
 eq(scope.settings.collision, false, 'Solid / car damage OFF');
@@ -73,6 +74,9 @@ eq(commands[commands.length - 1], 'extensions.driftSketch.setSetting("rigMargin"
 scope.settings.rigAware = false;
 scope.pushSetting('rigAware');
 eq(commands[commands.length - 1], 'extensions.driftSketch.setSetting("rigAware",false)', 'rigAware pushed as boolean');
+scope.settings.rigPad = 2.4;
+scope.pushSetting('rigPad');
+eq(commands[commands.length - 1], 'extensions.driftSketch.setSetting("rigPad",2.4)', 'rigPad pushed as number');
 
 // Core actions still work
 for (const [fn, cmd] of [
@@ -103,8 +107,11 @@ for (const token of [
   'useSelectedTrailer()', 'unregisterSelectedTrailer()', 'clearTrailers()',
   'unregisterTrailer(veh.id)', 'settings.rigAware', 'settings.rigMargin',
   'state.rigVehicles', 'state.rigCount', 'v{{modVersion}}',
-  'ATTACHED VEHICLES', 'Përdor rimorkion e zgjedhur', 'Auto-detect attached trailer'
+  'RIMORKIO / TRAILER', 'Përdor rimorkion e zgjedhur', 'Auto-detect / Zbulo vetë',
+  'settings.rigPad', 'Gjerësia shtesë për rimorkio', 'REBUILD WITH CURRENT SETTINGS'
 ]) check(html.indexOf(token) >= 0, 'HTML contains ' + token);
+check(html.indexOf('RIMORKIO / TRAILER') < html.indexOf('MESH &amp; TRACK SETTINGS'),
+  'trailer section is at the TOP of the panel (visible without scrolling)');
 for (const token of ['topple', 'counter', 'Counter', 'hudCard', 'soundVolume', 'physics'])
   check(html.toLowerCase().indexOf(token.toLowerCase()) < 0, 'HTML free of ' + token);
 

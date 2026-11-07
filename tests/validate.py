@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Static package validation for DriftSketch 0.9.23 (rig-aware cone placement).
+"""Static package validation for DriftSketch 0.9.24 (rig-aware cone placement).
 
 Usage: PYTHONPATH=/home/user/work/pylib CSSTREE=/home/user/work/nodemod/node_modules/css-tree \
        python3 validate.py <dir-or-zip> [baseline-0.9.4-dir-or-zip]
@@ -32,7 +32,7 @@ def load(target):
     if p.is_dir():
         return p, None
     if p.is_file() and zipfile.is_zipfile(p):
-        tmp = tempfile.mkdtemp(prefix='ds0923_')
+        tmp = tempfile.mkdtemp(prefix='ds0924_')
         with zipfile.ZipFile(p) as z:
             z.extractall(tmp)
         return Path(tmp), tmp
@@ -93,7 +93,7 @@ for rel in ['mod.json', 'ui/modules/apps/DriftSketch/app.json',
         data = {}
         check(False, 'valid JSON: ' + rel + ' — ' + str(e))
     if rel != 'art/shapes/driftsketch_v09/main.materials.json':
-        check(data.get('version') == '0.9.23', rel + ' version 0.9.23')
+        check(data.get('version') == '0.9.24', rel + ' version 0.9.24')
 check('DriftSketch' in json.loads((src / 'mod.json').read_text()).get('name', '') or
       'DriftSketch' in json.loads((src / 'mod.json').read_text()).get('description', ''),
       'mod.json identifies DriftSketch')
@@ -116,14 +116,18 @@ for rel in [p for p in files if p.endswith('.js')]:
     check(r.returncode == 0, 'node --check: ' + rel + ((' — ' + r.stderr.strip()) if r.returncode else ''))
 
 print('== versions ==')
-check("M.version = '0.9.23'" in lua or 'M.version="0.9.23"' in lua, 'Lua module version 0.9.23')
-check("scope.modVersion = '0.9.23';" in js, 'UI modVersion 0.9.23')
+check("M.version = '0.9.24'" in lua or 'M.version="0.9.24"' in lua, 'Lua module version 0.9.24')
+check("scope.modVersion = '0.9.24';" in js, 'UI modVersion 0.9.24')
 check('v{{modVersion}}' in html, 'HTML footer shows modVersion')
-check('0.9.23' in readme, 'README documents 0.9.23')
+check('0.9.24' in readme, 'README documents 0.9.24')
+check('NUK E RREGULLOI' in readme or '0.9.23' in readme or '0.9.24' in readme,
+      'README explains why 0.9.23 missed saved drives')
 check('0.9.4' not in re.findall(r'version\s*=\s*[\'"]?([\d.]+)', lua), 'no stale Lua version string')
 
 print('== rig-aware core ==')
-for token in ['rigAware', 'rigMargin', 'RIG_MAX_DIST', 'RIG_MIN_STREAK',
+for token in ['rigPad', 'playerFrame', 'rigPadFor', 'isGeneratedMarker',
+              'RIG_OBSERVE_INTERVAL', 'observeRig', 'resetRigObserver',
+              'rigAware', 'rigMargin', 'RIG_MAX_DIST', 'RIG_MIN_STREAK',
               'RIG_LAG_SAMPLES', 'rigHalfWidth', 'sampleRig', 'applyRigLag',
               'activeRigEntries', 'nearbyVehicles', 'editorSelectionEntries',
               'editor.selection.object', 'rigEnabled', 'rigVehicles', 'rigCount',
@@ -131,15 +135,26 @@ for token in ['rigAware', 'rigMargin', 'RIG_MAX_DIST', 'RIG_MIN_STREAK',
               'M.unregisterVehicle', 'M.clearSelectedVehicles',
               'M.onCouplerAttached', 'M.onCouplerDetached']:
     check(token in lua, 'Lua core has ' + token)
-for token in ['rigAware', 'rigMargin', 'useSelectedTrailer', 'unregisterSelectedTrailer',
+for token in ['rigPad', 'rigAware', 'rigMargin', 'useSelectedTrailer', 'unregisterSelectedTrailer',
               'unregisterTrailer', 'clearTrailers', 'rigVehicles', 'rigCount']:
     check(token in js and token in html, 'UI JS + HTML wire ' + token)
 check('Përdor rimorkion e zgjedhur' in html, 'Albanian "Përdor rimorkion e zgjedhur" button')
-check('ATTACHED VEHICLES' in html, 'rig section visible in panel')
+check('RIMORKIO / TRAILER' in html, 'rig section visible in panel')
+check(html.index('RIMORKIO / TRAILER') < html.index('MESH &amp; TRACK SETTINGS'),
+      'rig section is ABOVE the mesh settings (visible without scrolling)')
 check('NO HITCH / NO L NEEDED' in html, 'panel states no hitch / no L key needed')
+check('Gjerësia shtesë' in html and 'settings.rigPad' in html, 'build-time Trailer width slider present')
 check('Auto-detect' in readme or 'AUTO' in readme.upper(), 'README documents auto detection')
 check('sampleRig(id, pos, p)' in lua, 'onUpdate samples the rig at each path point')
 check('applyRigLag(points)' in lua, 'stop applies the trailer lag before building')
+check('local pad = math.max(0, tonumber(SETTINGS.rigPad) or 0)' in lua,
+      'corridor uses build-time rigPad (fixes old saved drives)')
+check('local base = halfWidth + margin + pad' in lua,
+      'build-time pad is added to BOTH cone lines')
+check('SETTINGS.rigPad' in lua and "key == 'rigPad'" in lua,
+      'rigPad is a normalised / rebuildable setting')
+check('observeRig()' in lua and 'rigObserver.done' in lua,
+      'replay observer exists and stops after one detection')
 check('rigEnabled()' in lua, 'rig width gated by auto/manual/coupler state')
 
 print('== clean-rollback guarantees ==')
@@ -164,6 +179,10 @@ print('== no per-frame / map-wide work ==')
 check(lua.count('sampleRig(') <= 6, 'rig sampling called only at path-recording points')
 check('function M.onUpdate' in lua, 'onUpdate present')
 check('be.getObjectCount' in lua, 'nearby vehicle list available for detection')
+check('RIG_OBSERVE_INTERVAL = 0.30' in lua, 'replay observer is throttled to 3 Hz')
+check('RIG_OBSERVE_BUDGET = 90.0' in lua, 'replay observer has a 90 s budget')
+check('rigObserver.lastAt >= RIG_OBSERVE_INTERVAL' in lua,
+      'observer condition is time-based, not per frame')
 check('RIG_MAX_DIST' in lua and 'pose.dist <= RIG_MAX_DIST' in lua,
       'only vehicles within the 12 m rig radius are considered')
 check('loadJsonMaterialsFile' in lua and 'useInstanceRenderData' in lua,
