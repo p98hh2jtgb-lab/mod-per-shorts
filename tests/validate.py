@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Static package validation for DriftSketch 0.9.24 (rig-aware cone placement).
+"""Static package validation for DriftSketch 0.9.25 (trailer centreline).
 
 Usage: PYTHONPATH=/home/user/work/pylib CSSTREE=/home/user/work/nodemod/node_modules/css-tree \
        python3 validate.py <dir-or-zip> [baseline-0.9.4-dir-or-zip]
@@ -93,7 +93,7 @@ for rel in ['mod.json', 'ui/modules/apps/DriftSketch/app.json',
         data = {}
         check(False, 'valid JSON: ' + rel + ' — ' + str(e))
     if rel != 'art/shapes/driftsketch_v09/main.materials.json':
-        check(data.get('version') == '0.9.24', rel + ' version 0.9.24')
+        check(data.get('version') == '0.9.25', rel + ' version 0.9.25')
 check('DriftSketch' in json.loads((src / 'mod.json').read_text()).get('name', '') or
       'DriftSketch' in json.loads((src / 'mod.json').read_text()).get('description', ''),
       'mod.json identifies DriftSketch')
@@ -116,16 +116,18 @@ for rel in [p for p in files if p.endswith('.js')]:
     check(r.returncode == 0, 'node --check: ' + rel + ((' — ' + r.stderr.strip()) if r.returncode else ''))
 
 print('== versions ==')
-check("M.version = '0.9.24'" in lua or 'M.version="0.9.24"' in lua, 'Lua module version 0.9.24')
-check("scope.modVersion = '0.9.24';" in js, 'UI modVersion 0.9.24')
+check("M.version = '0.9.25'" in lua or 'M.version="0.9.25"' in lua, 'Lua module version 0.9.25')
+check("scope.modVersion = '0.9.25';" in js, 'UI modVersion 0.9.25')
 check('v{{modVersion}}' in html, 'HTML footer shows modVersion')
-check('0.9.24' in readme, 'README documents 0.9.24')
-check('NUK E RREGULLOI' in readme or '0.9.23' in readme or '0.9.24' in readme,
-      'README explains why 0.9.23 missed saved drives')
+check('0.9.25' in readme and '0.9.24' in readme, 'README documents 0.9.25 and the 0.9.24 bug')
+check('PSE 0.9.24 PRAP' in readme or 'shkaku' in readme.lower(),
+      'README explains why 0.9.24 still clipped the cones')
 check('0.9.4' not in re.findall(r'version\s*=\s*[\'"]?([\d.]+)', lua), 'no stale Lua version string')
 
 print('== rig-aware core ==')
-for token in ['rigPad', 'playerFrame', 'rigPadFor', 'isGeneratedMarker',
+for token in ['rigPoses', 'rigPoseCount', 'buildRigProfile', 'copyRigPoses',
+              'interpRigPoses', 'RIG_REACH', 'lastRigPoseCount', 'rigRear',
+              'rigPad', 'playerFrame', 'rigPadFor', 'isGeneratedMarker',
               'RIG_OBSERVE_INTERVAL', 'observeRig', 'resetRigObserver',
               'rigAware', 'rigMargin', 'RIG_MAX_DIST', 'RIG_MIN_STREAK',
               'RIG_LAG_SAMPLES', 'rigHalfWidth', 'sampleRig', 'applyRigLag',
@@ -135,7 +137,7 @@ for token in ['rigPad', 'playerFrame', 'rigPadFor', 'isGeneratedMarker',
               'M.unregisterVehicle', 'M.clearSelectedVehicles',
               'M.onCouplerAttached', 'M.onCouplerDetached']:
     check(token in lua, 'Lua core has ' + token)
-for token in ['rigPad', 'rigAware', 'rigMargin', 'useSelectedTrailer', 'unregisterSelectedTrailer',
+for token in ['rigPad', 'rigPoseCount', 'rigAware', 'rigMargin', 'useSelectedTrailer', 'unregisterSelectedTrailer',
               'unregisterTrailer', 'clearTrailers', 'rigVehicles', 'rigCount']:
     check(token in js and token in html, 'UI JS + HTML wire ' + token)
 check('Përdor rimorkion e zgjedhur' in html, 'Albanian "Përdor rimorkion e zgjedhur" button')
@@ -143,7 +145,9 @@ check('RIMORKIO / TRAILER' in html, 'rig section visible in panel')
 check(html.index('RIMORKIO / TRAILER') < html.index('MESH &amp; TRACK SETTINGS'),
       'rig section is ABOVE the mesh settings (visible without scrolling)')
 check('NO HITCH / NO L NEEDED' in html, 'panel states no hitch / no L key needed')
-check('Gjerësia shtesë' in html and 'settings.rigPad' in html, 'build-time Trailer width slider present')
+check('Hapësira minimale' in html and 'settings.rigPad' in html, 'safety floor slider present')
+check('state.rigPoseCount' in html and 'vijës së rimorkios' in html,
+      'panel shows how many trailer-centreline stations were used')
 check('Auto-detect' in readme or 'AUTO' in readme.upper(), 'README documents auto detection')
 check('sampleRig(id, pos, p)' in lua, 'onUpdate samples the rig at each path point')
 check('applyRigLag(points)' in lua, 'stop applies the trailer lag before building')
@@ -151,6 +155,11 @@ check('local pad = math.max(0, tonumber(SETTINGS.rigPad) or 0)' in lua,
       'corridor uses build-time rigPad (fixes old saved drives)')
 check('local base = halfWidth + margin + pad' in lua,
       'build-time pad is added to BOTH cone lines')
+check('stationBase = math.max(stationBase, w + margin)' not in lua,
+      'symmetric scalar rig widening REMOVED (the 0.9.24 bug)')
+check('needLeft = math.max(needLeft, rlat + extent)' in lua and
+      'needRight = math.max(needRight, extent - rlat)' in lua,
+      'one-sided clearance computed from the trailer rectangle')
 check('SETTINGS.rigPad' in lua and "key == 'rigPad'" in lua,
       'rigPad is a normalised / rebuildable setting')
 check('observeRig()' in lua and 'rigObserver.done' in lua,
@@ -180,11 +189,20 @@ check(lua.count('sampleRig(') <= 6, 'rig sampling called only at path-recording 
 check('function M.onUpdate' in lua, 'onUpdate present')
 check('be.getObjectCount' in lua, 'nearby vehicle list available for detection')
 check('RIG_OBSERVE_INTERVAL = 0.30' in lua, 'replay observer is throttled to 3 Hz')
+check('RIG_STABLE_POS = 1.50' in lua and 'RIG_STABLE_DOT = 0.85' in lua,
+      'detection tolerates a wobbling collision-glued trailer')
+check('rigAttached[cid] = nil' not in lua, 'detected rig is never dropped mid-drive')
+check('p.rigPoses = #poses > 0 and poses or nil' in lua,
+      'sampleRig records the real trailer world centre')
+check('buildRigProfile(path)' in lua, 'build time synthesizes a centreline for old drives')
 check('RIG_OBSERVE_BUDGET = 90.0' in lua, 'replay observer has a 90 s budget')
 check('rigObserver.lastAt >= RIG_OBSERVE_INTERVAL' in lua,
       'observer condition is time-based, not per frame')
 check('RIG_MAX_DIST' in lua and 'pose.dist <= RIG_MAX_DIST' in lua,
       'only vehicles within the 12 m rig radius are considered')
+check('RIG_CANDIDATE_TTL = 1.5' in lua and 'RIG_CANDIDATE_MAX = 32' in lua and
+      'rigCandidatesCache' in lua,
+      'vehicle list is cached / capped, never re-scanned per recorded point')
 check('loadJsonMaterialsFile' in lua and 'useInstanceRenderData' in lua,
       'lightweight TSStatic meshes + instance rendering retained')
 

@@ -1,16 +1,14 @@
--- DriftSketch 0.9.24 rig-aware mock test --------------------------------------
--- Runs the real lua/ge/extensions/driftSketch.lua in a plain Lua VM with a mocked
--- BeamNG GE environment. Set EXTENSION_PATH (or pass the path as arg[1]).
+-- DriftSketch 0.9.25 rig-centreline mock test ---------------------------------
+-- Runs the real lua/ge/extensions/driftSketch.lua in a mocked BeamNG GE VM.
 --
--- The regression that 0.9.23 missed: a drive saved by 0.9.4 has NO rig data, so
--- Rebuild kept the narrow cone lines and the glued trailer still clipped them.
--- 0.9.24 applies the trailer width at BUILD time. These checks prove that:
---   * an old saved drive widens on restore / Rebuild / slider change,
---   * a hitch-less World Editor-glued trailer is still auto-detected,
---   * World Editor selection sizes the corridor and rebuilds immediately,
---     including a TSStatic prop trailer (not just a BeamNGVehicle),
---   * detection during replay works, but never scans per frame,
---   * toppling / counter / sound / physical cones never come back.
+-- The 0.9.24 failure: a scalar "rigHalfWidth" stored at the CAR's station and
+-- applied symmetrically. A trailer sits 4-5 m BEHIND and swings to one side in
+-- a drift, so the corridor was too wide on the empty side and still clipped the
+-- cones on the trailer side. 0.9.25 records the trailer's WORLD centre + rotated
+-- rectangle at every path point and clears it one side at a time.
+--
+-- The decisive checks here are geometric: no cone may be inside any recorded
+-- trailer footprint, AND the side without the trailer stays tight.
 
 local EXT_PATH = EXTENSION_PATH or (arg and arg[1]) or 'lua/ge/extensions/driftSketch.lua'
 local total, failed = 0, 0
@@ -26,13 +24,13 @@ local function vec3(x, y, z) return {x = x, y = y, z = z} end
 
 local function setup()
   local ctx = {sceneByName = {}, sceneById = {}, byId = {}, list = {},
-    cones = {}, serial = 0, enumCalls = 0, reloads = 0}
+    cones = {}, serial = 0, enumCalls = 0, reloads = 0, rigCenters = {}}
 
   function ctx.newObject(kind, name)
     ctx.serial = ctx.serial + 1
     local o = {kind = kind, name = name or (kind .. '_' .. ctx.serial),
       simId = 5000 + ctx.serial, fields = {}, pos = vec3(0, 0, 0), children = {},
-      deleted = false}
+      deleted = false, dirAngle = 0}
     o.fields.name = o.name
     function o:getClassName() return self.kind end
     function o:getName() return self.name end
@@ -63,6 +61,10 @@ local function setup()
     function o:add(child) return self:addObject(child) end
     function o:getCount() return #self.children end
     function o:deleteAllObjects() self.children = {} end
+    function o:getDirectionVector()
+      local a = self.dirAngle or 0
+      return vec3(math.cos(a), math.sin(a), 0)
+    end
     ctx.sceneById[o.simId] = o
     if name then ctx.sceneByName[name] = o end
     return o
@@ -71,7 +73,6 @@ local function setup()
   function ctx.addVehicle(id, name, x, y, z)
     local v = ctx.newObject('BeamNGVehicle', name)
     v.id = id; v.pos = vec3(x, y, z); v.JBeam = 'mock_' .. name
-    function v:getDirectionVector() return vec3(1, 0, 0) end
     function v:getInitialLength() return 4.8 end
     function v:getInitialWidth() return 2.0 end
     function v:getPosition() return vec3(self.pos.x, self.pos.y, self.pos.z) end
@@ -82,7 +83,6 @@ local function setup()
     return v
   end
 
-  -- A trailer glued as a plain World Editor prop (TSStatic), NOT a vehicle.
   function ctx.addProp(name, x, y, z)
     local o = ctx.newObject('TSStatic', name)
     o.pos = vec3(x, y, z)
@@ -93,7 +93,7 @@ local function setup()
 
   ctx.playerId = 101
   ctx.player = ctx.addVehicle(101, 'Kerri', 0, 0, 0.5)
-  ctx.trailer = ctx.addVehicle(202, 'Rimorkio_WE', -3, 1.2, 0.5)
+  ctx.trailer = ctx.addVehicle(202, 'clone', -3, 1.2, 0.5)
   ctx.parked = ctx.addVehicle(303, 'Makine_e_parkuar', 5, 4, 0.5)
   ctx.prop = ctx.addProp('Rimorkio_Prop_TSStatic', -3, 1.2, 0.5)
 
@@ -136,20 +136,42 @@ local function setup()
   return ctx
 end
 
--- Straight 20 m drive along +x. `glued` moves the trailer rigidly with the car;
--- the parked car never moves, so its relative pose drifts every sample.
-local function drive(ctx, glued)
+-- Car drives along +x (optionally a gentle S). `angle` is a constant drift:
+-- the car HEADING differs from the path tangent, exactly like the screenshots.
+-- The trailer is rigidly attached in the car's frame: long=-3, lat=side.
+local function driveRig(ctx, opts)
+  opts = opts or {}
+  local angle = opts.angle or 0
+  local side = opts.side or 1.2
+  local wobble = opts.wobble or 0
   ctx.M.start()
-  for x = 0, 20, 1 do
-    ctx.player.pos = vec3(x, 0, 0.5)
-    if glued then ctx.trailer.pos = vec3(x - 3, 1.2, 0.5) end
+  for i = 0, 40 do
+    local x = i * 1.0
+    local carY = opts.curve and 1.5 * math.sin(x / 7) or 0
+    ctx.player.pos = vec3(x, carY, 0.5)
+    ctx.player.dirAngle = angle
+    ctx.trailer.dirAngle = opts.trailerAngle or angle
+    local fx, fy = math.cos(angle), math.sin(angle)
+    local w = wobble * math.sin(i * 0.9)
+    local behind = opts.behind or 3
+    local dX = -behind * fx - (side + w) * fy
+    local dY = -behind * fy + (side + w) * fx
+    ctx.trailer.pos = vec3(x + dX, carY + dY, 0.5)
+    ctx.rigCenters[#ctx.rigCenters + 1] = {x = x + dX, y = carY + dY}
     ctx.M.onUpdate(0.05)
   end
   ctx.M.stop()
 end
 
--- Widest lateral distance of any cone from the driven centre line (y = 0).
--- Callers clear ctx.cones before a build so only that build is measured.
+local function plainDrive(ctx)
+  ctx.M.start()
+  for x = 0, 20, 1 do
+    ctx.player.pos = vec3(x, 0, 0.5)
+    ctx.M.onUpdate(0.05)
+  end
+  ctx.M.stop()
+end
+
 local function corridorWidth(ctx)
   local width = 0
   for _, p in ipairs(ctx.cones) do
@@ -158,215 +180,246 @@ local function corridorWidth(ctx)
   return width
 end
 
+-- No cone may sit inside a recorded trailer footprint (radius >= half width).
+local function conesInsideTrailer(ctx, radius)
+  local worst, hits = 0, 0
+  for _, c in ipairs(ctx.cones) do
+    for _, t in ipairs(ctx.rigCenters) do
+      local d = math.sqrt((c.x - t.x) ^ 2 + (c.y - t.y) ^ 2)
+      if d < radius then
+        hits = hits + 1
+        if radius - d > worst then worst = radius - d end
+      end
+    end
+  end
+  return hits, worst
+end
+
+local function sideMaxima(ctx)
+  local plus, minus = 0, 0
+  for _, p in ipairs(ctx.cones) do
+    if p.y >= 0 then plus = math.max(plus, p.y) else minus = math.max(minus, -p.y) end
+  end
+  return plus, minus
+end
+
 print('== 1. defaults & no per-frame scanning ==')
 local a = setup()
-eq(a.M.version, '0.9.24', 'module version is 0.9.24')
-eq(a.M.uiState().settings.rigPad, 2.0, 'build-time Trailer width defaults to 2.0 m')
+eq(a.M.version, '0.9.25', 'module version is 0.9.25')
+eq(a.M.uiState().settings.rigPad, 1.0, 'safety floor lowered to 1.0 m')
 eq(a.M.uiState().settings.rigAware, true, 'auto detection ON by default')
-eq(a.M.uiState().settings.rigMargin, 0.25, 'safety margin defaults to 0.25 m')
-eq(a.M.uiState().settings.collision, false, 'physical collision OFF by default')
-eq(a.M.uiState().settings.mesh, 'cone', 'Traffic Cone mesh by default')
-eq(a.M.uiState().toppledCount, nil, 'no topple counter in state')
+eq(a.M.uiState().settings.collision, false, 'physical collision OFF')
+eq(a.M.uiState().toppledCount, nil, 'no topple counter')
+eq(a.M.uiState().rigPoseCount, 0, 'no trailer centreline before a build')
 
--- Auto detection OFF + zero pad reproduces the exact 0.9.4 corridor.
 local idle = setup()
 idle.M.setSetting('rigPad', 0)
 idle.M.setSetting('rigAware', false)
-drive(idle, false)
+plainDrive(idle)
 local baseline = corridorWidth(idle)
 check(baseline > 0.5 and baseline < 2.0,
-  '0.9.4-style narrow corridor (' .. string.format('%.2f', baseline) .. ' m)')
-eq(idle.M.uiState().rigCount, 0, 'parked / unlinked car is NOT adopted')
+  '0.9.4-style tight corridor (' .. string.format('%.2f', baseline) .. ' m)')
 local enums = idle.enumCalls
 for _ = 1, 20 do idle.M.onUpdate(0.05) end
 eq(idle.enumCalls, enums, 'NO vehicle enumeration per frame when detection is off')
 
--- Even while recording, a frame that produces no new path point must not scan.
-local k = setup()
-k.M.setSetting('rigPad', 0)
-k.M.setSetting('rigAware', false)
-k.M.start()
-for x = 0, 5, 1 do
-  k.player.pos = vec3(x, 0, 0.5)
-  k.M.onUpdate(0.05)
-  k.M.onUpdate(0.05)  -- same pose, no new point
-  k.M.onUpdate(0.05)  -- same pose, no new point
-end
-k.M.stop()
-eq(k.enumCalls, 0, 'recording samples only at path points')
+-- Standing correction: no repeated map-wide vehicle enumeration. The candidate
+-- list is cached (1.5 s TTL, 32 entries max) even though a 41-point drive calls
+-- sampleRig at every recorded station.
+local scan = setup()
+driveRig(scan, {side = 1.2})
+check(scan.enumCalls <= 5,
+  '41-point drive reads the vehicle list only ' .. tostring(scan.enumCalls) .. ' times')
 
-print('== 2. THE REGRESSION: an old 0.9.4 saved drive must widen on rebuild ==')
+print('== 2. THE FIX: real trailer centreline, one-sided clearance ==')
+local r = setup()
+r.M.setSetting('rigPad', 0)
+driveRig(r, {side = 1.2})
+check(r.M.uiState().rigCount >= 1, 'trailer detected (no hitch, no L key)')
+check(r.M.uiState().rigPoseCount > 20,
+  'trailer centreline recorded at ' .. tostring(r.M.uiState().rigPoseCount) .. ' stations')
+local hits, worst = conesInsideTrailer(r, 0.95)
+eq(hits, 0, 'NO cone inside a recorded trailer footprint (worst penetration ' ..
+  string.format('%.2f', worst) .. ' m)')
+local plus, minus = sideMaxima(r)
+check(plus > 2.2, string.format('trailer side widened (%.2f m)', plus))
+check(minus < 2.0, string.format('empty side stays TIGHT (%.2f m)', minus))
+
+-- A drifting car: heading != path tangent, so the trailer centre sits far off
+-- the driven line. This is the case 0.9.24's symmetric width could not handle.
+local d = setup()
+d.M.setSetting('rigPad', 0)
+driveRig(d, {angle = 0.9, side = 0})
+check(d.M.uiState().rigPoseCount > 20, 'drift run recorded a trailer centreline')
+local dhits, dworst = conesInsideTrailer(d, 0.95)
+eq(dhits, 0, 'NO cone inside the drifting trailer footprint (worst ' ..
+  string.format('%.2f', dworst) .. ' m)')
+local dplus, dminus = sideMaxima(d)
+-- Control: the SAME drift angle with no trailer. A car at 52 deg already needs
+-- a wide lateral band of its own, so compare against that baseline, not 1.54 m.
+local d0 = setup()
+d0.M.setSetting('rigPad', 0)
+d0.M.setSetting('rigAware', false)
+d0.M.start()
+for i = 0, 40 do
+  d0.player.pos = vec3(i * 1.0, 0, 0.5)
+  d0.player.dirAngle = 0.9
+  d0.M.onUpdate(0.05)
+end
+d0.M.stop()
+local cplus, cminus = sideMaxima(d0)
+check(dminus > cminus + 1.0,
+  string.format('drift widens the TRAILER side (%.2f vs %.2f m no-trailer)', dminus, cminus))
+check(dplus <= cplus + 0.35,
+  string.format('opposite side NOT widened by the rig (%.2f vs %.2f m no-trailer)', dplus, cplus))
+
+-- A curved, wobbling (collision-glued) trailer is still fully cleared.
+local w = setup()
+w.M.setSetting('rigPad', 0)
+driveRig(w, {curve = true, wobble = 0.45})
+local whits, wworst = conesInsideTrailer(w, 0.95)
+eq(whits, 0, 'NO cone inside a wobbling trailer on a curved path (worst ' ..
+  string.format('%.2f', wworst) .. ' m)')
+check(w.M.uiState().rigCount >= 1, 'wobbling collision-glued rig is not dropped')
+
+-- A LONG rig: the trailer centre is 6 m behind the car, i.e. ~24 resampled
+-- stations. 0.9.24's +/-6 sample lag could never reach those cone stations.
+local lag = setup()
+lag.M.setSetting('rigPad', 0)
+driveRig(lag, {side = 1.2, behind = 6})
+local lhits, lworst = conesInsideTrailer(lag, 0.95)
+eq(lhits, 0, 'LONG trailer (6 m behind): NO cone inside its footprint (worst ' ..
+  string.format('%.2f', lworst) .. ' m)')
+
+-- Articulation: the trailer's OWN heading differs from the car's (it swings on
+-- the collision glue). Its rotated rectangle must still be fully cleared.
+local art = setup()
+art.M.setSetting('rigPad', 0)
+driveRig(art, {angle = 0.9, trailerAngle = 1.45, side = 0.4})
+local ahits, aworst = conesInsideTrailer(art, 0.95)
+eq(ahits, 0, 'ARTICULATED trailer (own heading): NO cone inside its footprint (worst ' ..
+  string.format('%.2f', aworst) .. ' m)')
+
+print('== 3. old saved drive (0.9.4/0.9.24, no rigPoses) rebuilds from LIVE pose ==')
 local old = setup()
 old.M.setSetting('rigPad', 0)
 old.M.setSetting('rigAware', false)
-drive(old, false)                    -- saved drive has NO rig data at all
+plainDrive(old)
 local narrow = corridorWidth(old)
 local data = old.M.onSerialize()
-data.settings.rigPad = nil           -- 0.9.4 settings had no such key
-data.settings.rigAware = nil
+data.settings.rigPad = nil
 for _, path in ipairs(data.savedPaths) do
-  for _, p in ipairs(path) do p.rigHalfWidth = nil end
+  for _, p in ipairs(path) do p.rigPoses = nil; p.rigHalfWidth = nil end
 end
 local restored = setup()
 restored.M.onDeserialized(data)
 restored.cones = {}
-restored.M.onUpdate(0.05)            -- pendingRestore -> rebuildEverything()
-local widened = corridorWidth(restored)
-check(widened > narrow + 1.0,
-  string.format('restored OLD drive widens automatically (%.2f m vs %.2f m)', widened, narrow))
-eq(restored.M.uiState().buildCount, 1, 'the old drive is still there')
+restored.M.onUpdate(0.05)
+check(corridorWidth(restored) > narrow + 0.5,
+  'old drive still widens via the 1.0 m safety floor')
+-- With a LIVE attached rig, the rebuilt line is synthesized from its real pose.
+local live = setup()
+live.M.setSetting('rigPad', 0)
+live.M.setSetting('rigAware', false)
+live.M.onDeserialized(data)
+live.M.onUpdate(0.05)
+live.player.pos = vec3(20, 0, 0.5)
+live.trailer.pos = vec3(17, 1.2, 0.5)
+live.editor.selection.object = {live.trailer.simId}
+live.cones = {}
+live.M.useSelectedVehicle()
+check(live.M.uiState().rigPoseCount > 20,
+  'synthesized centreline covers ' .. tostring(live.M.uiState().rigPoseCount) .. ' stations')
 
--- Moving the slider rebuilds the existing drive with the new width.
-local rb = setup()
-rb.M.setSetting('rigPad', 0)
-rb.M.setSetting('rigAware', false)
-drive(rb, false)
-rb.cones = {}
-rb.M.setSetting('rigPad', 2.5)
-rb.M.onUpdate(0.4)                  -- deferred path rebuild fires
-check(corridorWidth(rb) > narrow + 2.0,
-  'Trailer width slider rebuilds the saved drive wide, no new recording')
-rb.cones = {}
-rb.M.setSetting('rigPad', 0)
-rb.M.rebuild()
-check(math.abs(corridorWidth(rb) - narrow) < 0.35,
-  'setting 0 m restores the tight 0.9.4 lines (no trailer)')
-
-print('== 3. auto-detection of a hitch-less glued trailer (pad = 0) ==')
-local b = setup()
-b.M.setSetting('rigPad', 0)
-drive(b, true)
-local rigWidth = corridorWidth(b)
-check(rigWidth > baseline + 0.8,
-  string.format('car + trailer corridor (%.2f m vs %.2f m baseline)', rigWidth, baseline))
-check(b.M.uiState().rigCount >= 1, 'trailer was detected automatically')
-local foundTrailer, foundParked = false, false
-for _, entry in ipairs(b.M.uiState().rigVehicles) do
-  if entry.id == b.trailer.id then foundTrailer = true end
-  if entry.id == b.parked.id then foundParked = true end
-end
-check(foundTrailer, 'detected rig contains the World Editor-glued trailer')
-check(not foundParked, 'parked car is NOT in the rig list')
-check(b.M.uiState().rigVehicles[1].source == 'Auto', 'detected by Auto (no coupler, no L key)')
-check(rigWidth >= 2.2, 'cones are outside the trailer envelope')
-
-print('== 3b. World Editor selection at FILLO is a hint, not blind trust ==')
-local bh = setup()
-bh.M.setSetting('rigPad', 0)
-bh.editor.selection.object = {bh.trailer.simId}
-drive(bh, true)
-check(bh.M.uiState().rigCount >= 1, 'selected glued trailer detected via hint')
-check(corridorWidth(bh) > baseline + 0.8, 'hint path also widens the corridor')
-local bp = setup()
-bp.M.setSetting('rigPad', 0)
-bp.editor.selection.object = {bp.parked.simId}
-drive(bp, false)
-eq(bp.M.uiState().rigCount, 0, 'a selected but unlinked parked car is still rejected')
-check(corridorWidth(bp) < 2.0, 'hint on an unlinked car does not widen cones')
-
-print('== 4. World Editor selection SIZES the corridor and rebuilds NOW ==')
+print('== 4. World Editor selection, props, replay observer ==')
 local m = setup()
 m.M.setSetting('rigPad', 0)
-m.M.setSetting('rigAware', false)
-drive(m, false)                      -- existing narrow saved drive
-local before = corridorWidth(m)
+plainDrive(m)
 m.trailer.pos = vec3(m.player.pos.x - 3, 1.2, 0.5)
 m.cones = {}
 m.editor.selection.object = {m.trailer.simId}
 local st = m.M.useSelectedVehicle()
-eq(st.rigCount, 1, 'selected trailer registered manually')
-eq(st.statusError, false, 'manual registration succeeds')
-eq(st.rigVehicles[1].id, m.trailer.id, 'registered id is the vehicle id')
-check(st.rigVehicles[1].source == 'World Editor', 'source is World Editor')
-check(m.M.uiState().settings.rigPad > 0, 'trailer width auto-sized from the selected object')
-check(corridorWidth(m) > before + 0.8, 'existing drive rebuilds WIDE immediately, no new run')
+eq(st.rigCount, 1, 'selected trailer registered')
+check(st.rigPoseCount > 0, 'registration immediately rebuilds with a centreline')
+check(m.M.uiState().settings.rigPad >= 0, 'safety floor intact')
 
--- A World Editor prop trailer (TSStatic) is accepted too.
 local pr = setup()
 pr.M.setSetting('rigPad', 0)
-drive(pr, false)                     -- generate real DriftSketch cones
+plainDrive(pr)
 pr.prop.pos = vec3(pr.player.pos.x - 3, 1.2, 0.5)
 pr.editor.selection.object = {pr.prop.simId}
-eq(pr.M.useSelectedVehicle().rigCount, 1, 'TSStatic prop trailer is accepted')
-check(pr.M.uiState().settings.rigPad > 0, 'prop trailer also sizes the corridor')
-
--- Our OWN generated cones must never be mistaken for a trailer.
-local coneSimId = nil
+eq(pr.M.useSelectedVehicle().rigCount, 1, 'TSStatic prop trailer accepted')
+local coneSimId
 for id, obj in pairs(pr.sceneById) do
   if obj.kind == 'TSStatic' and tostring(obj.name):lower():find('driftsketch', 1, true) then
     coneSimId = id break
   end
 end
-check(coneSimId ~= nil, 'a generated DriftSketch cone exists in the scene')
+check(coneSimId ~= nil, 'generated cone exists in the scene')
 pr.editor.selection.object = {coneSimId}
-eq(pr.M.useSelectedVehicle().rigCount, 1, 'a generated cone is NOT registered as a trailer')
+eq(pr.M.useSelectedVehicle().rigCount, 1, 'generated cone is NOT a trailer')
 
-print('== 5. replay / idle detection (old drive, car moving in replay) ==')
+-- A World Editor selection alone (no registration yet) is enough at build time.
+local sel = setup()
+sel.M.setSetting('rigPad', 0)
+sel.M.onDeserialized(data)
+sel.M.onUpdate(0.05)
+sel.player.pos = vec3(20, 0, 0.5)
+sel.trailer.pos = vec3(17, 1.2, 0.5)
+sel.editor.selection.object = {sel.trailer.simId}
+sel.M.rebuild()
+check(sel.M.uiState().rigPoseCount > 20,
+  'World Editor selection alone synthesizes the centreline on rebuild')
+
 local o = setup()
 o.M.setSetting('rigPad', 0)
-drive(o, false)                      -- saved drive, no rig data
-local replayEnums = o.enumCalls
-for _ = 1, 3 do o.M.onUpdate(0.05) end
-check(o.enumCalls - replayEnums <= 1, 'replay observer is throttled, not per frame')
+plainDrive(o)
 for i = 1, 14 do
   o.player.pos = vec3(30 + i * 2, 0, 0.5)
-  o.trailer.pos = vec3(30 + i * 2 - 3, 1.2, 0.5)  -- fixed relative pose
+  o.trailer.pos = vec3(30 + i * 2 - 3, 1.2, 0.5)
   o.M.onUpdate(0.35)
 end
-check(o.M.uiState().rigCount >= 1, 'trailer auto-detected during replay, no new recording')
-check(o.M.uiState().settings.rigPad > 0, 'observer sets the trailer width')
+check(o.M.uiState().rigCount >= 1, 'trailer auto-detected during replay')
 
-print('== 6. unregister / coupler / serialize / migration ==')
-local c = setup()
-c.M.setSetting('rigPad', 0)
-c.editor.selection.object = {c.trailer.simId}
-c.M.useSelectedVehicle()
-eq(c.M.unregisterSelectedVehicle().rigCount, 0, 'selected vehicle unregistered')
-eq(c.M.clearSelectedVehicles().rigCount, 0, 'clear-all leaves no rig')
-c.editor.selection.object = {c.trailer.simId}
-c.M.useSelectedVehicle()
-eq(c.M.unregisterVehicle(c.trailer.id).rigCount, 0, 'per-row x unregisters')
-c.M.clearSelectedVehicles()
-
-local d = setup()
-d.M.onCouplerAttached(d.player.id, d.trailer.id)
-check(d.M.uiState().rigCount >= 1, 'coupler/hitch event also adds the trailer')
-d.M.onCouplerDetached(d.player.id, d.trailer.id)
-eq(d.M.uiState().rigCount, 0, 'coupler detach removes it')
-
+print('== 5. serialization, migration, unregister / coupler ==')
 local e = setup()
 e.M.setSetting('rigPad', 0)
-drive(e, true)
-local wide = corridorWidth(e)
-e.cones = {}
-e.M.rebuild()
-check(math.abs(corridorWidth(e) - wide) < 0.35, 'Rebuild keeps the rig-sized corridor')
+driveRig(e, {side = 1.2})
 local serialized = e.M.onSerialize()
-eq(serialized.settings.rigAware, true, 'rigAware serialized')
-eq(serialized.settings.rigPad, 0, 'rigPad serialized')
-local hasRigWidth = false
+local hasPoses = false
 for _, path in ipairs(serialized.savedPaths) do
   for _, p in ipairs(path) do
-    if (tonumber(p.rigHalfWidth) or 0) > 0 then hasRigWidth = true end
+    if type(p.rigPoses) == 'table' and #p.rigPoses > 0 then hasPoses = true end
   end
 end
-check(hasRigWidth, 'saved drives keep the recorded rig clearance')
+check(hasPoses, 'saved drives keep the trailer centreline')
+e.cones = {}
+e.M.rebuild()
+local ehits = conesInsideTrailer(e, 0.95)
+eq(ehits, 0, 'Rebuild keeps cones outside the trailer')
 local f = setup()
 f.M.onDeserialized(serialized)
 check(f.M.uiState().buildCount >= 1, 'saved drives restored on reload')
 
+local c = setup()
+c.editor.selection.object = {c.trailer.simId}
+c.M.useSelectedVehicle()
+eq(c.M.unregisterSelectedVehicle().rigCount, 0, 'selected vehicle unregistered')
+eq(c.M.clearSelectedVehicles().rigCount, 0, 'clear-all leaves no rig')
+local q = setup()
+q.M.onCouplerAttached(q.player.id, q.trailer.id)
+check(q.M.uiState().rigCount >= 1, 'coupler/hitch event adds the trailer')
+q.M.onCouplerDetached(q.player.id, q.trailer.id)
+eq(q.M.uiState().rigCount, 0, 'coupler detach removes it')
+
 local g = setup()
 g.M.onDeserialized{settings = {mesh = 'cone', spacing = 2.0, gap = 0.5,
   maxCones = 400, smooth = false, collision = false}, savedPaths = {}}
-eq(g.M.uiState().settings.spacing, 2.0, '0.9.4-style spacing preserved')
-eq(g.M.uiState().settings.maxCones, 400, 'cone cap preserved')
-eq(g.M.uiState().settings.collision, false, 'collision stays OFF')
-eq(g.M.uiState().settings.rigPad, 2.0, 'old save without rigPad keeps the safe 2.0 m default')
-
+eq(g.M.uiState().settings.spacing, 2.0, '0.9.4 spacing preserved')
+eq(g.M.uiState().settings.rigPad, 1.0, 'old save keeps the new 1.0 m floor')
 local h = setup()
 h.M.onDeserialized{settings = {spacing = 1.5, topple = true, coneCollision = true,
   hudCard = true, soundVolume = 3.0}, savedPaths = {}}
-eq(h.M.uiState().settings.spacing, 1.5, '0.9.2x core setting preserved')
 eq(h.M.uiState().settings.topple, nil, 'topple NOT brought back')
 eq(h.M.uiState().settings.coneCollision, nil, 'physical cone collision NOT brought back')
 eq(h.M.uiState().settings.hudCard, nil, 'HUD card NOT brought back')

@@ -1,4 +1,4 @@
-// DriftSketch 0.9.24 UI panel mock test ---------------------------------------
+// DriftSketch 0.9.25 UI panel mock test ---------------------------------------
 // Usage: node ui_mock_test_0924.js [path/to/app.js]
 const fs = require('fs');
 const vm = require('vm');
@@ -37,8 +37,9 @@ vm.runInNewContext(source, {angular, JSON, Math, Number, isFinite, console});
 
 check(typeof linkFn === 'function', 'directive link function registered');
 linkFn(scope);
-eq(scope.modVersion, '0.9.24', 'panel displays version 0.9.24');
-eq(scope.settings.rigPad, 2.0, 'build-time Trailer width defaults to 2.0 m');
+eq(scope.modVersion, '0.9.25', 'panel displays version 0.9.25');
+eq(scope.settings.rigPad, 1.0, 'safety floor defaults to 1.0 m');
+eq(scope.state.rigPoseCount, 0, 'trailer centreline station count starts at 0');
 eq(scope.settings.rigAware, true, 'auto-detect checkbox defaults ON');
 eq(scope.settings.rigMargin, 0.25, 'extra rig clearance defaults 0.25 m');
 eq(scope.settings.collision, false, 'Solid / car damage OFF');
@@ -91,7 +92,7 @@ for (const [fn, cmd] of [
 // Incoming state from GE, including the rig list
 check(typeof listeners['driftSketch.state'] === 'function', 'state listener registered');
 listeners['driftSketch.state']({}, {
-  recording: false, buildCount: 1, rigCount: 1,
+  recording: false, buildCount: 1, rigCount: 1, rigPoseCount: 161,
   rigVehicles: [{id: 202, name: 'Rimorkio_WE', source: 'Auto'}],
   settings: {mesh: 'cone', rigAware: true, rigMargin: 0.5, spacing: 2}
 });
@@ -99,6 +100,7 @@ eq(scope.state.rigCount, 1, 'rig count from GE displayed');
 eq(scope.state.rigVehicles[0].name, 'Rimorkio_WE', 'rig vehicle name from GE displayed');
 eq(scope.settings.rigMargin, 0.5, 'settings snapshot from GE applied');
 eq(scope.integer(scope.state.rigCount), 1, 'integer() renders the rig count');
+eq(scope.state.rigPoseCount, 161, 'trailer centreline station count from GE displayed');
 eq(scope.canRebuild(), true, 'Rebuild enabled after a build');
 
 // HTML wiring
@@ -108,7 +110,8 @@ for (const token of [
   'unregisterTrailer(veh.id)', 'settings.rigAware', 'settings.rigMargin',
   'state.rigVehicles', 'state.rigCount', 'v{{modVersion}}',
   'RIMORKIO / TRAILER', 'Përdor rimorkion e zgjedhur', 'Auto-detect / Zbulo vetë',
-  'settings.rigPad', 'Gjerësia shtesë për rimorkio', 'REBUILD WITH CURRENT SETTINGS'
+  'settings.rigPad', 'Hapësira minimale', 'state.rigPoseCount',
+  'pika të vijës së rimorkios', 'REBUILD WITH CURRENT SETTINGS'
 ]) check(html.indexOf(token) >= 0, 'HTML contains ' + token);
 check(html.indexOf('RIMORKIO / TRAILER') < html.indexOf('MESH &amp; TRACK SETTINGS'),
   'trailer section is at the TOP of the panel (visible without scrolling)');
